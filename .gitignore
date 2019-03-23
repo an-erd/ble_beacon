@@ -34,7 +34,7 @@
 *.app
 *.i*86
 *.x86_64
-*.hex
+#*.hex
 
 # Debug files
 *.dSYM/
@@ -51,5 +51,15 @@ Module.symvers
 Mkfile.old
 dkms.conf
 
-hex/
-pca10040/
+# own ignore files
+_build/
+pca10040/s132/armgcc/
+pca10040/s132/iar/
+pca10040/s132/ses/
+pca10040/s132/arm4/
+pca10040/s132/arm5_no_packs/RTE/
+
+pca10040/s132/arm5_no_packs/EventRecorderStub.scvd
+pca10040/s132/arm5_no_packs/JLinkLog.txt
+pca10040/s132/arm5_no_packs/JLinkSettings.ini
+pca10040/s132/arm5_no_packs/ble_app_beacon_pca10040_s132.uvguix.AKAEM
