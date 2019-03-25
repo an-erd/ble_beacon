@@ -58,24 +58,50 @@ uint8_t NRF_TWI_MNGR_BUFFER_LOC_IND KX022_xout_reg_addr   	= KX022_1020_REG_XOUT
 uint8_t NRF_TWI_MNGR_BUFFER_LOC_IND KX022_int_rel_reg_addr 	= KX022_1020_REG_INT_REL;	// read 5 byte
 uint8_t NRF_TWI_MNGR_BUFFER_LOC_IND KX022_ins1_reg_addr   	= KX022_1020_REG_INS1;		// read 4 bytes (INS1..3, STATUS)
 
+// first try full set of controls -> need power optimization/sleep not working
+//static uint8_t config_1[2] = {KX022_1020_REG_CNTL1, 			0x00 }; 		// KX022_1020_STANDBY
+//static uint8_t config_2[2] = {KX022_1020_REG_CNTL1, 			0x47 }; 		// KX022_1020_STANDBY | KX022_1020_HIGH_RESOLUTION | KX022_1020_DATA_READY_OFF | KX022_1020_RANGE_2G | KX022_1020_TAP_DETECT_ON | KX022_1020_WAKE_UP_ON | KX022_1020_TILT_POSITION_OFF
+//static uint8_t config_3[2] = {KX022_1020_REG_ODCNTL, 			0x02 }; 		// KX022_1020_IIR_BYPASS_OFF | KX022_1020_LOW_PASS_FILTER_ODR_9 | KX022_1020_OUTPUT_RATE_50_HZ
+//static uint8_t config_4[2] = {KX022_1020_REG_CNTL3, 			0x9E };			// Tilt ODR 12.5 Hz, directional tap ODR 400 Hz, Wake Up ODR 50 Hz
+//static uint8_t config_5[2] = {KX022_1020_REG_WUFC, 				0x05 };			// WUFC(counts) =0.1 x 50 = 5counts
+//static uint8_t config_6[2] = {KX022_1020_REG_ATH, 				0x08 };			// WAKEUP_THREHOLD (counts) =0.5 x 16 =8 counts
+//static uint8_t config_7[2] = {KX022_1020_REG_TILT_TIMER, 	0x01 };			// 80ms timer(TiltOutput Data Rate is 12.5Hz)
+//static uint8_t config_8[2] = {KX022_1020_REG_CNTL1, 	   	0xC7 }; 		// KX022_1020_OPERATE | KX022_1020_HIGH_RESOLUTION | KX022_1020_DATA_READY_OFF | KX022_1020_RANGE_2G | KX022_1020_TAP_DETECT_ON | KX022_1020_WAKE_UP_ON | KX022_1020_TILT_POSITION_OFF
 
-static uint8_t config_1[2] = {KX022_1020_REG_CNTL1, 			0x00 }; 		// KX022_1020_STANDBY
-static uint8_t config_2[2] = {KX022_1020_REG_CNTL1, 			0x47 }; 		// KX022_1020_STANDBY | KX022_1020_HIGH_RESOLUTION | KX022_1020_DATA_READY_OFF | KX022_1020_RANGE_2G | KX022_1020_TAP_DETECT_ON | KX022_1020_WAKE_UP_ON | KX022_1020_TILT_POSITION_OFF
-static uint8_t config_3[2] = {KX022_1020_REG_ODCNTL, 			0x02 }; 		// KX022_1020_IIR_BYPASS_OFF | KX022_1020_LOW_PASS_FILTER_ODR_9 | KX022_1020_OUTPUT_RATE_50_HZ
-static uint8_t config_4[2] = {KX022_1020_REG_CNTL3, 			0x9E };			// Tilt ODR 12.5 Hz, directional tap ODR 400 Hz, Wake Up ODR 50 Hz
-static uint8_t config_5[2] = {KX022_1020_REG_WUFC, 				0x05 };			// WUFC(counts) =0.1 x 50 = 5counts
-static uint8_t config_6[2] = {KX022_1020_REG_ATH, 				0x08 };			// WAKEUP_THREHOLD (counts) =0.5 x 16 =8 counts
-static uint8_t config_7[2] = {KX022_1020_REG_TILT_TIMER, 	0x01 };			// 80ms timer(TiltOutput Data Rate is 12.5Hz)
-static uint8_t config_8[2] = {KX022_1020_REG_CNTL1, 	   	0xC7 }; 		// KX022_1020_OPERATE | KX022_1020_HIGH_RESOLUTION | KX022_1020_DATA_READY_OFF | KX022_1020_RANGE_2G | KX022_1020_TAP_DETECT_ON | KX022_1020_WAKE_UP_ON | KX022_1020_TILT_POSITION_OFF
+//nrf_twi_mngr_transfer_t const kx022_init_transfers[KX022_INIT_TRANSFER_COUNT] =
+//{
+//    NRF_TWI_MNGR_WRITE(KX022_ADDR, config_1, 2, 0),
+//		NRF_TWI_MNGR_WRITE(KX022_ADDR, config_2, 2, 0),
+//		NRF_TWI_MNGR_WRITE(KX022_ADDR, config_3, 2, 0),
+//		NRF_TWI_MNGR_WRITE(KX022_ADDR, config_4, 2, 0),
+//		NRF_TWI_MNGR_WRITE(KX022_ADDR, config_5, 2, 0),
+//		NRF_TWI_MNGR_WRITE(KX022_ADDR, config_6, 2, 0),
+//		NRF_TWI_MNGR_WRITE(KX022_ADDR, config_7, 2, 0),
+//		NRF_TWI_MNGR_WRITE(KX022_ADDR, config_8, 2, 0)
+//};
+
+// WIP optimization of power consumption
+static uint8_t config_0[2] = {KX022_1020_REG_CNTL1, 				0x00 };	// KX022_1020_STANDBY 
+static uint8_t config_1[2] = {KX022_1020_REG_CNTL1, 				0x40 };	// KX022_1020_STANDBY | KX022_1020_HIGH_RESOLUTION
+static uint8_t config_2[2] = {KX022_1020_REG_ODCNTL, 			 	0x02 };	// KX022_1020_OUTPUT_RATE_50_HZ
+static uint8_t config_3[2] = {KX022_1020_REG_CNTL1, 				0xC0 };	// KX022_1020_OPERATE | KX022_1020_HIGH_RESOLUTION
+static uint8_t config_4[2] = {KX022_1020_REG_CNTL1, 				0xC0 };	// KX022_1020_OPERATE | KX022_1020_HIGH_RESOLUTION
+
+//static uint8_t config_2[2] = {KX022_1020_REG_CNTL1, 			0x47 }; 		// KX022_1020_STANDBY | KX022_1020_HIGH_RESOLUTION | KX022_1020_DATA_READY_OFF | KX022_1020_RANGE_2G | KX022_1020_TAP_DETECT_ON | KX022_1020_WAKE_UP_ON | KX022_1020_TILT_POSITION_OFF
+//static uint8_t config_4[2] = {KX022_1020_REG_CNTL3, 			0x9E };			// Tilt ODR 12.5 Hz, directional tap ODR 400 Hz, Wake Up ODR 50 Hz
+//static uint8_t config_5[2] = {KX022_1020_REG_WUFC, 				0x05 };			// WUFC(counts) =0.1 x 50 = 5counts
+//static uint8_t config_6[2] = {KX022_1020_REG_ATH, 				0x08 };			// WAKEUP_THREHOLD (counts) =0.5 x 16 =8 counts
+//static uint8_t config_7[2] = {KX022_1020_REG_TILT_TIMER, 	0x01 };			// 80ms timer(TiltOutput Data Rate is 12.5Hz)
+//static uint8_t config_8[2] = {KX022_1020_REG_CNTL1, 	   	0xC7 }; 		// KX022_1020_OPERATE | KX022_1020_HIGH_RESOLUTION | KX022_1020_DATA_READY_OFF | KX022_1020_RANGE_2G | KX022_1020_TAP_DETECT_ON | KX022_1020_WAKE_UP_ON | KX022_1020_TILT_POSITION_OFF
 
 nrf_twi_mngr_transfer_t const kx022_init_transfers[KX022_INIT_TRANSFER_COUNT] =
 {
-    NRF_TWI_MNGR_WRITE(KX022_ADDR, config_1, 2, 0),
-		NRF_TWI_MNGR_WRITE(KX022_ADDR, config_2, 2, 0),
-		NRF_TWI_MNGR_WRITE(KX022_ADDR, config_3, 2, 0),
-		NRF_TWI_MNGR_WRITE(KX022_ADDR, config_4, 2, 0),
-		NRF_TWI_MNGR_WRITE(KX022_ADDR, config_5, 2, 0),
-		NRF_TWI_MNGR_WRITE(KX022_ADDR, config_6, 2, 0),
-		NRF_TWI_MNGR_WRITE(KX022_ADDR, config_7, 2, 0),
-		NRF_TWI_MNGR_WRITE(KX022_ADDR, config_8, 2, 0)
+    NRF_TWI_MNGR_WRITE(KX022_ADDR, config_1, 2, 0)
+//		NRF_TWI_MNGR_WRITE(KX022_ADDR, config_2, 2, 0),
+//		NRF_TWI_MNGR_WRITE(KX022_ADDR, config_3, 2, 0),
+//		NRF_TWI_MNGR_WRITE(KX022_ADDR, config_4, 2, 0)
+//		NRF_TWI_MNGR_WRITE(KX022_ADDR, config_5, 2, 0),
+//		NRF_TWI_MNGR_WRITE(KX022_ADDR, config_6, 2, 0),
+//		NRF_TWI_MNGR_WRITE(KX022_ADDR, config_7, 2, 0),
+//		NRF_TWI_MNGR_WRITE(KX022_ADDR, config_8, 2, 0)
 };

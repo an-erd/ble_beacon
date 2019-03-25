@@ -207,7 +207,7 @@ extern uint8_t NRF_TWI_MNGR_BUFFER_LOC_IND KX022_wufc_reg_addr;
 #define KX022_READ_INT_REL(p_buffer)  KX022_READ(&KX022_int_rel_reg_addr, 	p_buffer, 5)
 #define KX022_READ_INS1(p_buffer) 		KX022_READ(&KX022_ins1_reg_addr, 			p_buffer, 4)
 
-#define KX022_INIT_TRANSFER_COUNT 	8
+#define KX022_INIT_TRANSFER_COUNT 	1
 
 extern nrf_twi_mngr_transfer_t const
     kx022_init_transfers[KX022_INIT_TRANSFER_COUNT];

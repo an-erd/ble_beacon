@@ -62,6 +62,7 @@
 #include "nrf_soc.h"
 #include "nrf_sdh.h"
 #include "nrf_sdh_ble.h"
+#include "nrf_delay.h"
 #include "ble_advdata.h"
 #include "app_util_platform.h"
 #include "app_timer.h"
@@ -72,7 +73,7 @@
 #include "nrf_drv_rtc.h"
 #include "nrf_drv_clock.h"
 #include "nrfx_rtc.h"
-#include "nrf_twi_mngr.h"
+//#include "nrf_twi_mngr.h"
 #include "sht3.h"
 #include "kx022.h"
 #include "compiler_abstraction.h"
@@ -92,7 +93,9 @@
 #define RTC_CC_VALUE 4                  //Determines the RTC interrupt frequency and thereby the SAADC sampling frequency
 // prescaler is 32 Hz, so RTC_CC_VALUE=4 => 1/8 sec
 #define RTC_SADC_UPDATE		80						// =every 10 sec (multiply by RTC_CC_VALUE/ = *1/8 sec)
-#define RTC_SENSOR_UPDATE	40						// =every  5 sec
+#define RTC_SENSOR_UPDATE	8						// =every  5 sec
+
+static bool rtc_handle_compare1 = false;
 
 // SAADC defines
 #define SAADC_CALIBRATION_INTERVAL 5    //Determines how often the SAADC should be calibrated relative to NRF_DRV_SAADC_EVT_DONE event. E.g. value 5 will make the SAADC calibrate every fifth time the NRF_DRV_SAADC_EVT_DONE is received.
@@ -109,8 +112,12 @@ static bool                    m_saadc_initialized = false;
 
 // TWI defines
 #define TWI_INSTANCE_ID     				0
-#define MAX_PENDING_TRANSACTIONS    20
-NRF_TWI_MNGR_DEF(m_nrf_twi_mngr, MAX_PENDING_TRANSACTIONS, TWI_INSTANCE_ID);
+//#define MAX_PENDING_TRANSACTIONS    20
+//NRF_TWI_MNGR_DEF(m_nrf_twi_mngr, MAX_PENDING_TRANSACTIONS, TWI_INSTANCE_ID);
+
+static volatile bool m_xfer_done = false;		// Indicates if operation on TWI has ended. 
+static const nrf_drv_twi_t m_twi = NRF_DRV_TWI_INSTANCE(TWI_INSTANCE_ID);	// TWI instance
+
 
 // Pin number for indicating communication with sensors.
 #ifdef BSP_LED_0
@@ -221,16 +228,20 @@ static ble_gap_adv_data_t m_adv_data =
     }
 };
 
-void read_all_cb(ret_code_t result, void * p_user_data)
+//void read_all_cb(ret_code_t result, void * p_user_data)
+//{
+//	NRF_LOG_INFO("read_all_cb");
+
+//	if (result != NRF_SUCCESS)
+//    {
+//        NRF_LOG_WARNING("read_all_cb - error: %d", (int)result);
+//        return;
+//    }
+
+void process_all_data()
 {
-	NRF_LOG_INFO("read_all_cb");
-
-	if (result != NRF_SUCCESS)
-    {
-        NRF_LOG_WARNING("read_all_cb - error: %d", (int)result);
-        return;
-    }
-
+		NRF_LOG_INFO("read_all_cb");
+	
 		uint8_t payload_idx = PAYLOAD_OFFSET_IN_BEACON_INFO;
 
     sample_t * p_sample = &m_samples[m_sample_idx];
@@ -277,7 +288,7 @@ void read_all_cb(ret_code_t result, void * p_user_data)
 //		m_adv_data.adv_data.p_data[payload_idx++] = MSB_16(battery_millivolts);
 //		m_adv_data.adv_data.p_data[payload_idx++] = LSB_16(battery_millivolts);
 		
-    if ( (m_sample_idx%10) == 0 ){
+//    if ( (m_sample_idx%10) == 0 ){
 			// Log example: Temp: 220.00 | Hum:340.00 | X: -257, Y: -129, Z: 16204 
 			NRF_LOG_RAW_INFO("Temp: " NRF_LOG_FLOAT_MARKER " | Hum:" NRF_LOG_FLOAT_MARKER " | ", 
             NRF_LOG_FLOAT((float)((m_sum.temp*10) / NUMBER_OF_SAMPLES)),
@@ -292,17 +303,81 @@ void read_all_cb(ret_code_t result, void * p_user_data)
             (int16_t) (m_sum.z/ NUMBER_OF_SAMPLES));
 			NRF_LOG_RAW_INFO("INS1 %d, INS2 %d, INS3 %d, STAT %d\n",
 						m_buffer[17], m_buffer[18], m_buffer[19], m_buffer[20]); 
-    }
+//    }
 }
 
 static void read_all()
 {
-    static nrf_twi_mngr_transfer_t const transfers[] =
-    {
-				// read 6 bytes (temp (msb+lsb+crc) and hum (msb+lsb+crc)
-        SHT3_READ_TEMP(&m_buffer[0]) 
-//        ,
-//        // read 6 bytes (x (lsb+msb), y (lsb+msb), z (lsb+msb)
+		// KX022 
+		static uint8_t config_kx022_0[2] = {KX022_1020_REG_CNTL1, 				0x00 };	// KX022_1020_STANDBY 
+		static uint8_t config_kx022_1[2] = {KX022_1020_REG_CNTL1, 				0x40 };	// KX022_1020_STANDBY | KX022_1020_HIGH_RESOLUTION
+		static uint8_t config_kx022_2[2] = {KX022_1020_REG_ODCNTL, 			 	0x02 };	// KX022_1020_OUTPUT_RATE_50_HZ
+		static uint8_t config_kx022_3[2] = {KX022_1020_REG_CNTL1, 				0xC0 };	// KX022_1020_OPERATE | KX022_1020_HIGH_RESOLUTION
+
+		m_xfer_done = false;
+    APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, config_kx022_0, 2, false));
+    while (m_xfer_done == false);
+
+		m_xfer_done = false;
+		APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, config_kx022_1, 2, false));
+    while (m_xfer_done == false);
+
+		m_xfer_done = false;
+		APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, config_kx022_2, 2, false));
+    while (m_xfer_done == false);
+
+		// TODO optimize not to wait but do other things (read SHT3) or sleep?
+		nrf_delay_ms(24);	// =1.2/ODR
+		
+		m_xfer_done = false;
+		APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, config_kx022_3, 2, false));
+    while (m_xfer_done == false);
+
+		// set read accel data pointer
+    m_xfer_done = false;
+		uint8_t reg[2];
+		reg[0] = KX022_xout_reg_addr;
+		APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, reg, 1, true));
+    while (m_xfer_done == false);
+
+		// read 6 bytes (x (lsb+msb), y (lsb+msb), z (lsb+msb))
+    m_xfer_done = false;
+		APP_ERROR_CHECK(nrf_drv_twi_rx(&m_twi, KX022_ADDR, &m_buffer[6], 6));
+    while (m_xfer_done == false);
+		
+		// standby again
+		m_xfer_done = false;
+    APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, config_kx022_0, 2, false));
+    while (m_xfer_done == false);
+
+
+
+		// read temperature and humidity
+		reg[0] = SHT3_MEAS_HIGHREP >> 8;
+		reg[1] = SHT3_MEAS_HIGHREP & 0xFF;
+		m_xfer_done = false;
+		APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, SHT3_ADDR, reg, 2, true));
+    while (m_xfer_done == false);
+	
+		// read 6 bytes (temp (msb+lsb+crc) and hum (msb+lsb+crc)
+		m_xfer_done = false;
+		APP_ERROR_CHECK(nrf_drv_twi_rx(&m_twi, SHT3_ADDR, &m_buffer[0], 6));
+    while (m_xfer_done == false);
+		
+//    SHT3_READ_TEMP(&m_buffer[0]) ;
+//        extern uint8_t NRF_TWI_MNGR_BUFFER_LOC_IND sht3_temp_humidity_read_addr[SHT3_READ_TRANSFER_COUNT];
+
+//#define SHT3_READ(p_reg_addr, p_buffer, byte_cnt) \
+//    NRF_TWI_MNGR_WRITE(SHT3_ADDR, p_reg_addr, 2, 		NRF_TWI_MNGR_NO_STOP), \
+//    NRF_TWI_MNGR_READ (SHT3_ADDR, p_buffer,   byte_cnt, 0)
+
+//#define SHT3_READ_TEMP(p_buffer) \
+//    SHT3_READ(&sht3_temp_humidity_read_addr, p_buffer, 6)
+
+
+		process_all_data();
+
+//				// read 6 bytes (x (lsb+msb), y (lsb+msb), z (lsb+msb)
 //				KX022_READ_XYZ(&m_buffer[6])
 //				,
 //				// read 4 bytes 
@@ -310,16 +385,6 @@ static void read_all()
 //				,
 //				// read 5 byte interrupt source information
 //				KX022_READ_INT_REL(&m_buffer[12])
-    };
-    static nrf_twi_mngr_transaction_t NRF_TWI_MNGR_BUFFER_LOC_IND transaction =
-    {
-        .callback            = read_all_cb,
-        .p_user_data         = NULL,
-        .p_transfers         = transfers,
-        .number_of_transfers = sizeof(transfers) / sizeof(transfers[0])
-    };
-
-    APP_ERROR_CHECK(nrf_twi_mngr_schedule(&m_nrf_twi_mngr, &transaction));
 }
 
 /**@brief Function for handling the ADC interrupt.
@@ -375,9 +440,9 @@ void saadc_event_handler(nrf_drv_saadc_evt_t const * p_event)
 
 static void rtc_handler(nrf_drv_rtc_int_type_t int_type)
 {
-//		NRF_LOG_INFO("rtc_handler");
+		NRF_LOG_INFO("rtc_handler");
 
-		// SAADC (battery voltage) every 10 secs
+		// SAADC (battery voltage) every 1/8 secs * RTC_SADC_UPDATE
     if (int_type == NRF_DRV_RTC_INT_COMPARE0)
     {
 				NRF_LOG_INFO("rtc_handler COMPARE0");
@@ -395,17 +460,18 @@ static void rtc_handler(nrf_drv_rtc_int_type_t int_type)
 				nrf_drv_rtc_int_enable(&rtc, NRF_RTC_INT_COMPARE0_MASK);
     }
 		
-		// read sensors every 1/8 secs
+		// read sensors every 1/8 secs * RTC_SENSOR_UPDATE
 		if (int_type == NRF_DRV_RTC_INT_COMPARE1)
     {
 				NRF_LOG_INFO("rtc_handler COMPARE1");
 
 				// Trigger the sensor retrieval task
-				read_all();
+					// rtc_handle_compare1 = true;		//
+//			read_all();
 			
 				// Add a time portion to rtc counter compare	and re-enable
-				rtc.p_reg->CC[1] += RTC_CC_VALUE * RTC_SENSOR_UPDATE;
-				nrf_drv_rtc_int_enable(&rtc, NRF_RTC_INT_COMPARE1_MASK);
+//				rtc.p_reg->CC[1] += RTC_CC_VALUE * RTC_SENSOR_UPDATE; //RTC_SENSOR_UPDATE;
+//				nrf_drv_rtc_int_enable(&rtc, NRF_RTC_INT_COMPARE1_MASK);
     }
 
 }
@@ -537,12 +603,12 @@ static void rtc_config()
     APP_ERROR_CHECK(err_code);
 
 		//Set RTC compare0 value to trigger first interrupt 
-    err_code = nrf_drv_rtc_cc_set(&rtc, 0, RTC_CC_VALUE*4, true);
-    APP_ERROR_CHECK(err_code);
+//    err_code = nrf_drv_rtc_cc_set(&rtc, 0, RTC_CC_VALUE*4, true);
+//    APP_ERROR_CHECK(err_code);
 
 		//Set RTC compare1 value to trigger first interrupt 
-    err_code = nrf_drv_rtc_cc_set(&rtc, 1, RTC_CC_VALUE*4, true);
-    APP_ERROR_CHECK(err_code);
+//    err_code = nrf_drv_rtc_cc_set(&rtc, 1, RTC_CC_VALUE*8, true);
+//    APP_ERROR_CHECK(err_code);
 
     //Enable RTC instance
     nrf_drv_rtc_enable(&rtc);
@@ -596,8 +662,30 @@ static void power_management_init()
     APP_ERROR_CHECK(err_code);
 }
 
+/**
+ * @brief TWI events handler.
+ */
+void twi_handler(nrf_drv_twi_evt_t const * p_event, void * p_context)
+{
+	
+    switch (p_event->type)
+    {
+        case NRF_DRV_TWI_EVT_DONE:
+			  NRF_LOG_INFO("NRF_DRV_TWI_EVT_DONE");
+				if (p_event->xfer_desc.type == NRF_DRV_TWI_XFER_RX)
+            {
+//                data_handler(m_sample);
+            }
+            m_xfer_done = true;
+            break;
+        default:
+            break;
+    }
+}
 
-// TWI (with transaction manager) initialization.
+
+
+// TWI initialization.
 static void twi_config()
 {
     uint32_t err_code;
@@ -610,21 +698,35 @@ static void twi_config()
        .clear_bus_init     = false
     };
 
-    err_code = nrf_twi_mngr_init(&m_nrf_twi_mngr, &config);
-    APP_ERROR_CHECK(err_code);
-}
+		NRF_LOG_INFO("twi_config");
 
+    err_code = nrf_drv_twi_init(&m_twi, &config, twi_handler, NULL);
+    APP_ERROR_CHECK(err_code);
+
+    nrf_drv_twi_enable(&m_twi);
+}
 
 /**@brief Function for initializing sensors.
  */
 static void sensor_init()
 {	
-    APP_ERROR_CHECK(nrf_twi_mngr_perform(&m_nrf_twi_mngr, NULL, sht3_init_transfers,
-        SHT3_INIT_TRANSFER_COUNT, NULL));
-//    APP_ERROR_CHECK(nrf_twi_mngr_perform(&m_nrf_twi_mngr, NULL, kx022_init_transfers,
-//        KX022_INIT_TRANSFER_COUNT, NULL));
+    ret_code_t err_code;
+		NRF_LOG_INFO("sensor_init >");
+	
+		// SHT3
+		static uint8_t config_sht3_0[2] = { (SHT3_SOFTRESET >> 8), (SHT3_SOFTRESET & 0xFF) };
+		m_xfer_done = false;
+    APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, SHT3_ADDR, config_sht3_0, 2, false));
+    while (m_xfer_done == false);
+		
+		// KX022 
+		static uint8_t config_kx022_0[2] = {KX022_1020_REG_CNTL1, 				0x00 };	// KX022_1020_STANDBY 
+		m_xfer_done = false;
+		APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, config_kx022_0, 2, false));
+    while (m_xfer_done == false);
+		
+		NRF_LOG_INFO("sensor_init <");
 }
-
 
 /**@brief Function for initializing the BLE stack.
  *
@@ -780,17 +882,26 @@ int main()
 		twi_config();									// Initialize TWI (with transaction manager) 
 		sensor_init();								// Initialize sensors
 	
-    ble_stack_init();							// Initialize the BLE stack
-		advertising_init();						// Initialize the advertising functionality
+//    ble_stack_init();							// Initialize the BLE stack
+//		advertising_init();						// Initialize the advertising functionality
 		
     // Start execution.
     NRF_LOG_INFO("Beacon started.");
 
-		advertising_start();
+//		advertising_start();
 
     // Enter main loop.
     for (;;)
     {
+			nrf_delay_ms(100);
+			read_all();
+//				if (rtc_handle_compare1 == true){
+//					NRF_LOG_INFO("rtc_handle_compare1 >");
+//					rtc_handle_compare1 = false;
+//					read_all();
+//					NRF_LOG_INFO("rtc_handle_compare1 <");
+//				}
+				
         NRF_LOG_FLUSH();
         idle_state_handle();
     }
