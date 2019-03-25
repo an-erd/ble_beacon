@@ -49,6 +49,7 @@ extern "C" {
 
 #define SHT3_ADDR         					0x44
 #define SHT3_MEAS_HIGHREP         	0x2400
+#define SHT3_MEAS_HIGHREP_STRETCH		0x2C06
 #define SHT3_SOFTRESET            	0x30A2
 
 #define SHT3_GET_TEMPERATURE_VALUE(temp_msb, temp_lsb) \
