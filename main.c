@@ -90,11 +90,12 @@
 #endif
 
 // RTC defines
-#define RTC_CC_VALUE 4                  				//Determines the RTC interrupt frequency and thereby the SAADC sampling frequency
-// prescaler is 32 Hz, so RTC_CC_VALUE=4 => 1/8 sec
-#define RTC_SADC_UPDATE		80										// =every 10 sec (multiply by RTC_CC_VALUE/ = *1/8 sec)
-#define RTC_SENSOR_UPDATE	40										// =every  5 sec
-static volatile bool timer_delay_done = false;		// Indicates that delay has ended. 
+//Determines the RTC interrupt frequency and thereby the SAADC sampling frequency
+#define RTC_CC_VALUE 8  									
+// prescaler is 256 Hz, so RTC_CC_VALUE=8 => 1/32 sec
+#define RTC_SADC_UPDATE		320										// =every 10 sec (multiply by RTC_CC_VALUE/ = *1/8 sec)
+#define RTC_SENSOR_UPDATE	160										// =every  5 sec
+static volatile bool timer_delay_done = false;	// Indicates that delay has ended. 
 APP_TIMER_DEF(m_single_shot_timer_id);
 
 // SAADC defines
@@ -298,7 +299,8 @@ static void read_all(bool restart)
 		static uint8_t config_kx022_1[2] = {KX022_1020_REG_CNTL1, 				0x40 };	// KX022_1020_STANDBY | KX022_1020_HIGH_RESOLUTION
 		static uint8_t config_kx022_2[2] = {KX022_1020_REG_ODCNTL, 			 	0x07 };	// KX022_1020_OUTPUT_RATE_1600_HZ
 		static uint8_t config_kx022_3[2] = {KX022_1020_REG_CNTL1, 				0xC0 };	// KX022_1020_OPERATE | KX022_1020_HIGH_RESOLUTION
-		static uint8_t config_SHT3_0[2]  = {SHT3_MEAS_HIGHREP_STRETCH >> 8, SHT3_MEAS_HIGHREP_STRETCH & 0xFF};
+		static uint8_t config_SHT3_0[2]  = {SHT3_MEAS_HIGHREP >> 8, SHT3_MEAS_HIGHREP & 0xFF};
+//		static uint8_t config_SHT3_0[2]  = {SHT3_MEAS_HIGHREP_STRETCH >> 8, SHT3_MEAS_HIGHREP_STRETCH & 0xFF};
 		uint8_t reg[2];
 
 		static uint8_t step = 0;
@@ -306,41 +308,34 @@ static void read_all(bool restart)
 		
 		if(restart)
 				step = 0;
+
+		NRF_LOG_INFO("read_all > step %d", step);
 		
 		switch(step){
 				case 0:
+					NRF_LOG_INFO("read_all step0");
 					// KX022 
 					APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, config_kx022_0, 2, false));
 					APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, config_kx022_1, 2, false));
 					APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, config_kx022_2, 2, false));
-					//					nrf_delay_ms(3);	// =1.2/ODR
 					counter_current = nrfx_rtc_counter_get(&rtc);
-					NRF_LOG_INFO("read_all step0: nrfx_rtc_counter_get: %d", counter_current);
-					APP_ERROR_CHECK(nrf_drv_rtc_cc_set(&rtc, 2, counter_current+RTC_CC_VALUE, true));
- //				rtc.p_reg->CC[2] = counter_current + RTC_CC_VALUE;		// 1/8 sec
-//					nrf_drv_rtc_int_enable(&rtc, NRF_RTC_INT_COMPARE2_MASK);
+					APP_ERROR_CHECK(nrf_drv_rtc_cc_set(&rtc, 2, counter_current+1, true));	// 1 = 1/256s = 0,0039 =~4ms >1.2/ODR
 					step++;
 					break;
 				case 1:
+					NRF_LOG_INFO("read_all step1");
 					APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, config_kx022_3, 2, false));
-					//					nrf_delay_ms(3);	// =1.2/ODR for the first data, TODO per interrupt?
 					counter_current = nrfx_rtc_counter_get(&rtc);
-					NRF_LOG_INFO("read_all step1: nrfx_rtc_counter_get: %d", counter_current);
-					APP_ERROR_CHECK(nrf_drv_rtc_cc_set(&rtc, 2, counter_current+RTC_CC_VALUE, true));
-//					rtc.p_reg->CC[2] = counter_current + RTC_CC_VALUE;		// 1/8 sec
-//					nrf_drv_rtc_int_enable(&rtc, NRF_RTC_INT_COMPARE2_MASK);
+					APP_ERROR_CHECK(nrf_drv_rtc_cc_set(&rtc, 2, counter_current+1, true));
 					step++;
 					break;
 				case 2:
 					NRF_LOG_INFO("read_all step2");
-
 					reg[0] = KX022_xout_reg_addr;
 					APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, reg, 1, true));
 					// read 6 bytes (x (lsb+msb), y (lsb+msb), z (lsb+msb)
 					APP_ERROR_CHECK(nrf_drv_twi_rx(&m_twi, KX022_ADDR, &m_buffer[6], 6));
-					// sensor to standby mode
 					APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, config_kx022_0, 2, false));
-		
 					//		NRF_LOG_RAW_INFO("X %6d, Y %6d, Z %6d \n", 
 					//			KX022_GET_ACC(m_buffer[ 6], m_buffer[ 7]),
 					//			KX022_GET_ACC(m_buffer[ 8], m_buffer[ 9]),
@@ -348,9 +343,13 @@ static void read_all(bool restart)
 
 					// SHT3
 					APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, SHT3_ADDR, config_SHT3_0, 2, false));
+					counter_current = nrfx_rtc_counter_get(&rtc);
+					APP_ERROR_CHECK(nrf_drv_rtc_cc_set(&rtc, 2, counter_current+4, true));	// 4 = 4/256s = 0,015625 > max duration 15ms
+					step++;
+					break;
+				case 3:
 					// read 6 bytes (temp (msb+lsb+crc) and hum (msb+lsb+crc)
 					APP_ERROR_CHECK(nrf_drv_twi_rx(&m_twi, SHT3_ADDR, &m_buffer[0], 6));
-		
 //					NRF_LOG_RAW_INFO("Temp: " NRF_LOG_FLOAT_MARKER " | Hum:" NRF_LOG_FLOAT_MARKER " | ", 
 //						NRF_LOG_FLOAT((float)(SHT3_GET_TEMPERATURE_VALUE(m_buffer[0], m_buffer[1]))),
 //						NRF_LOG_FLOAT((float)(SHT3_GET_HUMIDITY_VALUE   (m_buffer[3], m_buffer[4]))));
@@ -601,16 +600,12 @@ static void rtc_config()
     APP_ERROR_CHECK(err_code);
 
 		//Set RTC compare0 value to trigger first interrupt 
-    err_code = nrf_drv_rtc_cc_set(&rtc, 0, RTC_CC_VALUE*4, true);
+    err_code = nrf_drv_rtc_cc_set(&rtc, 0, RTC_CC_VALUE*16, true);
     APP_ERROR_CHECK(err_code);
 
 		//Set RTC compare1 value to trigger first interrupt 
-    err_code = nrf_drv_rtc_cc_set(&rtc, 1, RTC_CC_VALUE*8, true);
+    err_code = nrf_drv_rtc_cc_set(&rtc, 1, RTC_CC_VALUE*32, true);
     APP_ERROR_CHECK(err_code);
-
-		//Set RTC compare2 value far off
-//    err_code = nrf_drv_rtc_cc_set(&rtc, 2, RTC_CC_VALUE*5, true);
-//    APP_ERROR_CHECK(err_code);
 
     //Enable RTC instance
     nrf_drv_rtc_enable(&rtc);

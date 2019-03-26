@@ -154,6 +154,11 @@
           <WinNumber>1</WinNumber>
           <ItemText>m_buffer[6]</ItemText>
         </Ww>
+        <Ww>
+          <count>1</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>rtc</ItemText>
+        </Ww>
       </WatchWindow1>
       <MemoryWindow1>
         <Mm>
