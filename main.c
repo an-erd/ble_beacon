@@ -72,8 +72,8 @@
 #include "nrf_drv_power.h"
 #include "nrf_drv_rtc.h"
 #include "nrf_drv_clock.h"
+#include "nrf_drv_timer.h"
 #include "nrfx_rtc.h"
-//#include "nrf_twi_mngr.h"
 #include "sht3.h"
 #include "kx022.h"
 #include "compiler_abstraction.h"
@@ -90,10 +90,12 @@
 #endif
 
 // RTC defines
-#define RTC_CC_VALUE 4                  //Determines the RTC interrupt frequency and thereby the SAADC sampling frequency
+#define RTC_CC_VALUE 4                  				//Determines the RTC interrupt frequency and thereby the SAADC sampling frequency
 // prescaler is 32 Hz, so RTC_CC_VALUE=4 => 1/8 sec
-#define RTC_SADC_UPDATE		80						// =every 10 sec (multiply by RTC_CC_VALUE/ = *1/8 sec)
-#define RTC_SENSOR_UPDATE	40						// =every  5 sec
+#define RTC_SADC_UPDATE		80										// =every 10 sec (multiply by RTC_CC_VALUE/ = *1/8 sec)
+#define RTC_SENSOR_UPDATE	40										// =every  5 sec
+static volatile bool timer_delay_done = false;		// Indicates that delay has ended. 
+APP_TIMER_DEF(m_single_shot_timer_id);
 
 // SAADC defines
 #define SAADC_CALIBRATION_INTERVAL 5    //Determines how often the SAADC should be calibrated relative to NRF_DRV_SAADC_EVT_DONE event. E.g. value 5 will make the SAADC calibrate every fifth time the NRF_DRV_SAADC_EVT_DONE is received.
@@ -110,10 +112,6 @@ static bool                    m_saadc_initialized = false;
 
 // TWI defines
 #define TWI_INSTANCE_ID     				0
-//#define MAX_PENDING_TRANSACTIONS    20
-//NRF_TWI_MNGR_DEF(m_nrf_twi_mngr, MAX_PENDING_TRANSACTIONS, TWI_INSTANCE_ID);
-
-static volatile bool m_xfer_done = false;		// Indicates if operation on TWI has ended. 
 static const nrf_drv_twi_t m_twi = NRF_DRV_TWI_INSTANCE(TWI_INSTANCE_ID);	// TWI instance
 
 
@@ -157,6 +155,7 @@ static uint8_t 		m_sample_idx = 0;
     #error Buffer too small.
 #endif
 
+static void idle_state_handle(void);
 
 /**@brief Macro to convert the result of ADC conversion in millivolts.
  *
@@ -171,7 +170,6 @@ static uint8_t 		m_sample_idx = 0;
 // BLE defines and structs--------------------------------------
 #define APP_BLE_CONN_CFG_TAG            1                                  	/**< A tag identifying the SoftDevice BLE configuration. */
 #define NON_CONNECTABLE_ADV_INTERVAL    MSEC_TO_UNITS(1000, UNIT_0_625_MS)  	/**< The advertising interval for non-connectable advertisement (100 ms). This value can vary between 100ms to 10.24s). */
-// #define BATTERY_LEVEL_MEAS_INTERVAL     APP_TIMER_TICKS(2000)            		/**< Battery level measurement interval (ticks). */
 
 // beacon data
 #define APP_BEACON_INFO_LENGTH          0x17	                            	/**< Total length of information advertised by the Beacon. */
@@ -225,16 +223,6 @@ static ble_gap_adv_data_t m_adv_data =
 
     }
 };
-
-//void read_all_cb(ret_code_t result, void * p_user_data)
-//{
-//	NRF_LOG_INFO("read_all_cb");
-
-//	if (result != NRF_SUCCESS)
-//    {
-//        NRF_LOG_WARNING("read_all_cb - error: %d", (int)result);
-//        return;
-//    }
 
 void process_all_data()
 {
@@ -304,50 +292,81 @@ void process_all_data()
 //    }
 }
 
-static void read_all()
+static void read_all(bool restart)
 {
-		// KX022 
 		static uint8_t config_kx022_0[2] = {KX022_1020_REG_CNTL1, 				0x00 };	// KX022_1020_STANDBY 
 		static uint8_t config_kx022_1[2] = {KX022_1020_REG_CNTL1, 				0x40 };	// KX022_1020_STANDBY | KX022_1020_HIGH_RESOLUTION
 		static uint8_t config_kx022_2[2] = {KX022_1020_REG_ODCNTL, 			 	0x07 };	// KX022_1020_OUTPUT_RATE_1600_HZ
 		static uint8_t config_kx022_3[2] = {KX022_1020_REG_CNTL1, 				0xC0 };	// KX022_1020_OPERATE | KX022_1020_HIGH_RESOLUTION
-
-    APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, config_kx022_0, 2, false));
-		APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, config_kx022_1, 2, false));
-		APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, config_kx022_2, 2, false));
-		nrf_delay_ms(3);	// =1.2/ODR
-		APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, config_kx022_3, 2, false));
-		nrf_delay_ms(3);	// =1.2/ODR for the first data, TODO per interrupt?
-		
+		static uint8_t config_SHT3_0[2]  = {SHT3_MEAS_HIGHREP_STRETCH >> 8, SHT3_MEAS_HIGHREP_STRETCH & 0xFF};
 		uint8_t reg[2];
-		reg[0] = KX022_xout_reg_addr;
-		APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, reg, 1, true));
-		// read 6 bytes (x (lsb+msb), y (lsb+msb), z (lsb+msb)
-		APP_ERROR_CHECK(nrf_drv_twi_rx(&m_twi, KX022_ADDR, &m_buffer[6], 6));
-		// sensor to standby mode
-    APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, config_kx022_0, 2, false));
-		
-//		NRF_LOG_RAW_INFO("X %6d, Y %6d, Z %6d \n", 
-//			KX022_GET_ACC(m_buffer[ 6], m_buffer[ 7]),
-//			KX022_GET_ACC(m_buffer[ 8], m_buffer[ 9]),
-//			KX022_GET_ACC(m_buffer[10], m_buffer[11]));	
 
-		// SHT3
-		static uint8_t config_SHT3_0[2] = {SHT3_MEAS_HIGHREP_STRETCH >> 8, SHT3_MEAS_HIGHREP_STRETCH & 0xFF};
-		APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, SHT3_ADDR, config_SHT3_0, 2, false));
-		// nrf_delay_ms(15);
-		// read 6 bytes (temp (msb+lsb+crc) and hum (msb+lsb+crc)
-		APP_ERROR_CHECK(nrf_drv_twi_rx(&m_twi, SHT3_ADDR, &m_buffer[0], 6));
+		static uint8_t step = 0;
+		uint32_t counter_current = 0;
 		
-		NRF_LOG_RAW_INFO("Temp: " NRF_LOG_FLOAT_MARKER " | Hum:" NRF_LOG_FLOAT_MARKER " | ", 
-			NRF_LOG_FLOAT((float)(SHT3_GET_TEMPERATURE_VALUE(m_buffer[0], m_buffer[1]))),
-			NRF_LOG_FLOAT((float)(SHT3_GET_HUMIDITY_VALUE   (m_buffer[3], m_buffer[4]))));
+		if(restart)
+				step = 0;
 		
-		process_all_data();
+		switch(step){
+				case 0:
+					// KX022 
+					APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, config_kx022_0, 2, false));
+					APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, config_kx022_1, 2, false));
+					APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, config_kx022_2, 2, false));
+					//					nrf_delay_ms(3);	// =1.2/ODR
+					counter_current = nrfx_rtc_counter_get(&rtc);
+					NRF_LOG_INFO("read_all step0: nrfx_rtc_counter_get: %d", counter_current);
+					APP_ERROR_CHECK(nrf_drv_rtc_cc_set(&rtc, 2, counter_current+RTC_CC_VALUE, true));
+ //				rtc.p_reg->CC[2] = counter_current + RTC_CC_VALUE;		// 1/8 sec
+//					nrf_drv_rtc_int_enable(&rtc, NRF_RTC_INT_COMPARE2_MASK);
+					step++;
+					break;
+				case 1:
+					APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, config_kx022_3, 2, false));
+					//					nrf_delay_ms(3);	// =1.2/ODR for the first data, TODO per interrupt?
+					counter_current = nrfx_rtc_counter_get(&rtc);
+					NRF_LOG_INFO("read_all step1: nrfx_rtc_counter_get: %d", counter_current);
+					APP_ERROR_CHECK(nrf_drv_rtc_cc_set(&rtc, 2, counter_current+RTC_CC_VALUE, true));
+//					rtc.p_reg->CC[2] = counter_current + RTC_CC_VALUE;		// 1/8 sec
+//					nrf_drv_rtc_int_enable(&rtc, NRF_RTC_INT_COMPARE2_MASK);
+					step++;
+					break;
+				case 2:
+					NRF_LOG_INFO("read_all step2");
+
+					reg[0] = KX022_xout_reg_addr;
+					APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, reg, 1, true));
+					// read 6 bytes (x (lsb+msb), y (lsb+msb), z (lsb+msb)
+					APP_ERROR_CHECK(nrf_drv_twi_rx(&m_twi, KX022_ADDR, &m_buffer[6], 6));
+					// sensor to standby mode
+					APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, config_kx022_0, 2, false));
+		
+					//		NRF_LOG_RAW_INFO("X %6d, Y %6d, Z %6d \n", 
+					//			KX022_GET_ACC(m_buffer[ 6], m_buffer[ 7]),
+					//			KX022_GET_ACC(m_buffer[ 8], m_buffer[ 9]),
+					//			KX022_GET_ACC(m_buffer[10], m_buffer[11]));	
+
+					// SHT3
+					APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, SHT3_ADDR, config_SHT3_0, 2, false));
+					// read 6 bytes (temp (msb+lsb+crc) and hum (msb+lsb+crc)
+					APP_ERROR_CHECK(nrf_drv_twi_rx(&m_twi, SHT3_ADDR, &m_buffer[0], 6));
+		
+//					NRF_LOG_RAW_INFO("Temp: " NRF_LOG_FLOAT_MARKER " | Hum:" NRF_LOG_FLOAT_MARKER " | ", 
+//						NRF_LOG_FLOAT((float)(SHT3_GET_TEMPERATURE_VALUE(m_buffer[0], m_buffer[1]))),
+//						NRF_LOG_FLOAT((float)(SHT3_GET_HUMIDITY_VALUE   (m_buffer[3], m_buffer[4]))));
+
+					process_all_data();
 
 //				KX022_READ_XYZ(&m_buffer[6]) 				// read 6 bytes (x (lsb+msb), y (lsb+msb), z (lsb+msb)
 //				KX022_READ_INS1(&m_buffer[17])			// read 4 bytes 
 //				KX022_READ_INT_REL(&m_buffer[12])		// read 5 byte interrupt source information
+
+					step = 0;
+					break;
+				default:
+					NRF_LOG_INFO("read_all: default -> should not happen");
+					break;
+			}
 }
 
 /**@brief Function for handling the ADC interrupt.
@@ -429,13 +448,30 @@ static void rtc_handler(nrf_drv_rtc_int_type_t int_type)
 				NRF_LOG_INFO("rtc_handler COMPARE1");
 
 				// Trigger the sensor retrieval task
-				read_all();
+				read_all(true);	// init w/ step0
 			
 				// Add a time portion to rtc counter compare	and re-enable
 				rtc.p_reg->CC[1] += RTC_CC_VALUE * RTC_SENSOR_UPDATE; //RTC_SENSOR_UPDATE;
 				nrf_drv_rtc_int_enable(&rtc, NRF_RTC_INT_COMPARE1_MASK);
     }
+		
+		// delay timeout
+		if (int_type == NRF_DRV_RTC_INT_COMPARE2)
+    {
+				uint32_t counter_current = nrfx_rtc_counter_get(&rtc);
 
+				NRF_LOG_INFO("rtc_handler COMPARE2: nrfx_rtc_counter_get: %d", counter_current);
+				
+				// Trigger the sensor retrieval task for subsequent steps
+				read_all(false);
+    }
+}
+
+/**@brief Timeout handler for the single shot timer.
+ */
+static void single_shot_timer_handler(void * p_context)
+{
+    timer_delay_done = true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -572,8 +608,22 @@ static void rtc_config()
     err_code = nrf_drv_rtc_cc_set(&rtc, 1, RTC_CC_VALUE*8, true);
     APP_ERROR_CHECK(err_code);
 
+		//Set RTC compare2 value far off
+//    err_code = nrf_drv_rtc_cc_set(&rtc, 2, RTC_CC_VALUE*5, true);
+//    APP_ERROR_CHECK(err_code);
+
     //Enable RTC instance
     nrf_drv_rtc_enable(&rtc);
+}
+
+/**@brief Create timers.
+ */
+static void create_timers()
+{
+    // Create timers
+    APP_ERROR_CHECK(app_timer_create(&m_single_shot_timer_id,
+                                APP_TIMER_MODE_SINGLE_SHOT,
+                                single_shot_timer_handler));
 }
 
 
@@ -808,6 +858,8 @@ int main()
 	
 	  lfclk_config();               // Configure low frequency 32kHz clock
     rtc_config();                 // Configure RTC
+		app_timer_init();							// init app timer
+		create_timers();							// create timers
 
 		twi_config();									// Initialize TWI (with transaction manager) 
 
