@@ -249,7 +249,7 @@ void process_all_data()
     ++m_sample_idx;
     m_sample_idx %= NUMBER_OF_SAMPLES;
 
-    NRF_LOG_HEXDUMP_DEBUG(m_adv_data.adv_data.p_data, 29);
+//    NRF_LOG_HEXDUMP_DEBUG(m_adv_data.adv_data.p_data, 29);
     m_adv_data.adv_data.p_data[payload_idx++] = MSB_16(m_sum.temp       *10/NUMBER_OF_SAMPLES);
     m_adv_data.adv_data.p_data[payload_idx++] = LSB_16(m_sum.temp       *10/NUMBER_OF_SAMPLES);
     m_adv_data.adv_data.p_data[payload_idx++] = MSB_16(m_sum.humidity   /NUMBER_OF_SAMPLES);
@@ -285,56 +285,94 @@ void process_all_data()
  */
 static void read_all_sensors(bool restart)
 {
+    // KX022 
     static uint8_t config_kx022_0[2] = {KX022_1020_REG_CNTL1, 				0x00 };	// KX022_1020_STANDBY 
     static uint8_t config_kx022_1[2] = {KX022_1020_REG_CNTL1, 				0x40 };	// KX022_1020_STANDBY | KX022_1020_HIGH_RESOLUTION
     static uint8_t config_kx022_2[2] = {KX022_1020_REG_ODCNTL, 			 	0x07 };	// KX022_1020_OUTPUT_RATE_1600_HZ
     static uint8_t config_kx022_3[2] = {KX022_1020_REG_CNTL1, 				0xC0 };	// KX022_1020_OPERATE | KX022_1020_HIGH_RESOLUTION
-    static uint8_t config_SHT3_0[2]  = {SHT3_MEAS_HIGHREP >> 8, SHT3_MEAS_HIGHREP & 0xFF};
-    uint8_t reg[2];
 
-    static uint8_t step = 0;
-    uint32_t counter_current = 0;
+    // SHT3
+    static uint8_t config_SHT3_0[2]  = {SHT3_MEAS_HIGHREP >> 8, SHT3_MEAS_HIGHREP & 0xFF};
+
+    uint8_t         reg[2];
+    static uint8_t  step = 0;
+    uint32_t        counter_current = 0;
+    static uint32_t counter_read_sht3;  // counter value then SHT3 is ready
 		
     if(restart)
         step = 0;
 
+    // nested approach
+    // step0
+    //   - start long running (15ms) SHT3 retrieval first
+    //   - initialize KX022 (still standby)
+    //   - wait KX022 read config
+    // step1
+    //   - initialize KX022 to operation
+    //   - wait for KX022 data ready
+    // step2
+    //   - read KX022 data
+    //   - wait for SH3 completed
+    // step3
+    //   - read SHT3 data
+    //   - call function to further process the read data
     switch(step){
     case 0:
+        NRF_LOG_DEBUG("read_all step0");
+    
+        // SHT3
+        APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, SHT3_ADDR, config_SHT3_0, 2, false));
+        counter_current = nrfx_rtc_counter_get(&rtc);
+        counter_read_sht3 = counter_current + 4; // 4 = 4/256s = 0,015625 > max duration 15ms
+        NRF_LOG_DEBUG("read_all step0 counter current %d, counter read sht3 ready %d",
+            counter_current, counter_read_sht3);
+    
         // KX022 
         APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, config_kx022_0, 2, false));
         APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, config_kx022_1, 2, false));
         APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, config_kx022_2, 2, false));
+    
         counter_current = nrfx_rtc_counter_get(&rtc);
         APP_ERROR_CHECK(nrf_drv_rtc_cc_set(&rtc, 2, counter_current+1, true));	// 1 = 1/256s = 0,0039 =~4ms >1.2/ODR
         step++;
         break;
+    
     case 1:
         NRF_LOG_DEBUG("read_all step1");
+    
+        // KX022 
         APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, config_kx022_3, 2, false));
+    
         counter_current = nrfx_rtc_counter_get(&rtc);
         APP_ERROR_CHECK(nrf_drv_rtc_cc_set(&rtc, 2, counter_current+1, true));
         step++;
         break;
+    
     case 2:
         NRF_LOG_DEBUG("read_all step2");
+    
+        // KX022 
         reg[0] = KX022_xout_reg_addr;
         APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, reg, 1, true));
         // read 6 bytes (x (lsb+msb), y (lsb+msb), z (lsb+msb)
         APP_ERROR_CHECK(nrf_drv_twi_rx(&m_twi, KX022_ADDR, &m_buffer[6], 6));
         APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, config_kx022_0, 2, false));
 
-        // SHT3
-        APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, SHT3_ADDR, config_SHT3_0, 2, false));
         counter_current = nrfx_rtc_counter_get(&rtc);
-        APP_ERROR_CHECK(nrf_drv_rtc_cc_set(&rtc, 2, counter_current+4, true));	// 4 = 4/256s = 0,015625 > max duration 15ms
+        NRF_LOG_DEBUG("read_all step2 counter current %d, counter read sht3 ready %d",
+            counter_current, counter_read_sht3);
+        APP_ERROR_CHECK(nrf_drv_rtc_cc_set(&rtc, 2, counter_read_sht3, true));	
         step++;
         break;
+    
     case 3:
         NRF_LOG_DEBUG("read_all step3");
+    
         // read 6 bytes (temp (msb+lsb+crc) and hum (msb+lsb+crc)
         APP_ERROR_CHECK(nrf_drv_twi_rx(&m_twi, SHT3_ADDR, &m_buffer[0], 6));
             
         process_all_data();
+    
         //  KX022_READ_XYZ(&m_buffer[6])        // read 6 bytes (x (lsb+msb), y (lsb+msb), z (lsb+msb)
         //  KX022_READ_INS1(&m_buffer[17])      // read 4 bytes 
         //  KX022_READ_INT_REL(&m_buffer[12])   // read 5 byte interrupt source information
@@ -423,8 +461,6 @@ static void rtc_handler(nrf_drv_rtc_int_type_t int_type)
         counter_current = nrfx_rtc_counter_get(&rtc);
         APP_ERROR_CHECK(nrf_drv_rtc_cc_set(&rtc, 0, 
             counter_current + RTC_CC_VALUE * RTC_SADC_UPDATE, true));
-//				rtc.p_reg->CC[0] += ;
-//				nrf_drv_rtc_int_enable(&rtc, NRF_RTC_INT_COMPARE0_MASK);
     }
 		
     // read sensors
@@ -438,14 +474,12 @@ static void rtc_handler(nrf_drv_rtc_int_type_t int_type)
         counter_current = nrfx_rtc_counter_get(&rtc);
         APP_ERROR_CHECK(nrf_drv_rtc_cc_set(&rtc, 1, 
             counter_current + RTC_CC_VALUE * RTC_SENSOR_UPDATE, true));
-//				rtc.p_reg->CC[1] += RTC_CC_VALUE * RTC_SENSOR_UPDATE; //RTC_SENSOR_UPDATE;
-//				nrf_drv_rtc_int_enable(&rtc, NRF_RTC_INT_COMPARE1_MASK);
     }
 		
     // delay timeout during sensor retrieval function
     if (int_type == NRF_DRV_RTC_INT_COMPARE2){
-				// Trigger the sensor retrieval task for subsequent steps
-				read_all_sensors(false);
+        // Trigger the sensor retrieval task for subsequent steps
+        read_all_sensors(false);
     }
 }
 
