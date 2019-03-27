@@ -288,7 +288,8 @@ static void read_all_sensors(bool restart)
     // KX022 
     static uint8_t config_kx022_0[2] = {KX022_1020_REG_CNTL1, 				0x00 };	// KX022_1020_STANDBY 
     static uint8_t config_kx022_1[2] = {KX022_1020_REG_CNTL1, 				0x40 };	// KX022_1020_STANDBY | KX022_1020_HIGH_RESOLUTION
-    static uint8_t config_kx022_2[2] = {KX022_1020_REG_ODCNTL, 			 	0x07 };	// KX022_1020_OUTPUT_RATE_1600_HZ
+//    static uint8_t config_kx022_2[2] = {KX022_1020_REG_ODCNTL, 			 	0x07 };	// KX022_1020_OUTPUT_RATE_1600_HZ
+    static uint8_t config_kx022_2[2] = {KX022_1020_REG_ODCNTL, 			 	0x04 };	// KX022_1020_OUTPUT_RATE_200_HZ
     static uint8_t config_kx022_3[2] = {KX022_1020_REG_CNTL1, 				0xC0 };	// KX022_1020_OPERATE | KX022_1020_HIGH_RESOLUTION
 
     // SHT3
@@ -333,7 +334,7 @@ static void read_all_sensors(bool restart)
         APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, config_kx022_2, 2, false));
     
         counter_current = nrfx_rtc_counter_get(&rtc);
-        APP_ERROR_CHECK(nrf_drv_rtc_cc_set(&rtc, 2, counter_current+1, true));	// 1 = 1/256s = 0,0039 =~4ms >1.2/ODR
+        APP_ERROR_CHECK(nrf_drv_rtc_cc_set(&rtc, 2, counter_current+2, true));	// 1 = 1/256s = 0,0039 =~4ms >1.2/ODR
         step++;
         break;
     
@@ -344,7 +345,7 @@ static void read_all_sensors(bool restart)
         APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, config_kx022_3, 2, false));
     
         counter_current = nrfx_rtc_counter_get(&rtc);
-        APP_ERROR_CHECK(nrf_drv_rtc_cc_set(&rtc, 2, counter_current+1, true));
+        APP_ERROR_CHECK(nrf_drv_rtc_cc_set(&rtc, 2, counter_current+2, true));
         step++;
         break;
     
@@ -361,9 +362,15 @@ static void read_all_sensors(bool restart)
         counter_current = nrfx_rtc_counter_get(&rtc);
         NRF_LOG_DEBUG("read_all step2 counter current %d, counter read sht3 ready %d",
             counter_current, counter_read_sht3);
-        APP_ERROR_CHECK(nrf_drv_rtc_cc_set(&rtc, 2, counter_read_sht3, true));	
-        step++;
-        break;
+        if(counter_current < counter_read_sht3){
+            APP_ERROR_CHECK(nrf_drv_rtc_cc_set(&rtc, 2, counter_read_sht3, true));
+            step++;
+            break;  // time to go until SHT3 is ready
+        } else {
+            step++;
+            // just continue w/step3, SHT3 is ready
+            NRF_LOG_DEBUG("just continue w/step3");
+        }
     
     case 3:
         NRF_LOG_DEBUG("read_all step3");
