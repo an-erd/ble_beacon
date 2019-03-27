@@ -3010,7 +3010,7 @@
 
 
 #ifndef NRFX_RTC_DEFAULT_CONFIG_FREQUENCY
-#define NRFX_RTC_DEFAULT_CONFIG_FREQUENCY 32
+#define NRFX_RTC_DEFAULT_CONFIG_FREQUENCY 256
 #endif
 
 // <q> NRFX_RTC_DEFAULT_CONFIG_RELIABLE  - Ensures safe compare event triggering
@@ -5045,7 +5045,7 @@
 
 
 #ifndef RTC_DEFAULT_CONFIG_FREQUENCY
-#define RTC_DEFAULT_CONFIG_FREQUENCY 32
+#define RTC_DEFAULT_CONFIG_FREQUENCY 256
 #endif
 
 // <q> RTC_DEFAULT_CONFIG_RELIABLE  - Ensures safe compare event triggering
@@ -7452,7 +7452,7 @@
 // <4=> Debug 
 
 #ifndef NRF_LOG_DEFAULT_LEVEL
-#define NRF_LOG_DEFAULT_LEVEL 3
+#define NRF_LOG_DEFAULT_LEVEL 4
 #endif
 
 // <q> NRF_LOG_DEFERRED  - Enable deffered logger.

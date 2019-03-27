@@ -62,6 +62,7 @@
 #include "nrf_soc.h"
 #include "nrf_sdh.h"
 #include "nrf_sdh_ble.h"
+#include "nrf_delay.h"
 #include "ble_advdata.h"
 #include "app_util_platform.h"
 #include "app_timer.h"
@@ -71,8 +72,8 @@
 #include "nrf_drv_power.h"
 #include "nrf_drv_rtc.h"
 #include "nrf_drv_clock.h"
+#include "nrf_drv_timer.h"
 #include "nrfx_rtc.h"
-#include "nrf_twi_mngr.h"
 #include "sht3.h"
 #include "kx022.h"
 #include "compiler_abstraction.h"
@@ -89,30 +90,27 @@
 #endif
 
 // RTC defines
-#define RTC_CC_VALUE 4                  //Determines the RTC interrupt frequency and thereby the SAADC sampling frequency
-// prescaler is 32 Hz, so RTC_CC_VALUE=4 => 1/8 sec
-#define RTC_SADC_UPDATE		80						// =every 10 sec (multiply by RTC_CC_VALUE/ = *1/8 sec)
-#define RTC_SENSOR_UPDATE	40						// =every  5 sec
+#define RTC_CC_VALUE 				8       // prescale 256 Hz, RTC_CC_VALUE=8 => 1/32 sec
+#define RTC_SADC_UPDATE             320     // =every 10 sec (multiply by RTC_CC_VALUE/ = *1/8 sec)
+#define RTC_SENSOR_UPDATE           160     // =every  5 sec
 
 // SAADC defines
-#define SAADC_CALIBRATION_INTERVAL 5    //Determines how often the SAADC should be calibrated relative to NRF_DRV_SAADC_EVT_DONE event. E.g. value 5 will make the SAADC calibrate every fifth time the NRF_DRV_SAADC_EVT_DONE is received.
-#define SAADC_SAMPLES_IN_BUFFER 1       //Number of SAADC samples in RAM before returning a SAADC event. For low power SAADC set this constant to 1. Otherwise the EasyDMA will be enabled for an extended time which consumes high current.
-#define SAADC_OVERSAMPLE NRF_SAADC_OVERSAMPLE_DISABLED  //Oversampling setting for the SAADC. Setting oversample to 4x This will make the SAADC output a single averaged value when the SAMPLE task is triggered 4 times. Enable BURST mode to make the SAADC sample 4 times when triggering SAMPLE task once.
-#define SAADC_BURST_MODE 0              //Set to 1 to enable BURST mode, otherwise set to 0.
+#define SAADC_CALIBRATION_INTERVAL  5       // SAADC calibration interval relative to NRF_DRV_SAADC_EVT_DONE event
+#define SAADC_SAMPLES_IN_BUFFER     1       // Number of SAADC samples in RAM before returning a SAADC event
+#define SAADC_BURST_MODE            0       // Set to 1 to enable BURST mode, otherwise set to 0.
 
 // SAADC forward declaration and variables
 void saadc_init(void);
-const  nrf_drv_rtc_t           rtc = NRF_DRV_RTC_INSTANCE(2); /**< Declaring an instance of nrf_drv_rtc for RTC2. */
-static nrf_saadc_value_t       m_buffer_pool[2][SAADC_SAMPLES_IN_BUFFER];
-static uint32_t                m_adc_evt_counter = 0;
-static bool                    m_saadc_initialized = false;      
+const  nrf_drv_rtc_t        rtc = NRF_DRV_RTC_INSTANCE(2);
+static nrf_saadc_value_t    m_buffer_pool[2][SAADC_SAMPLES_IN_BUFFER];
+static uint32_t             m_adc_evt_counter = 0;
+static bool                 m_saadc_initialized = false;      
 
 // TWI defines
-#define TWI_INSTANCE_ID     				0
-#define MAX_PENDING_TRANSACTIONS    20
-NRF_TWI_MNGR_DEF(m_nrf_twi_mngr, MAX_PENDING_TRANSACTIONS, TWI_INSTANCE_ID);
+#define TWI_INSTANCE_ID     0
+static const nrf_drv_twi_t  m_twi = NRF_DRV_TWI_INSTANCE(TWI_INSTANCE_ID);
 
-// Pin number for indicating communication with sensors.
+// Pin number for indicating communication with sensors
 #ifdef BSP_LED_0
     #define READ_ALL_INDICATOR  BSP_BOARD_LED_0
 #else
@@ -120,15 +118,16 @@ NRF_TWI_MNGR_DEF(m_nrf_twi_mngr, MAX_PENDING_TRANSACTIONS, TWI_INSTANCE_ID);
 #endif
 
 // Sensor defines
-#define BUFFER_SIZE  21		// Buffer for data read from sensors: temp+hum (6=2*msb,lsb,crc) + xyz (6=3*lsb,msb) + INT_REL (5) + INS1 (4)
+#define BUFFER_SIZE         21  // read buffer from sensors: temp+hum (6=2*msb,lsb,crc) + xyz (6=3*lsb,msb) + INT_REL (5) + INS1 (4)
 static uint8_t m_buffer[BUFFER_SIZE];
 
 // Data structures needed for averaging of data read from sensors.
-#define NUMBER_OF_SAMPLES  5
+#define NUMBER_OF_SAMPLES   5
+
 typedef struct
 {
     int16_t temp;
-	  int16_t humidity;
+    int16_t humidity;
     int32_t x;
     int32_t y;
     int32_t z;
@@ -139,19 +138,17 @@ typedef struct
 {
     int16_t temp;
     int16_t humidity;
-		int16_t x;
+    int16_t x;
     int16_t y;
     int16_t z;
 } sample_t;
-static sample_t 	m_samples[NUMBER_OF_SAMPLES] = { { 0, 0, 0, 0, 0 } };
-
-static uint16_t 	battery_millivolts = 3111;	// default to some value, say 3111
-static uint8_t 		m_sample_idx = 0;
+static sample_t     m_samples[NUMBER_OF_SAMPLES] = { { 0, 0, 0, 0, 0 } };
+static uint16_t 	m_battery_millivolts = 3333;    // default to some value, say 3333
+static uint8_t      m_sample_idx = 0;
 
 #if (BUFFER_SIZE < 21)
     #error Buffer too small.
 #endif
-
 
 /**@brief Macro to convert the result of ADC conversion in millivolts.
  *
@@ -162,48 +159,46 @@ static uint8_t 		m_sample_idx = 0;
 #define ADC_RESULT_IN_MILLI_VOLTS(ADC_VALUE)\
         ((((ADC_VALUE) * ADC_REF_VOLTAGE_IN_MILLIVOLTS) / ADC_RES_10BIT) * ADC_PRE_SCALING_COMPENSATION)
 
-
-// BLE defines and structs--------------------------------------
-#define APP_BLE_CONN_CFG_TAG            1                                  	/**< A tag identifying the SoftDevice BLE configuration. */
-#define NON_CONNECTABLE_ADV_INTERVAL    MSEC_TO_UNITS(1000, UNIT_0_625_MS)  	/**< The advertising interval for non-connectable advertisement (100 ms). This value can vary between 100ms to 10.24s). */
-// #define BATTERY_LEVEL_MEAS_INTERVAL     APP_TIMER_TICKS(2000)            		/**< Battery level measurement interval (ticks). */
+// BLE defines and structs
+#define APP_BLE_CONN_CFG_TAG            1                                   /**< A tag identifying the SoftDevice BLE configuration. */
+#define NON_CONNECTABLE_ADV_INTERVAL    MSEC_TO_UNITS(1000, UNIT_0_625_MS)  /**< The advertising interval for non-connectable advertisement (100 ms). This value can vary between 100ms to 10.24s). */
 
 // beacon data
-#define APP_BEACON_INFO_LENGTH          0x17	                            	/**< Total length of information advertised by the Beacon. */
-#define APP_ADV_DATA_LENGTH             0x15                               	/**< Length of manufacturer specific data in the advertisement. */
-#define APP_DEVICE_TYPE                 0x02                               	/**< 0x02 refers to Beacon. */
-#define APP_COMPANY_IDENTIFIER          0x0059                             	/**< Company identifier for Nordic Semiconductor ASA. as per www.bluetooth.org. */
-#define APP_BEACON_UUID_SHORT           0x01, 0x12, 0x23, 0x34           		/**< Proprietary UUID for Beacon. */
-#define APP_MAJOR_VALUE                 0x00, 0x07                         	/**< Major value used to identify Beacons. */
-#define APP_MINOR_VALUE                 0x00, 0x01                         	/**< Minor value used to identify Beacons. */
-#define APP_MEASURED_RSSI               0xC3                               	/**< The Beacon's measured RSSI at 1 meter distance in dBm. */
-#define APP_DATA_TEMP										0xfe, 0xfe													/**< Temperature data. */
-#define APP_DATA_HUM										0xfd, 0xfd													/**< Humidity data. */
-#define APP_DAT_X												0xaa, 0xaa													/**< Acceleration X data. */
-#define APP_DAT_y												0xbb, 0xbb													/**< Acceleration Y data. */
-#define APP_DAT_Z												0xcc, 0xcc													/**< Acceleration Z Temperature data. */
-#define APP_DAT_BATTERY									0x0B, 0xB8													/**< Battery voltage data. */
-#define APP_BEACON_PAD									0x99																/**< Padding data (maybe used, maybe not. */
+#define APP_BEACON_INFO_LENGTH  0x17            /**< Total length of information advertised by the Beacon. */
+#define APP_ADV_DATA_LENGTH     0x15            /**< Length of manufacturer specific data in the advertisement. */
+#define APP_DEVICE_TYPE         0x02            /**< 0x02 refers to Beacon. */
+#define APP_COMPANY_IDENTIFIER  0x0059          /**< Company identifier for Nordic Semiconductor ASA. as per www.bluetooth.org. */
+#define APP_BEACON_UUID_SHORT   0x01, 0x12, 0x23, 0x34  /**< Proprietary UUID for Beacon. */
+#define APP_MAJOR_VALUE         0x00, 0x07      /**< Major value used to identify Beacons. */
+#define APP_MINOR_VALUE         0x00, 0x01      /**< Minor value used to identify Beacons. */
+#define APP_MEASURED_RSSI       0xC3            /**< The Beacon's measured RSSI at 1 meter distance in dBm. */
+#define APP_DATA_TEMP           0xfe, 0xfe      /**< Temperature data. */
+#define APP_DATA_HUM            0xfd, 0xfd      /**< Humidity data. */
+#define APP_DAT_X               0xaa, 0xaa      /**< Acceleration X data. */
+#define APP_DAT_y               0xbb, 0xbb      /**< Acceleration Y data. */
+#define APP_DAT_Z               0xcc, 0xcc      /**< Acceleration Z Temperature data. */
+#define APP_DAT_BATTERY         0x0B, 0xB8      /**< Battery voltage data. */
+#define APP_BEACON_PAD          0x99            /**< Padding data (maybe used, maybe not. */
 
-#define PAYLOAD_OFFSET_IN_BEACON_INFO		18																	/**< First position to write the payload to */
-#define PAYLOAD_OFFSET_BATTERY_INFO			(PAYLOAD_OFFSET_IN_BEACON_INFO+10)	/**< Position to write the battery voltage payload to */									
-#define ADC_REF_VOLTAGE_IN_MILLIVOLTS   600                                 /**< Reference voltage (in milli volts) used by ADC while doing conversion. */
-#define ADC_PRE_SCALING_COMPENSATION    6                                   /**< The ADC is configured to use VDD with 1/3 prescaling as input. And hence the result of conversion is to be multiplied by 3 to get the actual value of the battery voltage.*/
-#define DIODE_FWD_VOLT_DROP_MILLIVOLTS  0				// was: 270                 /**< Typical forward voltage drop of the diode (270 mV), but no diode on this beacon. */
-#define ADC_RES_10BIT                   1024                                /**< Maximum digital value for 10-bit ADC conversion. */
-#define ADC_RES_12BIT                   4096                                /**< Maximum digital value for 12-bit ADC conversion. */
+#define PAYLOAD_OFFSET_IN_BEACON_INFO   18      /**< First position to write the payload to */
+#define PAYLOAD_OFFSET_BATTERY_INFO     (PAYLOAD_OFFSET_IN_BEACON_INFO+10)  /**< Position to write the battery voltage payload to */									
+#define ADC_REF_VOLTAGE_IN_MILLIVOLTS   600     /**< Reference voltage (in milli volts) used by ADC while doing conversion. */
+#define ADC_PRE_SCALING_COMPENSATION    6       /**< The ADC is configured to use VDD with 1/3 prescaling as input. And hence the result of conversion is to be multiplied by 3 to get the actual value of the battery voltage.*/
+#define DIODE_FWD_VOLT_DROP_MILLIVOLTS  0       /**< Typical forward voltage drop of the diode (270 mV), but no diode on this beacon. */
+#define ADC_RES_10BIT                   1024    /**< Maximum digital value for 10-bit ADC conversion. */
+#define ADC_RES_12BIT                   4096    /**< Maximum digital value for 12-bit ADC conversion. */
 									
-#define DEAD_BEEF                       0xDEADBEEF                       	  /**< Value used as error code on stack dump, can be used to identify stack location on stack unwind. */
+#define DEAD_BEEF                       0xDEADBEEF  /**< Value used as error code on stack dump, can be used to identify stack location on stack unwind. */
 
 #if defined(USE_UICR_FOR_MAJ_MIN_VALUES)
-#define MAJ_VAL_OFFSET_IN_BEACON_INFO   18                                 	/**< Position of the MSB of the Major Value in m_beacon_info array. */
-#define UICR_ADDRESS                    0x10001080                         	/**< Address of the UICR register used by this example. The major and minor versions to be encoded into the advertising data will be picked up from this location. */
+#define MAJ_VAL_OFFSET_IN_BEACON_INFO   18      /**< Position of the MSB of the Major Value in m_beacon_info array. */
+#define UICR_ADDRESS            0x10001080      /**< Address of the UICR register used by this example. The major and minor versions to be encoded into the advertising data will be picked up from this location. */
 #endif
 
-static ble_gap_adv_params_t m_adv_params;                                  	/**< Parameters to be passed to the stack when starting advertising. */
-static uint8_t              m_adv_handle = BLE_GAP_ADV_SET_HANDLE_NOT_SET; 	/**< Advertising handle used to identify an advertising set. */
-static uint8_t              m_enc_advdata[BLE_GAP_ADV_SET_DATA_SIZE_MAX];  	/**< Buffer for storing an encoded advertising set. */
-static volatile bool 				g_setAdvData = false; 													/**< one-shot flag for setting adv data. */
+static ble_gap_adv_params_t m_adv_params;       /**< Parameters to be passed to the stack when starting advertising. */
+static uint8_t              m_adv_handle = BLE_GAP_ADV_SET_HANDLE_NOT_SET;  /**< Advertising handle used to identify an advertising set. */
+static uint8_t              m_enc_advdata[BLE_GAP_ADV_SET_DATA_SIZE_MAX];   /**< Buffer for storing an encoded advertising set. */
+static volatile bool        g_setAdvData = false;                           /**< one-shot flag for setting adv data. */
 
 /**@brief Struct that contains pointers to the encoded advertising data. */
 static ble_gap_adv_data_t m_adv_data =
@@ -217,109 +212,184 @@ static ble_gap_adv_data_t m_adv_data =
     {
         .p_data = NULL,
         .len    = 0
-
     }
 };
 
-void read_all_cb(ret_code_t result, void * p_user_data)
+/**@brief Function for processing all sensor data.
+ *
+ * @details  This function will calculate the mean values after reading from
+ *           and prepare for adv packet
+ */
+void process_all_data()
 {
-	NRF_LOG_INFO("read_all_cb");
-
-	if (result != NRF_SUCCESS)
-    {
-        NRF_LOG_WARNING("read_all_cb - error: %d", (int)result);
-        return;
-    }
-
-		uint8_t payload_idx = PAYLOAD_OFFSET_IN_BEACON_INFO;
+    NRF_LOG_DEBUG("process_all_data()");
+	
+    uint8_t payload_idx = PAYLOAD_OFFSET_IN_BEACON_INFO;
 
     sample_t * p_sample = &m_samples[m_sample_idx];
-//		NRF_LOG_RAW_INFO("Idx %6d p_sample %6d m_sum %6d ", m_sample_idx, p_sample->x, m_sum.x);
 
-    m_sum.temp 					-= p_sample->temp;
-		m_sum.humidity 			-= p_sample->humidity;
-    m_sum.x    					-= p_sample->x;
-    m_sum.y    					-= p_sample->y;
-    m_sum.z    					-= p_sample->z;
+    m_sum.temp          -= p_sample->temp;
+    m_sum.humidity      -= p_sample->humidity;
+    m_sum.x             -= p_sample->x;
+    m_sum.y             -= p_sample->y;
+    m_sum.z             -= p_sample->z;
 
-    p_sample->temp 			= SHT3_GET_TEMPERATURE_VALUE(m_buffer[0], m_buffer[1]);
-    p_sample->humidity 	= SHT3_GET_HUMIDITY_VALUE   (m_buffer[3], m_buffer[4]);
-		p_sample->x					= KX022_GET_ACC(m_buffer[ 6], m_buffer[ 7]);
-		p_sample->y					= KX022_GET_ACC(m_buffer[ 8], m_buffer[ 9]);
-		p_sample->z					= KX022_GET_ACC(m_buffer[10], m_buffer[11]);
+    p_sample->temp      = SHT3_GET_TEMPERATURE_VALUE(m_buffer[0], m_buffer[1]);
+    p_sample->humidity  = SHT3_GET_HUMIDITY_VALUE   (m_buffer[3], m_buffer[4]);
+    p_sample->x         = KX022_GET_ACC(m_buffer[ 6], m_buffer[ 7]);
+    p_sample->y         = KX022_GET_ACC(m_buffer[ 8], m_buffer[ 9]);
+    p_sample->z         = KX022_GET_ACC(m_buffer[10], m_buffer[11]);
 
-    m_sum.temp 					+= p_sample->temp;
-    m_sum.humidity 			+= p_sample->humidity;
-    m_sum.x    					+= p_sample->x;
-    m_sum.y    					+= p_sample->y;
-    m_sum.z    					+= p_sample->z;
-
-//		NRF_LOG_RAW_INFO("new p_sample %6d new m_sum %6d \n",p_sample->x, m_sum.x);
+    m_sum.temp          += p_sample->temp;
+    m_sum.humidity      += p_sample->humidity;
+    m_sum.x             += p_sample->x;
+    m_sum.y             += p_sample->y;
+    m_sum.z             += p_sample->z;
 
     ++m_sample_idx;
-    if (m_sample_idx >= NUMBER_OF_SAMPLES)
-    {
-        m_sample_idx = 0;
-    }
+    m_sample_idx %= NUMBER_OF_SAMPLES;
 
-//		NRF_LOG_HEXDUMP_INFO(m_adv_data.adv_data.p_data, 29);
-		m_adv_data.adv_data.p_data[payload_idx++] = MSB_16(m_sum.temp * 10/NUMBER_OF_SAMPLES);
-		m_adv_data.adv_data.p_data[payload_idx++] = LSB_16(m_sum.temp	* 10/NUMBER_OF_SAMPLES);
-		m_adv_data.adv_data.p_data[payload_idx++] = MSB_16(m_sum.humidity	/NUMBER_OF_SAMPLES);
-		m_adv_data.adv_data.p_data[payload_idx++] = LSB_16(m_sum.humidity	/NUMBER_OF_SAMPLES);
-		m_adv_data.adv_data.p_data[payload_idx++] = MSB_16(m_sum.x				/NUMBER_OF_SAMPLES);
-		m_adv_data.adv_data.p_data[payload_idx++] = LSB_16(m_sum.x				/NUMBER_OF_SAMPLES);
-		m_adv_data.adv_data.p_data[payload_idx++] = MSB_16(m_sum.y				/NUMBER_OF_SAMPLES);
-		m_adv_data.adv_data.p_data[payload_idx++] = LSB_16(m_sum.y				/NUMBER_OF_SAMPLES);
-		m_adv_data.adv_data.p_data[payload_idx++] = MSB_16(m_sum.z				/NUMBER_OF_SAMPLES);
-		m_adv_data.adv_data.p_data[payload_idx++] = LSB_16(m_sum.z				/NUMBER_OF_SAMPLES);
-		
-//		m_adv_data.adv_data.p_data[payload_idx++] = MSB_16(battery_millivolts);
-//		m_adv_data.adv_data.p_data[payload_idx++] = LSB_16(battery_millivolts);
-		
-    if ( (m_sample_idx%10) == 0 ){
-			// Log example: Temp: 220.00 | Hum:340.00 | X: -257, Y: -129, Z: 16204 
-			NRF_LOG_RAW_INFO("Temp: " NRF_LOG_FLOAT_MARKER " | Hum:" NRF_LOG_FLOAT_MARKER " | ", 
-            NRF_LOG_FLOAT((float)((m_sum.temp*10) / NUMBER_OF_SAMPLES)),
-            NRF_LOG_FLOAT((float)((m_sum.humidity*10) / NUMBER_OF_SAMPLES)));
-			NRF_LOG_RAW_INFO("X %6d, Y %6d, Z %6d |", 
-	          (int16_t) p_sample->x,
+//    NRF_LOG_HEXDUMP_DEBUG(m_adv_data.adv_data.p_data, 29);
+    m_adv_data.adv_data.p_data[payload_idx++] = MSB_16(m_sum.temp       *10/NUMBER_OF_SAMPLES);
+    m_adv_data.adv_data.p_data[payload_idx++] = LSB_16(m_sum.temp       *10/NUMBER_OF_SAMPLES);
+    m_adv_data.adv_data.p_data[payload_idx++] = MSB_16(m_sum.humidity   /NUMBER_OF_SAMPLES);
+    m_adv_data.adv_data.p_data[payload_idx++] = LSB_16(m_sum.humidity   /NUMBER_OF_SAMPLES);
+    m_adv_data.adv_data.p_data[payload_idx++] = MSB_16(m_sum.x          /NUMBER_OF_SAMPLES);
+    m_adv_data.adv_data.p_data[payload_idx++] = LSB_16(m_sum.x          /NUMBER_OF_SAMPLES);
+    m_adv_data.adv_data.p_data[payload_idx++] = MSB_16(m_sum.y          /NUMBER_OF_SAMPLES);
+    m_adv_data.adv_data.p_data[payload_idx++] = LSB_16(m_sum.y          /NUMBER_OF_SAMPLES);
+    m_adv_data.adv_data.p_data[payload_idx++] = MSB_16(m_sum.z          /NUMBER_OF_SAMPLES);
+    m_adv_data.adv_data.p_data[payload_idx++] = LSB_16(m_sum.z          /NUMBER_OF_SAMPLES);
+    if((m_sample_idx%10) == 0 ){
+        // Log example: Temp: 220.00 | Hum:340.00 | X: -257, Y: -129, Z: 16204 
+        NRF_LOG_RAW_INFO("Temp: " NRF_LOG_FLOAT_MARKER " | Hum:" NRF_LOG_FLOAT_MARKER " | ", 
+        NRF_LOG_FLOAT((float)((m_sum.temp*10) / NUMBER_OF_SAMPLES)),
+        NRF_LOG_FLOAT((float)((m_sum.humidity*10) / NUMBER_OF_SAMPLES)));
+        NRF_LOG_RAW_INFO("X %6d, Y %6d, Z %6d |", 
+            (int16_t) p_sample->x,
             (int16_t) p_sample->y,
             (int16_t) p_sample->z);
-			NRF_LOG_RAW_INFO("sum X %6d, Y %6d, Z %6d |", 
-	          (int16_t) (m_sum.x / NUMBER_OF_SAMPLES),
+        NRF_LOG_RAW_INFO("sum X %6d, Y %6d, Z %6d |", 
+            (int16_t) (m_sum.x / NUMBER_OF_SAMPLES),
             (int16_t) (m_sum.y / NUMBER_OF_SAMPLES),
             (int16_t) (m_sum.z/ NUMBER_OF_SAMPLES));
-			NRF_LOG_RAW_INFO("INS1 %d, INS2 %d, INS3 %d, STAT %d\n",
-						m_buffer[17], m_buffer[18], m_buffer[19], m_buffer[20]); 
+        NRF_LOG_RAW_INFO("INS1 %d, INS2 %d, INS3 %d, STAT %d\n",
+            m_buffer[17], m_buffer[18], m_buffer[19], m_buffer[20]); 
     }
 }
 
-static void read_all()
+/**@brief Function for multi-step retrieval of sensor data
+ *
+ * @details  This function will request and fetch the results from the sonsors
+ *           in an multi-step approach to implement low-power with RTC
+ */
+static void read_all_sensors(bool restart)
 {
-    static nrf_twi_mngr_transfer_t const transfers[] =
-    {
-				// read 6 bytes (temp (msb+lsb+crc) and hum (msb+lsb+crc)
-        SHT3_READ_TEMP(&m_buffer[0]) 
-//        ,
-//        // read 6 bytes (x (lsb+msb), y (lsb+msb), z (lsb+msb)
-//				KX022_READ_XYZ(&m_buffer[6])
-//				,
-//				// read 4 bytes 
-//				KX022_READ_INS1(&m_buffer[17])
-//				,
-//				// read 5 byte interrupt source information
-//				KX022_READ_INT_REL(&m_buffer[12])
-    };
-    static nrf_twi_mngr_transaction_t NRF_TWI_MNGR_BUFFER_LOC_IND transaction =
-    {
-        .callback            = read_all_cb,
-        .p_user_data         = NULL,
-        .p_transfers         = transfers,
-        .number_of_transfers = sizeof(transfers) / sizeof(transfers[0])
-    };
+    // KX022 
+    static uint8_t config_kx022_0[2] = {KX022_1020_REG_CNTL1, 				0x00 };	// KX022_1020_STANDBY 
+    static uint8_t config_kx022_1[2] = {KX022_1020_REG_CNTL1, 				0x40 };	// KX022_1020_STANDBY | KX022_1020_HIGH_RESOLUTION
+//    static uint8_t config_kx022_2[2] = {KX022_1020_REG_ODCNTL, 			 	0x07 };	// KX022_1020_OUTPUT_RATE_1600_HZ
+    static uint8_t config_kx022_2[2] = {KX022_1020_REG_ODCNTL, 			 	0x04 };	// KX022_1020_OUTPUT_RATE_200_HZ
+    static uint8_t config_kx022_3[2] = {KX022_1020_REG_CNTL1, 				0xC0 };	// KX022_1020_OPERATE | KX022_1020_HIGH_RESOLUTION
 
-    APP_ERROR_CHECK(nrf_twi_mngr_schedule(&m_nrf_twi_mngr, &transaction));
+    // SHT3
+    static uint8_t config_SHT3_0[2]  = {SHT3_MEAS_HIGHREP >> 8, SHT3_MEAS_HIGHREP & 0xFF};
+
+    uint8_t         reg[2];
+    static uint8_t  step = 0;
+    uint32_t        counter_current = 0;
+    static uint32_t counter_read_sht3;  // counter value then SHT3 is ready
+		
+    if(restart)
+        step = 0;
+
+    // nested approach
+    // step0
+    //   - start long running (15ms) SHT3 retrieval first
+    //   - initialize KX022 (still standby)
+    //   - wait KX022 read config
+    // step1
+    //   - initialize KX022 to operation
+    //   - wait for KX022 data ready
+    // step2
+    //   - read KX022 data
+    //   - wait for SH3 completed
+    // step3
+    //   - read SHT3 data
+    //   - call function to further process the read data
+    switch(step){
+    case 0:
+        NRF_LOG_DEBUG("read_all step0");
+    
+        // SHT3
+        APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, SHT3_ADDR, config_SHT3_0, 2, false));
+        counter_current = nrfx_rtc_counter_get(&rtc);
+        counter_read_sht3 = counter_current + 4; // 4 = 4/256s = 0,015625 > max duration 15ms
+        NRF_LOG_DEBUG("read_all step0 counter current %d, counter read sht3 ready %d",
+            counter_current, counter_read_sht3);
+    
+        // KX022 
+        APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, config_kx022_0, 2, false));
+        APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, config_kx022_1, 2, false));
+        APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, config_kx022_2, 2, false));
+    
+        counter_current = nrfx_rtc_counter_get(&rtc);
+        APP_ERROR_CHECK(nrf_drv_rtc_cc_set(&rtc, 2, counter_current+2, true));	// 1 = 1/256s = 0,0039 =~4ms >1.2/ODR
+        step++;
+        break;
+    
+    case 1:
+        NRF_LOG_DEBUG("read_all step1");
+    
+        // KX022 
+        APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, config_kx022_3, 2, false));
+    
+        counter_current = nrfx_rtc_counter_get(&rtc);
+        APP_ERROR_CHECK(nrf_drv_rtc_cc_set(&rtc, 2, counter_current+2, true));
+        step++;
+        break;
+    
+    case 2:
+        NRF_LOG_DEBUG("read_all step2");
+    
+        // KX022 
+        reg[0] = KX022_1020_REG_XOUTL;
+        APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, reg, 1, true));
+        // read 6 bytes (x (lsb+msb), y (lsb+msb), z (lsb+msb)
+        APP_ERROR_CHECK(nrf_drv_twi_rx(&m_twi, KX022_ADDR, &m_buffer[6], 6));
+        APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, config_kx022_0, 2, false));
+
+        counter_current = nrfx_rtc_counter_get(&rtc);
+        NRF_LOG_DEBUG("read_all step2 counter current %d, counter read sht3 ready %d",
+            counter_current, counter_read_sht3);
+        if(counter_current < counter_read_sht3){
+            APP_ERROR_CHECK(nrf_drv_rtc_cc_set(&rtc, 2, counter_read_sht3, true));
+            step++;
+            break;  // time to go until SHT3 is ready
+        } else {
+            step++;
+            // just continue w/step3, SHT3 is ready
+            NRF_LOG_DEBUG("just continue w/step3");
+        }
+    
+    case 3:
+        NRF_LOG_DEBUG("read_all step3");
+    
+        // read 6 bytes (temp (msb+lsb+crc) and hum (msb+lsb+crc)
+        APP_ERROR_CHECK(nrf_drv_twi_rx(&m_twi, SHT3_ADDR, &m_buffer[0], 6));
+            
+        process_all_data();
+    
+        //  KX022_READ_XYZ(&m_buffer[6])        // read 6 bytes (x (lsb+msb), y (lsb+msb), z (lsb+msb)
+        //  KX022_READ_INS1(&m_buffer[17])      // read 4 bytes 
+        //  KX022_READ_INT_REL(&m_buffer[12])   // read 5 byte interrupt source information
+        
+        step = 0;   // reset for next sensor retrieval cycle
+        break;
+    default:
+        NRF_LOG_ERROR("read_all: default -> should not happen");
+        break;
+    }
 }
 
 /**@brief Function for handling the ADC interrupt.
@@ -329,89 +399,99 @@ static void read_all()
  */
 void saadc_event_handler(nrf_drv_saadc_evt_t const * p_event)
 {
-		uint32_t          err_code;
-    nrf_saadc_value_t adc_result;
-    uint16_t          batt_lvl_in_milli_volts;
-    uint8_t           percentage_batt_lvl;
+    uint32_t            err_code;
+    nrf_saadc_value_t   adc_result;
+    uint8_t             percentage_batt_lvl;
 
-		NRF_LOG_INFO("saadc_event_handler");
+    NRF_LOG_DEBUG("saadc_event_handler");
 
+    // regular SAADC sensor calibration 
     if (p_event->type == NRF_DRV_SAADC_EVT_DONE){
         if((m_adc_evt_counter % SAADC_CALIBRATION_INTERVAL) == 0){
-            NRF_LOG_INFO("SAADC calibration starting...");
+            NRF_LOG_DEBUG("SAADC calibration starting...");
             NRF_SAADC->EVENTS_CALIBRATEDONE = 0; 
             nrf_saadc_task_trigger(NRF_SAADC_TASK_CALIBRATEOFFSET);
             while(!NRF_SAADC->EVENTS_CALIBRATEDONE);
             while(NRF_SAADC->STATUS == (SAADC_STATUS_STATUS_Busy << SAADC_STATUS_STATUS_Pos));
-            NRF_LOG_INFO("SAADC calibration complete ! \n");
+            NRF_LOG_DEBUG("SAADC calibration complete ! \n");
         }
 
-				m_adc_evt_counter++;
+        m_adc_evt_counter++;
 				
         err_code = nrf_drv_saadc_buffer_convert(p_event->data.done.p_buffer, SAADC_SAMPLES_IN_BUFFER);  //Set buffer so the SAADC can write to it again. This is either "buffer 1" or "buffer 2"
         APP_ERROR_CHECK(err_code);
 			
         adc_result = p_event->data.done.p_buffer[0];
 
-        batt_lvl_in_milli_volts = ADC_RESULT_IN_MILLI_VOLTS(adc_result) +
-                                  DIODE_FWD_VOLT_DROP_MILLIVOLTS;
+        m_battery_millivolts = ADC_RESULT_IN_MILLI_VOLTS(adc_result) +
+                                    DIODE_FWD_VOLT_DROP_MILLIVOLTS;
 			
-				battery_millivolts = batt_lvl_in_milli_volts;		// use for beacon adv
-        percentage_batt_lvl = battery_level_in_percent(batt_lvl_in_milli_volts);
+        percentage_batt_lvl = battery_level_in_percent(m_battery_millivolts);
 
-				NRF_LOG_INFO("saadc_event_handler, done, perc %d, volts %d", percentage_batt_lvl, batt_lvl_in_milli_volts);
+        NRF_LOG_DEBUG("saadc_event_handler, done, perc %d, volts %d", percentage_batt_lvl, m_battery_millivolts);
 
-				uint8_t payload_idx = PAYLOAD_OFFSET_BATTERY_INFO;
-				m_adv_data.adv_data.p_data[payload_idx++] = MSB_16(battery_millivolts);
-				m_adv_data.adv_data.p_data[payload_idx++] = LSB_16(battery_millivolts);
-
+        uint8_t payload_idx = PAYLOAD_OFFSET_BATTERY_INFO;
+        m_adv_data.adv_data.p_data[payload_idx++] = MSB_16(m_battery_millivolts);
+        m_adv_data.adv_data.p_data[payload_idx++] = LSB_16(m_battery_millivolts);
 				
-				nrf_drv_saadc_uninit();                                                                   //Unintialize SAADC to disable EasyDMA and save power
+        nrf_drv_saadc_uninit();                                                                   //Unintialize SAADC to disable EasyDMA and save power
         NRF_SAADC->INTENCLR = (SAADC_INTENCLR_END_Clear << SAADC_INTENCLR_END_Pos);               //Disable the SAADC interrupt
         NVIC_ClearPendingIRQ(SAADC_IRQn);                                                         //Clear the SAADC interrupt if set
         m_saadc_initialized = false;                                                              //Set SAADC as uninitialized
-		}
+    }
 }
 
+/**@brief Function for handling the RTC interrupt.
+ *
+ * @details  This function will handle the RTC interrupt and trigger subsequent
+ *           actions.
+ */
 static void rtc_handler(nrf_drv_rtc_int_type_t int_type)
 {
-//		NRF_LOG_INFO("rtc_handler");
+    uint32_t counter_current;
 
-		// SAADC (battery voltage) every 10 secs
-    if (int_type == NRF_DRV_RTC_INT_COMPARE0)
-    {
-				NRF_LOG_INFO("rtc_handler COMPARE0");
+    NRF_LOG_DEBUG("rtc_handler");
 
-				if(!m_saadc_initialized) {
+    // SAADC (battery voltage)
+    if (int_type == NRF_DRV_RTC_INT_COMPARE0){
+        NRF_LOG_DEBUG("rtc_handler COMPARE0");
+
+        if(!m_saadc_initialized) {
             saadc_init();
         }
-        m_saadc_initialized = true;                                    //Set SAADC as initialized
+        m_saadc_initialized = true;
 
-				// Trigger the SAADC SAMPLE task
+        // Trigger the SAADC SAMPLE task
         nrf_drv_saadc_sample();
 		
-				// Add a time portion to rtc counter compare	and re-enable
-				rtc.p_reg->CC[0] += RTC_CC_VALUE * RTC_SADC_UPDATE;
-				nrf_drv_rtc_int_enable(&rtc, NRF_RTC_INT_COMPARE0_MASK);
+        // Set counter for next sample
+        counter_current = nrfx_rtc_counter_get(&rtc);
+        APP_ERROR_CHECK(nrf_drv_rtc_cc_set(&rtc, 0, 
+            counter_current + RTC_CC_VALUE * RTC_SADC_UPDATE, true));
     }
 		
-		// read sensors every 1/8 secs
-		if (int_type == NRF_DRV_RTC_INT_COMPARE1)
-    {
-				NRF_LOG_INFO("rtc_handler COMPARE1");
+    // read sensors
+    if (int_type == NRF_DRV_RTC_INT_COMPARE1){
+        NRF_LOG_DEBUG("rtc_handler COMPARE1");
 
-				// Trigger the sensor retrieval task
-				read_all();
+        // Trigger the sensor retrieval task
+        read_all_sensors(true);	// init w/step0
 			
-				// Add a time portion to rtc counter compare	and re-enable
-				rtc.p_reg->CC[1] += RTC_CC_VALUE * RTC_SENSOR_UPDATE;
-				nrf_drv_rtc_int_enable(&rtc, NRF_RTC_INT_COMPARE1_MASK);
+        // Set counter for next sample
+        counter_current = nrfx_rtc_counter_get(&rtc);
+        APP_ERROR_CHECK(nrf_drv_rtc_cc_set(&rtc, 1, 
+            counter_current + RTC_CC_VALUE * RTC_SENSOR_UPDATE, true));
     }
-
+		
+    // delay timeout during sensor retrieval function
+    if (int_type == NRF_DRV_RTC_INT_COMPARE2){
+        // Trigger the sensor retrieval task for subsequent steps
+        read_all_sensors(false);
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Buttons handling (by means of BSP).
+// TODO Buttons handling (by means of BSP).
 //
 static void bsp_event_handler(bsp_event_t event)
 {
@@ -434,20 +514,20 @@ static void bsp_event_handler(bsp_event_t event)
 }
 
 
-static uint8_t m_beacon_info[APP_BEACON_INFO_LENGTH] =  	/**< Information advertised by the Beacon. */
+static uint8_t m_beacon_info[APP_BEACON_INFO_LENGTH] =      /**< Information advertised by the Beacon. */
 {
-    APP_DEVICE_TYPE,     		// Manufacturer specific information.
-    APP_ADV_DATA_LENGTH, 		// Manufacturer specific information. Length of the manufacturer specific data 
-	  APP_BEACON_UUID_SHORT,  // short UUID value.
-    APP_MAJOR_VALUE,     		// Device major value
-    APP_MINOR_VALUE,     		// Device minor value
-    APP_MEASURED_RSSI,   		// Beacon's measured TX power 
-		APP_DATA_TEMP,					// temperature
-		APP_DATA_HUM,						// humidity
-		APP_DAT_X,							// accel x pos
-		APP_DAT_y,							// accel y pos
-		APP_DAT_Z,							// accel z pos
-		APP_DAT_BATTERY					// battery voltage
+    APP_DEVICE_TYPE,        // Manufacturer specific information.
+    APP_ADV_DATA_LENGTH,    // Manufacturer specific information. Length of the manufacturer specific data 
+    APP_BEACON_UUID_SHORT,  // short UUID value.
+    APP_MAJOR_VALUE,        // Device major value
+    APP_MINOR_VALUE,        // Device minor value
+    APP_MEASURED_RSSI,      // Beacon's measured TX power 
+    APP_DATA_TEMP,          // temperature
+    APP_DATA_HUM,           // humidity
+    APP_DAT_X,              // accel x pos
+    APP_DAT_y,              // accel y pos
+    APP_DAT_Z,              // accel z pos
+    APP_DAT_BATTERY         // battery voltage
 };
 
 
@@ -476,8 +556,8 @@ static void advertising_start()
     err_code = sd_ble_gap_adv_start(m_adv_handle, APP_BLE_CONN_CFG_TAG);
     APP_ERROR_CHECK(err_code);
 
-//		err_code = bsp_indication_set(BSP_INDICATE_ADVERTISING);
-//		APP_ERROR_CHECK(err_code);
+//  err_code = bsp_indication_set(BSP_INDICATE_ADVERTISING);
+//  APP_ERROR_CHECK(err_code);
 }
 
 /**@brief Function for handling the idle state (main loop).
@@ -486,8 +566,7 @@ static void advertising_start()
  */
 static void idle_state_handle()
 {
-    if (NRF_LOG_PROCESS() == false)
-    {
+    if (NRF_LOG_PROCESS() == false){
         nrf_pwr_mgmt_run();
     }
 }
@@ -500,7 +579,6 @@ void bsp_configuration()
 
     err_code = bsp_init(BSP_INIT_LEDS | BSP_INIT_BUTTONS, bsp_event_handler);
     APP_ERROR_CHECK(err_code);
-	
 }
 
 
@@ -515,7 +593,7 @@ static void log_init()
 
 static void lfclk_config()
 {
-		// Initialize the clock source specified in the nrf_drv_config.h file, i.e. the CLOCK_CONFIG_LF_SRC constant
+    // Initialize the clock source specified in the nrf_drv_config.h file, i.e. the CLOCK_CONFIG_LF_SRC constant
     ret_code_t err_code = nrf_drv_clock_init();                  			
     APP_ERROR_CHECK(err_code);
     nrf_drv_clock_lfclk_request(NULL);
@@ -523,67 +601,52 @@ static void lfclk_config()
 
 static void rtc_config()
 {
-    uint32_t err_code;
-
-		// Initialize RTC instance
+    // Initialize RTC instance
     nrf_drv_rtc_config_t rtc_configuration = NRF_DRV_RTC_DEFAULT_CONFIG;		
 	
-		NRF_LOG_INFO("rtc_config: prescaler %d, freq %d, rtc input freq %d", 
-				rtc_configuration.prescaler, NRFX_RTC_DEFAULT_CONFIG_FREQUENCY, RTC_INPUT_FREQ);
-
+    NRF_LOG_DEBUG("rtc_config: prescaler %d, freq %d, rtc input freq %d", 
+        rtc_configuration.prescaler, NRFX_RTC_DEFAULT_CONFIG_FREQUENCY, RTC_INPUT_FREQ);
 	
-		// Initialize RTC with callback handler
-    err_code = nrf_drv_rtc_init(&rtc, &rtc_configuration, rtc_handler);
-    APP_ERROR_CHECK(err_code);
+    // Initialize RTC with callback handler
+    APP_ERROR_CHECK(nrf_drv_rtc_init(&rtc, &rtc_configuration, rtc_handler));
 
-		//Set RTC compare0 value to trigger first interrupt 
-    err_code = nrf_drv_rtc_cc_set(&rtc, 0, RTC_CC_VALUE*4, true);
-    APP_ERROR_CHECK(err_code);
+    //Set RTC compare0 value to trigger first interrupt 
+    APP_ERROR_CHECK(nrf_drv_rtc_cc_set(&rtc, 0, RTC_CC_VALUE*16, true));
 
-		//Set RTC compare1 value to trigger first interrupt 
-    err_code = nrf_drv_rtc_cc_set(&rtc, 1, RTC_CC_VALUE*4, true);
-    APP_ERROR_CHECK(err_code);
+    //Set RTC compare1 value to trigger first interrupt 
+    APP_ERROR_CHECK(nrf_drv_rtc_cc_set(&rtc, 1, RTC_CC_VALUE*32, true));
 
     //Enable RTC instance
     nrf_drv_rtc_enable(&rtc);
 }
 
-
 /**@brief Function for configuring ADC to do battery level conversion.
  */
 static void saadc_init()
 {
-		ret_code_t err_code;
+    //Configure SAADC
+    nrf_drv_saadc_config_t saadc_config = NRFX_SAADC_DEFAULT_CONFIG;
 	
-		//Configure SAADC
-		nrf_drv_saadc_config_t saadc_config = 
-				NRFX_SAADC_DEFAULT_CONFIG;
-	
-		// Initialize SAADC
-    err_code = nrf_drv_saadc_init(&saadc_config, saadc_event_handler);
-    APP_ERROR_CHECK(err_code);
+    // Initialize SAADC
+    APP_ERROR_CHECK(nrf_drv_saadc_init(&saadc_config, saadc_event_handler));
 
     //Configure SAADC channel
     nrf_saadc_channel_config_t channel_config =
         NRF_DRV_SAADC_DEFAULT_CHANNEL_CONFIG_SE(NRF_SAADC_INPUT_VDD);
 
     //Initialize SAADC channel
-		err_code = nrf_drv_saadc_channel_init(0, &channel_config);
-    APP_ERROR_CHECK(err_code);
+    APP_ERROR_CHECK(nrf_drv_saadc_channel_init(0, &channel_config));
 
 		// Configure burst mode for channel 0
-    if(SAADC_BURST_MODE)
-    {
+    if(SAADC_BURST_MODE){
         NRF_SAADC->CH[0].CONFIG |= 0x01000000; 
     }
 
-		//Set SAADC buffer 1. The SAADC will start to write to this buffer
-    err_code = nrf_drv_saadc_buffer_convert(m_buffer_pool[0],SAADC_SAMPLES_IN_BUFFER);    
-    APP_ERROR_CHECK(err_code);
-		
-		//Set SAADC buffer 2. The SAADC will write to this buffer when buffer 1 is full. This will give the applicaiton time to process data in buffer 1.
-		err_code = nrf_drv_saadc_buffer_convert(m_buffer_pool[1],SAADC_SAMPLES_IN_BUFFER);    
-    APP_ERROR_CHECK(err_code);
+    //Set SAADC buffer 1. The SAADC will start to write to this buffer
+    APP_ERROR_CHECK(nrf_drv_saadc_buffer_convert(m_buffer_pool[0], SAADC_SAMPLES_IN_BUFFER));    
+
+    //Set SAADC buffer 2. The SAADC will write to this buffer when buffer 1 is full. This will give the applicaiton time to process data in buffer 1.
+    APP_ERROR_CHECK(nrf_drv_saadc_buffer_convert(m_buffer_pool[1],SAADC_SAMPLES_IN_BUFFER));   
 }
 
 
@@ -591,40 +654,39 @@ static void saadc_init()
  */
 static void power_management_init()
 {
-    ret_code_t err_code;
-    err_code = nrf_pwr_mgmt_init();
-    APP_ERROR_CHECK(err_code);
+    APP_ERROR_CHECK(nrf_pwr_mgmt_init());
 }
 
-
-// TWI (with transaction manager) initialization.
+/**@brief Function for initializing TWI.
+ */
 static void twi_config()
 {
-    uint32_t err_code;
-
     nrf_drv_twi_config_t const config = {
-       .scl                = ARDUINO_SCL_PIN,
-       .sda                = ARDUINO_SDA_PIN,
-       .frequency          = NRF_DRV_TWI_FREQ_100K,
-       .interrupt_priority = APP_IRQ_PRIORITY_LOWEST,
-       .clear_bus_init     = false
+        .scl                = ARDUINO_SCL_PIN,
+        .sda                = ARDUINO_SDA_PIN,
+        .frequency          = NRF_DRV_TWI_FREQ_100K,
+        .interrupt_priority = APP_IRQ_PRIORITY_LOWEST,
+        .clear_bus_init     = false
     };
 
-    err_code = nrf_twi_mngr_init(&m_nrf_twi_mngr, &config);
-    APP_ERROR_CHECK(err_code);
-}
+    NRF_LOG_DEBUG("twi_config");
 
+    APP_ERROR_CHECK(nrf_drv_twi_init(&m_twi, &config, NULL, NULL));	// blocking TWI
+    nrf_drv_twi_enable(&m_twi);
+}
 
 /**@brief Function for initializing sensors.
  */
 static void sensor_init()
 {	
-    APP_ERROR_CHECK(nrf_twi_mngr_perform(&m_nrf_twi_mngr, NULL, sht3_init_transfers,
-        SHT3_INIT_TRANSFER_COUNT, NULL));
-//    APP_ERROR_CHECK(nrf_twi_mngr_perform(&m_nrf_twi_mngr, NULL, kx022_init_transfers,
-//        KX022_INIT_TRANSFER_COUNT, NULL));
+    // SHT3
+    static uint8_t config_sht3_0[2] = { (SHT3_SOFTRESET >> 8), (SHT3_SOFTRESET & 0xFF) };
+    APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, SHT3_ADDR, config_sht3_0, 2, false));
+		
+    // KX022 
+    static uint8_t config_kx022_0[2] = {KX022_1020_REG_CNTL1, 0x00 };	// KX022_1020_STANDBY 
+    APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, config_kx022_0, 2, false));
 }
-
 
 /**@brief Function for initializing the BLE stack.
  *
@@ -656,9 +718,9 @@ static void ble_stack_init()
  */
 static void advertising_init()
 {
-    uint32_t      err_code;
-    ble_advdata_t advdata;
-    uint8_t       flags = BLE_GAP_ADV_FLAG_BR_EDR_NOT_SUPPORTED;
+    uint32_t        err_code;
+    ble_advdata_t   advdata;
+    uint8_t         flags = BLE_GAP_ADV_FLAG_BR_EDR_NOT_SUPPORTED;
 
     ble_advdata_manuf_data_t manuf_specific_data;
 
@@ -692,28 +754,27 @@ static void advertising_init()
     // Build and set advertising data.
     memset(&advdata, 0, sizeof(advdata));
 
-    advdata.name_type             = BLE_ADVDATA_NO_NAME;
-    advdata.flags                 = flags;
-    advdata.p_manuf_specific_data = &manuf_specific_data;
+    advdata.name_type               = BLE_ADVDATA_NO_NAME;
+    advdata.flags                   = flags;
+    advdata.p_manuf_specific_data   = &manuf_specific_data;
 
     // Initialize advertising parameters (used when starting advertising).
     memset(&m_adv_params, 0, sizeof(m_adv_params));
 
-    m_adv_params.properties.type = BLE_GAP_ADV_TYPE_NONCONNECTABLE_NONSCANNABLE_UNDIRECTED;
-    m_adv_params.p_peer_addr     = NULL;    // Undirected advertisement.
-    m_adv_params.filter_policy   = BLE_GAP_ADV_FP_ANY;
-    m_adv_params.interval        = NON_CONNECTABLE_ADV_INTERVAL;
-    m_adv_params.duration        = 0;       // Never time out.
+    m_adv_params.properties.type    = BLE_GAP_ADV_TYPE_NONCONNECTABLE_NONSCANNABLE_UNDIRECTED;
+    m_adv_params.p_peer_addr        = NULL;     // Undirected advertisement.
+    m_adv_params.filter_policy      = BLE_GAP_ADV_FP_ANY;
+    m_adv_params.interval           = NON_CONNECTABLE_ADV_INTERVAL;
+    m_adv_params.duration           = 0;        // Never time out.
 
     err_code = ble_advdata_encode(&advdata, m_adv_data.adv_data.p_data, &m_adv_data.adv_data.len);
     APP_ERROR_CHECK(err_code);
 
     err_code = sd_ble_gap_adv_set_configure(&m_adv_handle, &m_adv_data, &m_adv_params);
     APP_ERROR_CHECK(err_code);
-		
 
-    // NORDIC: SET HIGH TX POWER FOR ADVERTISING
-    err_code = sd_ble_gap_tx_power_set(BLE_GAP_TX_POWER_ROLE_ADV, m_adv_handle, 0); 	// was: 4 
+    // SET TX POWER FOR ADVERTISING
+    err_code = sd_ble_gap_tx_power_set(BLE_GAP_TX_POWER_ROLE_ADV, m_adv_handle, 0);
     APP_ERROR_CHECK(err_code); 
 }
 
@@ -726,14 +787,12 @@ static void advertising_init()
  */
 static void button_handler(uint8_t pin_no, uint8_t button_action)
 {
-    if(button_action == APP_BUTTON_PUSH)
-    {
-			    NRF_LOG_INFO("button_handler, push %d", pin_no);
+    if(button_action == APP_BUTTON_PUSH){
+        NRF_LOG_INFO("button_handler, push %d", pin_no);
     }
 		
-    if(button_action == APP_BUTTON_RELEASE)
-    {
-			    NRF_LOG_INFO("button_handler, release %d", pin_no);
+    if(button_action == APP_BUTTON_RELEASE){
+        NRF_LOG_INFO("button_handler, release %d", pin_no);
     }
 }
 
@@ -764,29 +823,31 @@ void button_init()
  */
 int main()
 {
-		// Initialization and configuration
-    log_init();										// Initialize logging
-    power_management_init();			// Initialize power management	
+    // Initialization and configuration
+    log_init();                     // Initialize logging
+    power_management_init();        // Initialize power management	
 
-		bsp_board_init(BSP_INIT_LEDS);
-		bsp_board_led_off(0);
+    bsp_board_init(BSP_INIT_LEDS);
+    bsp_board_led_off(0);
 //		button_init();
 	
-	  NRF_POWER->DCDCEN = 1; 				// Enabling the DCDC converter for lower current consumption
+    NRF_POWER->DCDCEN = 1;      // Enabling the DCDC converter for lower current consumption
 	
-	  lfclk_config();               // Configure low frequency 32kHz clock
-    rtc_config();                 // Configure RTC
+    lfclk_config();             // Configure low frequency 32kHz clock
+    rtc_config();               // Configure RTC
 
-		twi_config();									// Initialize TWI (with transaction manager) 
-		sensor_init();								// Initialize sensors
+    twi_config();               // Initialize TWI (with transaction manager) 
+
+    nrf_delay_ms(10);           // KX022 startup time: 10 ms, SHT3: 1 ms	(TODO optimize)
+    sensor_init();              // Initialize sensors
 	
-    ble_stack_init();							// Initialize the BLE stack
-		advertising_init();						// Initialize the advertising functionality
+    ble_stack_init();           // Initialize the BLE stack
+    advertising_init();         // Initialize the advertising functionality
 		
     // Start execution.
     NRF_LOG_INFO("Beacon started.");
 
-		advertising_start();
+    advertising_start();
 
     // Enter main loop.
     for (;;)
