@@ -89,10 +89,16 @@
     __ASM(".global _printf_float");
 #endif
 
+
+// Event scheduled
+// - BLE adv         1 sec
+// - SADC sample    60 sec
+// - Sensor sample  15 sec
+
 // RTC defines
 #define RTC_CC_VALUE 				8       // prescale 256 Hz, RTC_CC_VALUE=8 => 1/32 sec
-#define RTC_SADC_UPDATE             320     // =every 10 sec (multiply by RTC_CC_VALUE/ = *1/8 sec)
-#define RTC_SENSOR_UPDATE           160     // =every  5 sec
+#define RTC_SADC_UPDATE             1875
+#define RTC_SENSOR_UPDATE           480
 
 // SAADC defines
 #define SAADC_CALIBRATION_INTERVAL  5       // SAADC calibration interval relative to NRF_DRV_SAADC_EVT_DONE event
