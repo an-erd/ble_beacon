@@ -496,29 +496,28 @@ static void rtc_handler(nrf_drv_rtc_int_type_t int_type)
     }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// TODO Buttons handling (by means of BSP).
-//
+/**@brief Function for handling BSP events.
+ *
+ * @details  This function will handle the BSP events as button press.
+ */
 static void bsp_event_handler(bsp_event_t event)
 {
-
-		NRF_LOG_INFO("bsp_event_handler, button %d", event);
+    NRF_LOG_DEBUG("bsp_event_handler, button %d", event);
 	
     switch (event)
     {
     case BSP_EVENT_KEY_0: // button on beacon pressed
-				NRF_LOG_INFO("button BSP_EVENT_KEY_0");
+        NRF_LOG_INFO("button BSP_EVENT_KEY_0");
         break;
 
-    case BSP_EVENT_KEY_1: // button on programming board pressed
-				NRF_LOG_INFO("button BSP_EVENT_KEY_1");
+    case BSP_EVENT_KEY_1: // button on jig pressed
+        NRF_LOG_INFO("button BSP_EVENT_KEY_1");
         break;
 
     default:
         break;
     }
 }
-
 
 static uint8_t m_beacon_info[APP_BEACON_INFO_LENGTH] =      /**< Information advertised by the Beacon. */
 {
@@ -784,67 +783,22 @@ static void advertising_init()
     APP_ERROR_CHECK(err_code); 
 }
 
-
-// TEST CHECK FOR POWER CONSUMPTION
-/*
- * Handler to be called when button is pushed.
- * param[in]   pin_no             The pin number where the event is genereated
- * param[in]   button_action     Is the button pushed or released
- */
-static void button_handler(uint8_t pin_no, uint8_t button_action)
-{
-    if(button_action == APP_BUTTON_PUSH){
-        NRF_LOG_INFO("button_handler, push %d", pin_no);
-    }
-		
-    if(button_action == APP_BUTTON_RELEASE){
-        NRF_LOG_INFO("button_handler, release %d", pin_no);
-    }
-}
-
-void button_init()
-{
-	uint32_t err_code;
-
-    // Button configuration structure.
-    static app_button_cfg_t p_button[] = { {25, APP_BUTTON_ACTIVE_LOW, NRF_GPIO_PIN_PULLUP, button_handler}};
-
-    // Macro for initializing the GPIOTE module.
-    // It will handle dimensioning and allocation of the memory buffer required by the module, making sure that the buffer is correctly aligned.
-    APP_GPIOTE_INIT(1);
-
-    // Initializing the buttons.
-    err_code = app_button_init(p_button, sizeof(p_button) / sizeof(p_button[0]), 50);
-    APP_ERROR_CHECK(err_code);
-                                            
-    // Enabling the buttons.                                        
-    err_code = app_button_enable();
-    APP_ERROR_CHECK(err_code);
-}
-
-// END TEST
-
 /**
  * @brief Function for application main entry.
  */
 int main()
 {
     // Initialization and configuration
-    log_init();                     // Initialize logging
-    power_management_init();        // Initialize power management	
-
-    bsp_board_init(BSP_INIT_LEDS);
-    bsp_board_led_off(0);
-//		button_init();
-	
+    log_init();                 // Initialize logging
+    power_management_init();    // Initialize power management	
     NRF_POWER->DCDCEN = 1;      // Enabling the DCDC converter for lower current consumption
-	
     lfclk_config();             // Configure low frequency 32kHz clock
+    app_timer_init();           // Initialize app timer
+    bsp_configuration();        // Initialize BSP (leds and buttons)
+    twi_config();               // Initialize TWI (with transaction manager) 
     rtc_config();               // Configure RTC
 
-    twi_config();               // Initialize TWI (with transaction manager) 
-
-    nrf_delay_ms(10);           // KX022 startup time: 10 ms, SHT3: 1 ms	(TODO optimize)
+    nrf_delay_ms(10);           // sensor tartup time: KX022 10 ms, SHT3 1 ms
     sensor_init();              // Initialize sensors
 	
     ble_stack_init();           // Initialize the BLE stack
@@ -855,7 +809,6 @@ int main()
 
     advertising_start();
 
-    // Enter main loop.
     for (;;)
     {
         NRF_LOG_FLUSH();
