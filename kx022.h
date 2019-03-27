@@ -41,8 +41,6 @@
 #ifndef KX022_H__
 #define KX022_H__
 
-#include "nrf_twi_mngr.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -184,33 +182,6 @@ extern "C" {
 
 #define KX022_GET_ACC(acc_lsb, acc_msb) \
     (((int16_t)acc_msb << 8) | acc_lsb)
-
-extern uint8_t NRF_TWI_MNGR_BUFFER_LOC_IND KX022_cntl1_reg_addr;
-extern uint8_t NRF_TWI_MNGR_BUFFER_LOC_IND KX022_cntl2_reg_addr;
-extern uint8_t NRF_TWI_MNGR_BUFFER_LOC_IND KX022_cntl3_reg_addr;
-extern uint8_t NRF_TWI_MNGR_BUFFER_LOC_IND KX022_odcntl_reg_addr;
-extern uint8_t NRF_TWI_MNGR_BUFFER_LOC_IND KX022_inc1_reg_addr;
-extern uint8_t NRF_TWI_MNGR_BUFFER_LOC_IND KX022_inc2_reg_addr;
-extern uint8_t NRF_TWI_MNGR_BUFFER_LOC_IND KX022_inc3_reg_addr;
-extern uint8_t NRF_TWI_MNGR_BUFFER_LOC_IND KX022_inc4_reg_addr;
-extern uint8_t NRF_TWI_MNGR_BUFFER_LOC_IND KX022_xout_reg_addr;
-extern uint8_t NRF_TWI_MNGR_BUFFER_LOC_IND KX022_int_rel_reg_addr;
-extern uint8_t NRF_TWI_MNGR_BUFFER_LOC_IND KX022_ins1_reg_addr;
-extern uint8_t NRF_TWI_MNGR_BUFFER_LOC_IND KX022_wufc_reg_addr;
-
-
-#define KX022_READ(p_reg_addr, p_buffer, byte_cnt) \
-    NRF_TWI_MNGR_WRITE(KX022_ADDR, p_reg_addr, 1,        NRF_TWI_MNGR_NO_STOP), \
-    NRF_TWI_MNGR_READ (KX022_ADDR, p_buffer,   byte_cnt, 0)
-
-#define KX022_READ_XYZ(p_buffer) 			KX022_READ(&KX022_xout_reg_addr, 			p_buffer, 6)
-#define KX022_READ_INT_REL(p_buffer)  KX022_READ(&KX022_int_rel_reg_addr, 	p_buffer, 5)
-#define KX022_READ_INS1(p_buffer) 		KX022_READ(&KX022_ins1_reg_addr, 			p_buffer, 4)
-
-#define KX022_INIT_TRANSFER_COUNT 	1
-
-extern nrf_twi_mngr_transfer_t const
-    kx022_init_transfers[KX022_INIT_TRANSFER_COUNT];
 
 #ifdef __cplusplus
 }

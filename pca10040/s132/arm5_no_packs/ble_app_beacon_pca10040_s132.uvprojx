@@ -392,16 +392,6 @@
               <FileType>5</FileType>
               <FilePath>..\config\sdk_config.h</FilePath>
             </File>
-            <File>
-              <FileName>kx022.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\..\..\kx022.c</FilePath>
-            </File>
-            <File>
-              <FileName>sht3.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\..\..\sht3.c</FilePath>
-            </File>
           </Files>
         </Group>
         <Group>
@@ -3350,16 +3340,6 @@
               <FileName>sdk_config.h</FileName>
               <FileType>5</FileType>
               <FilePath>..\config\sdk_config.h</FilePath>
-            </File>
-            <File>
-              <FileName>kx022.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\..\..\kx022.c</FilePath>
-            </File>
-            <File>
-              <FileName>sht3.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\..\..\sht3.c</FilePath>
             </File>
           </Files>
         </Group>

@@ -353,7 +353,7 @@ static void read_all_sensors(bool restart)
         NRF_LOG_DEBUG("read_all step2");
     
         // KX022 
-        reg[0] = KX022_xout_reg_addr;
+        reg[0] = KX022_1020_REG_XOUTL;
         APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, reg, 1, true));
         // read 6 bytes (x (lsb+msb), y (lsb+msb), z (lsb+msb)
         APP_ERROR_CHECK(nrf_drv_twi_rx(&m_twi, KX022_ADDR, &m_buffer[6], 6));

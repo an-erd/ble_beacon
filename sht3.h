@@ -37,9 +37,8 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  */
-  #ifndef SHT3_H__
+#ifndef SHT3_H__
 #define SHT3_H__
-
 
 #include "nrf_twi_mngr.h"
 
@@ -47,29 +46,16 @@
 extern "C" {
 #endif
 
-#define SHT3_ADDR         					0x44
-#define SHT3_MEAS_HIGHREP         	0x2400
-#define SHT3_MEAS_HIGHREP_STRETCH		0x2C06
-#define SHT3_SOFTRESET            	0x30A2
+#define SHT3_ADDR                   0x44
+#define SHT3_MEAS_HIGHREP           0x2400
+#define SHT3_MEAS_HIGHREP_STRETCH   0x2C06
+#define SHT3_SOFTRESET              0x30A2
 
 #define SHT3_GET_TEMPERATURE_VALUE(temp_msb, temp_lsb) \
     (-45+((((int16_t)temp_msb << 8) | temp_lsb)*175 / 0xFFFF))
 
 #define SHT3_GET_HUMIDITY_VALUE(humidity_msb, humidity_lsb) \
     ((((int16_t)humidity_msb << 8) | humidity_lsb)*100 / 0xFFFF)
-
-#define SHT3_READ_TRANSFER_COUNT 2
-extern uint8_t NRF_TWI_MNGR_BUFFER_LOC_IND sht3_temp_humidity_read_addr[SHT3_READ_TRANSFER_COUNT];
-
-#define SHT3_READ(p_reg_addr, p_buffer, byte_cnt) \
-    NRF_TWI_MNGR_WRITE(SHT3_ADDR, p_reg_addr, 2, 		NRF_TWI_MNGR_NO_STOP), \
-    NRF_TWI_MNGR_READ (SHT3_ADDR, p_buffer,   byte_cnt, 0)
-
-#define SHT3_READ_TEMP(p_buffer) \
-    SHT3_READ(&sht3_temp_humidity_read_addr, p_buffer, 6)
-
-#define SHT3_INIT_TRANSFER_COUNT 1
-extern nrf_twi_mngr_transfer_t const sht3_init_transfers[SHT3_INIT_TRANSFER_COUNT];
 
 #ifdef __cplusplus
 }
