@@ -74,6 +74,7 @@
 #include "nrf_drv_clock.h"
 #include "nrf_drv_timer.h"
 #include "nrfx_rtc.h"
+#include "uicr_config.h"
 #include "sht3.h"
 #include "kx022.h"
 #include "compiler_abstraction.h"
@@ -197,8 +198,8 @@ static uint8_t      m_sample_idx = 0;
 #define DEAD_BEEF                       0xDEADBEEF  /**< Value used as error code on stack dump, can be used to identify stack location on stack unwind. */
 
 #if defined(USE_UICR_FOR_MAJ_MIN_VALUES)
-#define MAJ_VAL_OFFSET_IN_BEACON_INFO   18      /**< Position of the MSB of the Major Value in m_beacon_info array. */
-#define UICR_ADDRESS            0x10001080      /**< Address of the UICR register used by this example. The major and minor versions to be encoded into the advertising data will be picked up from this location. */
+#define MAJ_VAL_OFFSET_IN_BEACON_INFO   6       /**< Position of the MSB of the Major Value in m_beacon_info array. */
+#define UICR_ADDRESS            0x10001080      /**< Address of the UICR register  */
 #endif
 
 static ble_gap_adv_params_t m_adv_params;       /**< Parameters to be passed to the stack when starting advertising. */
