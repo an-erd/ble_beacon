@@ -45,3 +45,5 @@ result:
 18:34	2814
 20190318-07:00 (0x00070001) rssi -45 | temp  18.0 | hum  34 | x    -32 | y   -399 | z +16259 | batt 2784
 
+nrfjprog -f NRF52 --memrd 0x10001080 --n 4
+

@@ -66,7 +66,7 @@
 #include "ble_advdata.h"
 #include "app_util_platform.h"
 #include "app_timer.h"
-#include "app_button.h"
+//#include "app_button.h"
 #include "app_gpiote.h"
 #include "nrf_pwr_mgmt.h"
 #include "nrf_drv_power.h"
@@ -74,6 +74,8 @@
 #include "nrf_drv_clock.h"
 #include "nrf_drv_timer.h"
 #include "nrfx_rtc.h"
+#include "nrf_drv_rtc.h"
+#include "uicr_config.h"
 #include "sht3.h"
 #include "kx022.h"
 #include "compiler_abstraction.h"
@@ -197,8 +199,8 @@ static uint8_t      m_sample_idx = 0;
 #define DEAD_BEEF                       0xDEADBEEF  /**< Value used as error code on stack dump, can be used to identify stack location on stack unwind. */
 
 #if defined(USE_UICR_FOR_MAJ_MIN_VALUES)
-#define MAJ_VAL_OFFSET_IN_BEACON_INFO   18      /**< Position of the MSB of the Major Value in m_beacon_info array. */
-#define UICR_ADDRESS            0x10001080      /**< Address of the UICR register used by this example. The major and minor versions to be encoded into the advertising data will be picked up from this location. */
+#define MAJ_VAL_OFFSET_IN_BEACON_INFO   6       /**< Position of the MSB of the Major Value in m_beacon_info array. */
+#define UICR_ADDRESS            0x10001080      /**< Address of the UICR register  */
 #endif
 
 static ble_gap_adv_params_t m_adv_params;       /**< Parameters to be passed to the stack when starting advertising. */
@@ -294,7 +296,6 @@ static void read_all_sensors(bool restart)
     // KX022 
     static uint8_t config_kx022_0[2] = {KX022_1020_REG_CNTL1, 				0x00 };	// KX022_1020_STANDBY 
     static uint8_t config_kx022_1[2] = {KX022_1020_REG_CNTL1, 				0x40 };	// KX022_1020_STANDBY | KX022_1020_HIGH_RESOLUTION
-//    static uint8_t config_kx022_2[2] = {KX022_1020_REG_ODCNTL, 			 	0x07 };	// KX022_1020_OUTPUT_RATE_1600_HZ
     static uint8_t config_kx022_2[2] = {KX022_1020_REG_ODCNTL, 			 	0x04 };	// KX022_1020_OUTPUT_RATE_200_HZ
     static uint8_t config_kx022_3[2] = {KX022_1020_REG_CNTL1, 				0xC0 };	// KX022_1020_OPERATE | KX022_1020_HIGH_RESOLUTION
 
@@ -330,7 +331,8 @@ static void read_all_sensors(bool restart)
         // SHT3
         APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, SHT3_ADDR, config_SHT3_0, 2, false));
         counter_current = nrfx_rtc_counter_get(&rtc);
-        counter_read_sht3 = counter_current + 4; // 4 = 4/256s = 0,015625 > max duration 15ms
+        counter_read_sht3 = counter_current + 
+            NRFX_RTC_US_TO_TICKS(15000, NRFX_RTC_DEFAULT_CONFIG_FREQUENCY) + 1; // 4 = 4/256s = 0,015625 > max duration 15ms
         NRF_LOG_DEBUG("read_all step0 counter current %d, counter read sht3 ready %d",
             counter_current, counter_read_sht3);
     
@@ -340,7 +342,8 @@ static void read_all_sensors(bool restart)
         APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, config_kx022_2, 2, false));
     
         counter_current = nrfx_rtc_counter_get(&rtc);
-        APP_ERROR_CHECK(nrf_drv_rtc_cc_set(&rtc, 2, counter_current+2, true));	// 1 = 1/256s = 0,0039 =~4ms >1.2/ODR
+        APP_ERROR_CHECK(nrf_drv_rtc_cc_set(&rtc, 2, counter_current+
+            NRFX_RTC_US_TO_TICKS(4000, NRFX_RTC_DEFAULT_CONFIG_FREQUENCY) + 1, true));	// 1 = 1/256s = 0,0039 =~4ms >1.2/ODR
         step++;
         break;
     
@@ -351,7 +354,8 @@ static void read_all_sensors(bool restart)
         APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, config_kx022_3, 2, false));
     
         counter_current = nrfx_rtc_counter_get(&rtc);
-        APP_ERROR_CHECK(nrf_drv_rtc_cc_set(&rtc, 2, counter_current+2, true));
+        APP_ERROR_CHECK(nrf_drv_rtc_cc_set(&rtc, 2, counter_current+
+            NRFX_RTC_US_TO_TICKS(4000, NRFX_RTC_DEFAULT_CONFIG_FREQUENCY) + 1, true));	// 1 = 1/256s = 0,0039 =~4ms >1.2/ODR
         step++;
         break;
     
@@ -496,29 +500,45 @@ static void rtc_handler(nrf_drv_rtc_int_type_t int_type)
     }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// TODO Buttons handling (by means of BSP).
-//
+/**@brief Function for handling BSP events.
+ *
+ * @details  This function will handle the BSP events as button press.
+ */
 static void bsp_event_handler(bsp_event_t event)
 {
-
-		NRF_LOG_INFO("bsp_event_handler, button %d", event);
+    NRF_LOG_DEBUG("bsp_event_handler, button %d", event);
 	
     switch (event)
     {
     case BSP_EVENT_KEY_0: // button on beacon pressed
-				NRF_LOG_INFO("button BSP_EVENT_KEY_0");
+        NRF_LOG_INFO("button BSP_EVENT_KEY_0");
         break;
 
-    case BSP_EVENT_KEY_1: // button on programming board pressed
-				NRF_LOG_INFO("button BSP_EVENT_KEY_1");
+    case BSP_EVENT_KEY_0_RELEASED: // button on beacon released
+        NRF_LOG_INFO("button BSP_EVENT_KEY_0_RELEASED");
         break;
+    
+    case BSP_EVENT_KEY_0_LONG: // button on beacon long pressed
+        NRF_LOG_INFO("button BSP_EVENT_KEY_0_LONG");
+        break;
+    
+    case BSP_EVENT_KEY_1: // button on jig pressed
+        NRF_LOG_INFO("button BSP_EVENT_KEY_1");
+        break;
+
+    case BSP_EVENT_KEY_1_RELEASED: // button on jig released
+        NRF_LOG_INFO("button BSP_EVENT_KEY_1_RELEASED");
+        break;
+    
+    case BSP_EVENT_KEY_1_LONG: // button on jig long pressed
+        NRF_LOG_INFO("button BSP_EVENT_KEY_1_LONG");
+        break;
+
 
     default:
         break;
     }
 }
-
 
 static uint8_t m_beacon_info[APP_BEACON_INFO_LENGTH] =      /**< Information advertised by the Beacon. */
 {
@@ -784,67 +804,27 @@ static void advertising_init()
     APP_ERROR_CHECK(err_code); 
 }
 
-
-// TEST CHECK FOR POWER CONSUMPTION
-/*
- * Handler to be called when button is pushed.
- * param[in]   pin_no             The pin number where the event is genereated
- * param[in]   button_action     Is the button pushed or released
- */
-static void button_handler(uint8_t pin_no, uint8_t button_action)
-{
-    if(button_action == APP_BUTTON_PUSH){
-        NRF_LOG_INFO("button_handler, push %d", pin_no);
-    }
-		
-    if(button_action == APP_BUTTON_RELEASE){
-        NRF_LOG_INFO("button_handler, release %d", pin_no);
-    }
-}
-
-void button_init()
-{
-	uint32_t err_code;
-
-    // Button configuration structure.
-    static app_button_cfg_t p_button[] = { {25, APP_BUTTON_ACTIVE_LOW, NRF_GPIO_PIN_PULLUP, button_handler}};
-
-    // Macro for initializing the GPIOTE module.
-    // It will handle dimensioning and allocation of the memory buffer required by the module, making sure that the buffer is correctly aligned.
-    APP_GPIOTE_INIT(1);
-
-    // Initializing the buttons.
-    err_code = app_button_init(p_button, sizeof(p_button) / sizeof(p_button[0]), 50);
-    APP_ERROR_CHECK(err_code);
-                                            
-    // Enabling the buttons.                                        
-    err_code = app_button_enable();
-    APP_ERROR_CHECK(err_code);
-}
-
-// END TEST
-
 /**
  * @brief Function for application main entry.
  */
 int main()
 {
     // Initialization and configuration
-    log_init();                     // Initialize logging
-    power_management_init();        // Initialize power management	
-
-    bsp_board_init(BSP_INIT_LEDS);
-    bsp_board_led_off(0);
-//		button_init();
-	
+    log_init();                 // Initialize logging
+    power_management_init();    // Initialize power management	
     NRF_POWER->DCDCEN = 1;      // Enabling the DCDC converter for lower current consumption
-	
     lfclk_config();             // Configure low frequency 32kHz clock
+    app_timer_init();           // Initialize app timer
+    
+    bsp_configuration();        // Initialize BSP (leds and buttons)
+    bsp_event_to_button_action_assign(0, BSP_BUTTON_ACTION_RELEASE,  BSP_EVENT_KEY_0_RELEASED);
+    bsp_event_to_button_action_assign(0, BSP_BUTTON_ACTION_LONG_PUSH,  BSP_EVENT_KEY_0_LONG);
+    bsp_event_to_button_action_assign(1, BSP_BUTTON_ACTION_RELEASE,  BSP_EVENT_KEY_1_RELEASED);
+    bsp_event_to_button_action_assign(1, BSP_BUTTON_ACTION_LONG_PUSH,  BSP_EVENT_KEY_1_LONG);    
     rtc_config();               // Configure RTC
-
     twi_config();               // Initialize TWI (with transaction manager) 
 
-    nrf_delay_ms(10);           // KX022 startup time: 10 ms, SHT3: 1 ms	(TODO optimize)
+    nrf_delay_ms(10);           // sensor tartup time: KX022 10 ms, SHT3 1 ms
     sensor_init();              // Initialize sensors
 	
     ble_stack_init();           // Initialize the BLE stack
@@ -855,7 +835,6 @@ int main()
 
     advertising_start();
 
-    // Enter main loop.
     for (;;)
     {
         NRF_LOG_FLUSH();
