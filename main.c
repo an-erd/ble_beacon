@@ -74,6 +74,7 @@
 #include "nrf_drv_clock.h"
 #include "nrf_drv_timer.h"
 #include "nrfx_rtc.h"
+#include "nrf_drv_rtc.h"
 #include "uicr_config.h"
 #include "sht3.h"
 #include "kx022.h"
@@ -295,7 +296,6 @@ static void read_all_sensors(bool restart)
     // KX022 
     static uint8_t config_kx022_0[2] = {KX022_1020_REG_CNTL1, 				0x00 };	// KX022_1020_STANDBY 
     static uint8_t config_kx022_1[2] = {KX022_1020_REG_CNTL1, 				0x40 };	// KX022_1020_STANDBY | KX022_1020_HIGH_RESOLUTION
-//    static uint8_t config_kx022_2[2] = {KX022_1020_REG_ODCNTL, 			 	0x07 };	// KX022_1020_OUTPUT_RATE_1600_HZ
     static uint8_t config_kx022_2[2] = {KX022_1020_REG_ODCNTL, 			 	0x04 };	// KX022_1020_OUTPUT_RATE_200_HZ
     static uint8_t config_kx022_3[2] = {KX022_1020_REG_CNTL1, 				0xC0 };	// KX022_1020_OPERATE | KX022_1020_HIGH_RESOLUTION
 
@@ -331,7 +331,8 @@ static void read_all_sensors(bool restart)
         // SHT3
         APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, SHT3_ADDR, config_SHT3_0, 2, false));
         counter_current = nrfx_rtc_counter_get(&rtc);
-        counter_read_sht3 = counter_current + 4; // 4 = 4/256s = 0,015625 > max duration 15ms
+        counter_read_sht3 = counter_current + 
+            NRFX_RTC_US_TO_TICKS(15000, NRFX_RTC_DEFAULT_CONFIG_FREQUENCY) + 1; // 4 = 4/256s = 0,015625 > max duration 15ms
         NRF_LOG_DEBUG("read_all step0 counter current %d, counter read sht3 ready %d",
             counter_current, counter_read_sht3);
     
@@ -341,7 +342,8 @@ static void read_all_sensors(bool restart)
         APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, config_kx022_2, 2, false));
     
         counter_current = nrfx_rtc_counter_get(&rtc);
-        APP_ERROR_CHECK(nrf_drv_rtc_cc_set(&rtc, 2, counter_current+2, true));	// 1 = 1/256s = 0,0039 =~4ms >1.2/ODR
+        APP_ERROR_CHECK(nrf_drv_rtc_cc_set(&rtc, 2, counter_current+
+            NRFX_RTC_US_TO_TICKS(4000, NRFX_RTC_DEFAULT_CONFIG_FREQUENCY) + 1, true));	// 1 = 1/256s = 0,0039 =~4ms >1.2/ODR
         step++;
         break;
     
@@ -352,7 +354,8 @@ static void read_all_sensors(bool restart)
         APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, config_kx022_3, 2, false));
     
         counter_current = nrfx_rtc_counter_get(&rtc);
-        APP_ERROR_CHECK(nrf_drv_rtc_cc_set(&rtc, 2, counter_current+2, true));
+        APP_ERROR_CHECK(nrf_drv_rtc_cc_set(&rtc, 2, counter_current+
+            NRFX_RTC_US_TO_TICKS(4000, NRFX_RTC_DEFAULT_CONFIG_FREQUENCY) + 1, true));	// 1 = 1/256s = 0,0039 =~4ms >1.2/ODR
         step++;
         break;
     
