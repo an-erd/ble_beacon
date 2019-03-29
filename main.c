@@ -66,7 +66,7 @@
 #include "ble_advdata.h"
 #include "app_util_platform.h"
 #include "app_timer.h"
-#include "app_button.h"
+//#include "app_button.h"
 #include "app_gpiote.h"
 #include "nrf_pwr_mgmt.h"
 #include "nrf_drv_power.h"
@@ -514,9 +514,26 @@ static void bsp_event_handler(bsp_event_t event)
         NRF_LOG_INFO("button BSP_EVENT_KEY_0");
         break;
 
+    case BSP_EVENT_KEY_0_RELEASED: // button on beacon released
+        NRF_LOG_INFO("button BSP_EVENT_KEY_0_RELEASED");
+        break;
+    
+    case BSP_EVENT_KEY_0_LONG: // button on beacon long pressed
+        NRF_LOG_INFO("button BSP_EVENT_KEY_0_LONG");
+        break;
+    
     case BSP_EVENT_KEY_1: // button on jig pressed
         NRF_LOG_INFO("button BSP_EVENT_KEY_1");
         break;
+
+    case BSP_EVENT_KEY_1_RELEASED: // button on jig released
+        NRF_LOG_INFO("button BSP_EVENT_KEY_1_RELEASED");
+        break;
+    
+    case BSP_EVENT_KEY_1_LONG: // button on jig long pressed
+        NRF_LOG_INFO("button BSP_EVENT_KEY_1_LONG");
+        break;
+
 
     default:
         break;
@@ -798,9 +815,14 @@ int main()
     NRF_POWER->DCDCEN = 1;      // Enabling the DCDC converter for lower current consumption
     lfclk_config();             // Configure low frequency 32kHz clock
     app_timer_init();           // Initialize app timer
+    
     bsp_configuration();        // Initialize BSP (leds and buttons)
-    twi_config();               // Initialize TWI (with transaction manager) 
+    bsp_event_to_button_action_assign(0, BSP_BUTTON_ACTION_RELEASE,  BSP_EVENT_KEY_0_RELEASED);
+    bsp_event_to_button_action_assign(0, BSP_BUTTON_ACTION_LONG_PUSH,  BSP_EVENT_KEY_0_LONG);
+    bsp_event_to_button_action_assign(1, BSP_BUTTON_ACTION_RELEASE,  BSP_EVENT_KEY_1_RELEASED);
+    bsp_event_to_button_action_assign(1, BSP_BUTTON_ACTION_LONG_PUSH,  BSP_EVENT_KEY_1_LONG);    
     rtc_config();               // Configure RTC
+    twi_config();               // Initialize TWI (with transaction manager) 
 
     nrf_delay_ms(10);           // sensor tartup time: KX022 10 ms, SHT3 1 ms
     sensor_init();              // Initialize sensors
