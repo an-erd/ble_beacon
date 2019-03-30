@@ -64,8 +64,8 @@ extern "C" {
 #define BUTTONS_NUMBER 2
 
 #define BUTTON_START   9
-#define BUTTON_1       25
-#define BUTTON_2       9
+#define BUTTON_1       25        // beacon board
+#define BUTTON_2       9         // beacon jig
 #define BUTTON_STOP    25
 #define BUTTON_PULL    NRF_GPIO_PIN_PULLUP
 

@@ -1,5 +1,7 @@
 # ble_beacon
 
+critical:
+for the beacon PCB use the preprocessor define CONFIG_NFCT_PINS_AS_GPIOS
 
 adv flags	
 	len	 	02 				length

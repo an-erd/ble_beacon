@@ -66,7 +66,6 @@
 #include "ble_advdata.h"
 #include "app_util_platform.h"
 #include "app_timer.h"
-//#include "app_button.h"
 #include "app_gpiote.h"
 #include "nrf_pwr_mgmt.h"
 #include "nrf_drv_power.h"
