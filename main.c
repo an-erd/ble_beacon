@@ -113,6 +113,9 @@ static nrf_saadc_value_t    m_buffer_pool[2][SAADC_SAMPLES_IN_BUFFER];
 static uint32_t             m_adc_evt_counter = 0;
 static bool                 m_saadc_initialized = false;      
 
+// led defines
+static bool                 m_indicate_adv = false;
+
 // TWI defines
 #define TWI_INSTANCE_ID     0
 static const nrf_drv_twi_t  m_twi = NRF_DRV_TWI_INSTANCE(TWI_INSTANCE_ID);
@@ -129,12 +132,12 @@ static const nrf_drv_twi_t  m_twi = NRF_DRV_TWI_INSTANCE(TWI_INSTANCE_ID);
 static uint8_t m_buffer[BUFFER_SIZE];
 
 // Data structures needed for averaging of data read from sensors.
-#define NUMBER_OF_SAMPLES   5
+#define NUMBER_OF_SAMPLES   1
 
 typedef struct
 {
-    int16_t temp;
-    int16_t humidity;
+    float   temp;
+    float   humidity;
     int32_t x;
     int32_t y;
     int32_t z;
@@ -143,8 +146,8 @@ static sum_t m_sum = { 0, 0, 0, 0, 0 };
 
 typedef struct
 {
-    int16_t temp;
-    int16_t humidity;
+    float   temp;
+    float   humidity;
     int16_t x;
     int16_t y;
     int16_t z;
@@ -164,7 +167,7 @@ static uint8_t      m_sample_idx = 0;
  * @retval     Result converted to millivolts.
  */
 #define ADC_RESULT_IN_MILLI_VOLTS(ADC_VALUE)\
-        ((((ADC_VALUE) * ADC_REF_VOLTAGE_IN_MILLIVOLTS) / ADC_RES_10BIT) * ADC_PRE_SCALING_COMPENSATION)
+        ((((ADC_VALUE) * ADC_REF_VOLTAGE_IN_MILLIVOLTS) / ADC_RES_12BIT) * ADC_PRE_SCALING_COMPENSATION)
 
 // BLE defines and structs
 #define APP_BLE_CONN_CFG_TAG            1                                   /**< A tag identifying the SoftDevice BLE configuration. */
@@ -177,7 +180,7 @@ static uint8_t      m_sample_idx = 0;
 #define APP_COMPANY_IDENTIFIER  0x0059          /**< Company identifier for Nordic Semiconductor ASA. as per www.bluetooth.org. */
 #define APP_BEACON_UUID_SHORT   0x01, 0x12, 0x23, 0x34  /**< Proprietary UUID for Beacon. */
 #define APP_MAJOR_VALUE         0x00, 0x07      /**< Major value used to identify Beacons. */
-#define APP_MINOR_VALUE         0x00, 0x01      /**< Minor value used to identify Beacons. */
+#define APP_MINOR_VALUE         0x00, 0x01      /**< Minor value used to identify Beacons. -> caution: see UICR*/
 #define APP_MEASURED_RSSI       0xC3            /**< The Beacon's measured RSSI at 1 meter distance in dBm. */
 #define APP_DATA_TEMP           0xfe, 0xfe      /**< Temperature data. */
 #define APP_DATA_HUM            0xfd, 0xfd      /**< Humidity data. */
@@ -194,6 +197,7 @@ static uint8_t      m_sample_idx = 0;
 #define DIODE_FWD_VOLT_DROP_MILLIVOLTS  0       /**< Typical forward voltage drop of the diode (270 mV), but no diode on this beacon. */
 #define ADC_RES_10BIT                   1024    /**< Maximum digital value for 10-bit ADC conversion. */
 #define ADC_RES_12BIT                   4096    /**< Maximum digital value for 12-bit ADC conversion. */
+#define ADC_RES_14BIT                   16384   /**< Maximum digital value for 14-bit ADC conversion. */
 									
 #define DEAD_BEEF                       0xDEADBEEF  /**< Value used as error code on stack dump, can be used to identify stack location on stack unwind. */
 
@@ -254,13 +258,15 @@ void process_all_data()
     m_sum.z             += p_sample->z;
 
     ++m_sample_idx;
-    m_sample_idx %= NUMBER_OF_SAMPLES;
+    if(m_sample_idx >= NUMBER_OF_SAMPLES)
+        m_sample_idx = 0;
+    
 
 //    NRF_LOG_HEXDUMP_DEBUG(m_adv_data.adv_data.p_data, 29);
-    m_adv_data.adv_data.p_data[payload_idx++] = MSB_16(m_sum.temp       *10/NUMBER_OF_SAMPLES);
-    m_adv_data.adv_data.p_data[payload_idx++] = LSB_16(m_sum.temp       *10/NUMBER_OF_SAMPLES);
-    m_adv_data.adv_data.p_data[payload_idx++] = MSB_16(m_sum.humidity   /NUMBER_OF_SAMPLES);
-    m_adv_data.adv_data.p_data[payload_idx++] = LSB_16(m_sum.humidity   /NUMBER_OF_SAMPLES);
+    m_adv_data.adv_data.p_data[payload_idx++] = MSB_16((uint16_t)(m_sum.temp       *10/NUMBER_OF_SAMPLES));
+    m_adv_data.adv_data.p_data[payload_idx++] = LSB_16((uint16_t)(m_sum.temp       *10/NUMBER_OF_SAMPLES));
+    m_adv_data.adv_data.p_data[payload_idx++] = MSB_16((uint16_t)(m_sum.humidity   /NUMBER_OF_SAMPLES));
+    m_adv_data.adv_data.p_data[payload_idx++] = LSB_16((uint16_t)(m_sum.humidity   /NUMBER_OF_SAMPLES));
     m_adv_data.adv_data.p_data[payload_idx++] = MSB_16(m_sum.x          /NUMBER_OF_SAMPLES);
     m_adv_data.adv_data.p_data[payload_idx++] = LSB_16(m_sum.x          /NUMBER_OF_SAMPLES);
     m_adv_data.adv_data.p_data[payload_idx++] = MSB_16(m_sum.y          /NUMBER_OF_SAMPLES);
@@ -505,6 +511,8 @@ static void rtc_handler(nrf_drv_rtc_int_type_t int_type)
  */
 static void bsp_event_handler(bsp_event_t event)
 {
+    uint32_t err_code;
+
     NRF_LOG_DEBUG("bsp_event_handler, button %d", event);
 	
     switch (event)
@@ -519,6 +527,14 @@ static void bsp_event_handler(bsp_event_t event)
     
     case BSP_EVENT_KEY_0_LONG: // button on beacon long pressed
         NRF_LOG_INFO("button BSP_EVENT_KEY_0_LONG");
+        if(m_indicate_adv){
+            err_code = bsp_indication_set(BSP_INDICATE_ADVERTISING);
+            APP_ERROR_CHECK(err_code);
+        } else {
+            err_code = bsp_indication_set(BSP_INDICATE_IDLE);
+            APP_ERROR_CHECK(err_code);
+        }
+        m_indicate_adv = !m_indicate_adv;
         break;
     
     case BSP_EVENT_KEY_1: // button on jig pressed
@@ -531,6 +547,14 @@ static void bsp_event_handler(bsp_event_t event)
     
     case BSP_EVENT_KEY_1_LONG: // button on jig long pressed
         NRF_LOG_INFO("button BSP_EVENT_KEY_1_LONG");
+        if(m_indicate_adv){
+            err_code = bsp_indication_set(BSP_INDICATE_ADVERTISING);
+            APP_ERROR_CHECK(err_code);
+        } else {
+            err_code = bsp_indication_set(BSP_INDICATE_IDLE);
+            APP_ERROR_CHECK(err_code);
+        }
+        m_indicate_adv = !m_indicate_adv;
         break;
 
 
