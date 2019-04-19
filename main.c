@@ -62,6 +62,7 @@
 #include "nrf_soc.h"
 #include "nrf_sdh.h"
 #include "nrf_sdh_ble.h"
+#include "ble_dfu.h"
 #include "nrf_delay.h"
 #include "ble_advdata.h"
 #include "app_util_platform.h"
@@ -82,6 +83,7 @@
 #include "nrf_log.h"
 #include "nrf_log_ctrl.h"
 #include "nrf_log_default_backends.h"
+#include "nrf_bootloader_info.h"
 
 #if defined( __GNUC__ ) && (__LINT__ == 0)
     // This is required if one wants to use floating-point values in 'printf'
@@ -547,16 +549,9 @@ static void bsp_event_handler(bsp_event_t event)
     
     case BSP_EVENT_KEY_1_LONG: // button on jig long pressed
         NRF_LOG_INFO("button BSP_EVENT_KEY_1_LONG");
-        if(m_indicate_adv){
-            err_code = bsp_indication_set(BSP_INDICATE_ADVERTISING);
-            APP_ERROR_CHECK(err_code);
-        } else {
-            err_code = bsp_indication_set(BSP_INDICATE_IDLE);
-            APP_ERROR_CHECK(err_code);
-        }
-        m_indicate_adv = !m_indicate_adv;
+        APP_ERROR_CHECK(sd_power_gpregret_set(0, BOOTLOADER_DFU_START));
+        sd_nvic_SystemReset();   
         break;
-
 
     default:
         break;

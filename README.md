@@ -49,3 +49,25 @@ result:
 
 nrfjprog -f NRF52 --memrd 0x10001080 --n 4
 
+
+Step 1)	 "Erase all" using nRFgo Studio by nRF5x Programming 
+Step 2)  Flash SoftDevice using nRFgo Studio by nRF5x Programming 
+Step 3)  Flash bootloader using nRFgo Studio by nRF5x Programming 
+Step 4)  Write UICR using DOS Prompt: nrfjprog -f nrf52 --memwr 0x10001080 --val 0x00070005 (adjust!)
+Step 4b) (optional) Verify UICR using DOS Prompt: nrfjprog -f NRF52 --memrd 0x10001080 --n 4
+Step 5)  Use DFU to install app, e.g. with nRF Connect on PC or Mobile device
+
+Create zip with app
+Step 1) go to _build directory with the app already build
+	AKAEM@PC MINGW32 ~/nrf52/nRF5_SDK_15.2.0_9412b96/examples/ble_peripheral/ble_beacon/pca10040/s132/arm5_no_packs/_build
+Step 2) call nrfutil pkg generate
+	$ nrfutil pkg generate --hw-version 52 --application-version 1 --application nrf52832_xxaa.hex --sd-req 0xaf --key-file private.key app_dfu_package.zip
+	
+
+					beac1
+					beac2
+					beac3
+					beac4
+F1:A0:51:21:A0:13	beac5
+F1:A0:51:21:A0:12
+
