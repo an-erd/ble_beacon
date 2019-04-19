@@ -265,19 +265,18 @@ void process_all_data()
     ++m_sample_idx;
     if(m_sample_idx >= NUMBER_OF_SAMPLES)
         m_sample_idx = 0;
-    
 
 //    NRF_LOG_HEXDUMP_DEBUG(m_adv_data.adv_data.p_data, 29);
-    m_adv_data.adv_data.p_data[payload_idx++] = MSB_16((uint16_t)(m_sum.temp       *10/NUMBER_OF_SAMPLES));
-    m_adv_data.adv_data.p_data[payload_idx++] = LSB_16((uint16_t)(m_sum.temp       *10/NUMBER_OF_SAMPLES));
-    m_adv_data.adv_data.p_data[payload_idx++] = MSB_16((uint16_t)(m_sum.humidity   /NUMBER_OF_SAMPLES));
-    m_adv_data.adv_data.p_data[payload_idx++] = LSB_16((uint16_t)(m_sum.humidity   /NUMBER_OF_SAMPLES));
-    m_adv_data.adv_data.p_data[payload_idx++] = MSB_16(m_sum.x          /NUMBER_OF_SAMPLES);
-    m_adv_data.adv_data.p_data[payload_idx++] = LSB_16(m_sum.x          /NUMBER_OF_SAMPLES);
-    m_adv_data.adv_data.p_data[payload_idx++] = MSB_16(m_sum.y          /NUMBER_OF_SAMPLES);
-    m_adv_data.adv_data.p_data[payload_idx++] = LSB_16(m_sum.y          /NUMBER_OF_SAMPLES);
-    m_adv_data.adv_data.p_data[payload_idx++] = MSB_16(m_sum.z          /NUMBER_OF_SAMPLES);
-    m_adv_data.adv_data.p_data[payload_idx++] = LSB_16(m_sum.z          /NUMBER_OF_SAMPLES);
+    m_adv_data.adv_data.p_data[payload_idx++] = MSB_16((uint16_t)(m_sum.temp    *10/NUMBER_OF_SAMPLES));
+    m_adv_data.adv_data.p_data[payload_idx++] = LSB_16((uint16_t)(m_sum.temp    *10/NUMBER_OF_SAMPLES));
+    m_adv_data.adv_data.p_data[payload_idx++] = MSB_16((uint16_t)(m_sum.humidity*10/NUMBER_OF_SAMPLES));
+    m_adv_data.adv_data.p_data[payload_idx++] = LSB_16((uint16_t)(m_sum.humidity*10/NUMBER_OF_SAMPLES));
+    m_adv_data.adv_data.p_data[payload_idx++] = MSB_16(m_sum.x/NUMBER_OF_SAMPLES);
+    m_adv_data.adv_data.p_data[payload_idx++] = LSB_16(m_sum.x/NUMBER_OF_SAMPLES);
+    m_adv_data.adv_data.p_data[payload_idx++] = MSB_16(m_sum.y/NUMBER_OF_SAMPLES);
+    m_adv_data.adv_data.p_data[payload_idx++] = LSB_16(m_sum.y/NUMBER_OF_SAMPLES);
+    m_adv_data.adv_data.p_data[payload_idx++] = MSB_16(m_sum.z/NUMBER_OF_SAMPLES);
+    m_adv_data.adv_data.p_data[payload_idx++] = LSB_16(m_sum.z/NUMBER_OF_SAMPLES);
     if((m_sample_idx%10) == 0 ){
         // Log example: Temp: 220.00 | Hum:340.00 | X: -257, Y: -129, Z: 16204 
         NRF_LOG_RAW_INFO("Temp: " NRF_LOG_FLOAT_MARKER " | Hum:" NRF_LOG_FLOAT_MARKER " | ", 
