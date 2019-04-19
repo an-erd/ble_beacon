@@ -116,7 +116,7 @@ static uint32_t             m_adc_evt_counter = 0;
 static bool                 m_saadc_initialized = false;      
 
 // led defines
-static bool                 m_indicate_adv = false;
+//static bool                 m_indicate_adv = false;
 
 // TWI defines
 #define TWI_INSTANCE_ID     0
@@ -132,6 +132,9 @@ static const nrf_drv_twi_t  m_twi = NRF_DRV_TWI_INSTANCE(TWI_INSTANCE_ID);
 // Sensor defines
 #define BUFFER_SIZE         21  // read buffer from sensors: temp+hum (6=2*msb,lsb,crc) + xyz (6=3*lsb,msb) + INT_REL (5) + INS1 (4)
 static uint8_t m_buffer[BUFFER_SIZE];
+
+// DFU defines
+#define INITIATE_DFU_TIMEOUT    15  // secs in which the code (long-long-long button press must be completed)
 
 // Data structures needed for averaging of data read from sensors.
 #define NUMBER_OF_SAMPLES   1
@@ -513,7 +516,8 @@ static void rtc_handler(nrf_drv_rtc_int_type_t int_type)
  */
 static void bsp_event_handler(bsp_event_t event)
 {
-    uint32_t err_code;
+    static uint32_t counter_dfu = 0;
+    static uint8_t  countdown_dfu = 3;
 
     NRF_LOG_DEBUG("bsp_event_handler, button %d", event);
 	
@@ -529,14 +533,28 @@ static void bsp_event_handler(bsp_event_t event)
     
     case BSP_EVENT_KEY_0_LONG: // button on beacon long pressed
         NRF_LOG_INFO("button BSP_EVENT_KEY_0_LONG");
-        if(m_indicate_adv){
-            err_code = bsp_indication_set(BSP_INDICATE_ADVERTISING);
-            APP_ERROR_CHECK(err_code);
-        } else {
-            err_code = bsp_indication_set(BSP_INDICATE_IDLE);
-            APP_ERROR_CHECK(err_code);
+        if(nrfx_rtc_counter_get(&rtc) > counter_dfu){
+            // reset time and countdown to initiate DFU
+            NRF_LOG_INFO("reset time and countdown to initiate DFU");
+            counter_dfu = nrfx_rtc_counter_get(&rtc) +
+                INITIATE_DFU_TIMEOUT * NRFX_RTC_DEFAULT_CONFIG_FREQUENCY;
+            countdown_dfu = 3;
         }
-        m_indicate_adv = !m_indicate_adv;
+
+        switch(countdown_dfu){
+        case 3:
+        case 2:
+            countdown_dfu--;
+            break;
+        case 1:
+            NRF_LOG_INFO("Initiated DFU now");
+            NRF_LOG_FLUSH();
+            APP_ERROR_CHECK(sd_power_gpregret_set(0, BOOTLOADER_DFU_START));
+            sd_nvic_SystemReset();   
+            break;
+        default:
+            break;
+        }
         break;
     
     case BSP_EVENT_KEY_1: // button on jig pressed
@@ -548,11 +566,31 @@ static void bsp_event_handler(bsp_event_t event)
         break;
     
     case BSP_EVENT_KEY_1_LONG: // button on jig long pressed
-        NRF_LOG_INFO("button BSP_EVENT_KEY_1_LONG");
-        APP_ERROR_CHECK(sd_power_gpregret_set(0, BOOTLOADER_DFU_START));
-        sd_nvic_SystemReset();   
-        break;
+        NRF_LOG_INFO("button BSP_EVENT_KEY_1_LONG");    
 
+        if(nrfx_rtc_counter_get(&rtc) > counter_dfu){
+            // reset time and countdown to initiate DFU
+            NRF_LOG_INFO("reset time and countdown to initiate DFU");
+            counter_dfu = nrfx_rtc_counter_get(&rtc) +
+                INITIATE_DFU_TIMEOUT * NRFX_RTC_DEFAULT_CONFIG_FREQUENCY;
+            countdown_dfu = 3;
+        }
+
+        switch(countdown_dfu){
+        case 3:
+        case 2:
+            countdown_dfu--;
+            break;
+        case 1:
+            NRF_LOG_INFO("Initiated DFU now");
+            NRF_LOG_FLUSH();
+            APP_ERROR_CHECK(sd_power_gpregret_set(0, BOOTLOADER_DFU_START));
+            sd_nvic_SystemReset();   
+            break;
+        default:
+            break;
+        }
+        break;
     default:
         break;
     }
