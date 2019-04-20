@@ -64,10 +64,10 @@ Step 2) call nrfutil pkg generate
 	$ nrfutil pkg generate --hw-version 52 --application-version 1 --application nrf52832_xxaa.hex --sd-req 0xaf --key-file private.key app_dfu_package.zip
 	
 
-					beac1
-					beac2
-					beac3
-					beac4
+FC:4C:B4:F2:10:04	beac1
+EB:30:72:AB:35:38 	beac2
+E8:1C:81:77:36:E4	beac3
+D4:21:12:9D:E7:F6	beac4
 F1:A0:51:21:A0:13	beac5
 F1:A0:51:21:A0:12
 
