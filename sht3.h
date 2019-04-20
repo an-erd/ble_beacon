@@ -52,10 +52,10 @@ extern "C" {
 #define SHT3_SOFTRESET              0x30A2
 
 #define SHT3_GET_TEMPERATURE_VALUE(temp_msb, temp_lsb) \
-    (-45+((((int16_t)temp_msb << 8) | temp_lsb)*175 / (float)0xFFFF))
-
+    (-45+(((int16_t)temp_msb << 8) | ((int16_t)temp_lsb ))*175/(float)0xFFFF)
+        
 #define SHT3_GET_HUMIDITY_VALUE(humidity_msb, humidity_lsb) \
-    ((((int16_t)humidity_msb << 8) | humidity_lsb)*100 / (float) 0xFFFF)
+    ((((int16_t)humidity_msb << 8) | ((int16_t)humidity_lsb))*100/(float)0xFFFF)
 
 #ifdef __cplusplus
 }

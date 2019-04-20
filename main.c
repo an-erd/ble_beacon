@@ -136,19 +136,6 @@ static uint8_t m_buffer[BUFFER_SIZE];
 // DFU defines
 #define INITIATE_DFU_TIMEOUT    15  // secs in which the code (long-long-long button press must be completed)
 
-// Data structures needed for averaging of data read from sensors.
-#define NUMBER_OF_SAMPLES   1
-
-typedef struct
-{
-    float   temp;
-    float   humidity;
-    int32_t x;
-    int32_t y;
-    int32_t z;
-} sum_t;
-static sum_t m_sum = { 0, 0, 0, 0, 0 };
-
 typedef struct
 {
     float   temp;
@@ -157,9 +144,8 @@ typedef struct
     int16_t y;
     int16_t z;
 } sample_t;
-static sample_t     m_samples[NUMBER_OF_SAMPLES] = { { 0, 0, 0, 0, 0 } };
+static sample_t     m_sample = { 0, 0, 0, 0, 0 };
 static uint16_t 	m_battery_millivolts = 3333;    // default to some value, say 3333
-static uint8_t      m_sample_idx = 0;
 
 #if (BUFFER_SIZE < 21)
     #error Buffer too small.
@@ -241,57 +227,37 @@ void process_all_data()
     NRF_LOG_DEBUG("process_all_data()");
 	
     uint8_t payload_idx = PAYLOAD_OFFSET_IN_BEACON_INFO;
+    static uint8_t counter_show_val = 0;
 
-    sample_t * p_sample = &m_samples[m_sample_idx];
-
-    m_sum.temp          -= p_sample->temp;
-    m_sum.humidity      -= p_sample->humidity;
-    m_sum.x             -= p_sample->x;
-    m_sum.y             -= p_sample->y;
-    m_sum.z             -= p_sample->z;
-
-    p_sample->temp      = SHT3_GET_TEMPERATURE_VALUE(m_buffer[0], m_buffer[1]);
-    p_sample->humidity  = SHT3_GET_HUMIDITY_VALUE   (m_buffer[3], m_buffer[4]);
-    p_sample->x         = KX022_GET_ACC(m_buffer[ 6], m_buffer[ 7]);
-    p_sample->y         = KX022_GET_ACC(m_buffer[ 8], m_buffer[ 9]);
-    p_sample->z         = KX022_GET_ACC(m_buffer[10], m_buffer[11]);
-
-    m_sum.temp          += p_sample->temp;
-    m_sum.humidity      += p_sample->humidity;
-    m_sum.x             += p_sample->x;
-    m_sum.y             += p_sample->y;
-    m_sum.z             += p_sample->z;
-
-    ++m_sample_idx;
-    if(m_sample_idx >= NUMBER_OF_SAMPLES)
-        m_sample_idx = 0;
+    // calculate values from raw data, but for adv package take already encoded data
+    m_sample.temp      = SHT3_GET_TEMPERATURE_VALUE(m_buffer[0], m_buffer[1]);
+    m_sample.humidity  = SHT3_GET_HUMIDITY_VALUE   (m_buffer[3], m_buffer[4]);
+    m_sample.x         = KX022_GET_ACC(m_buffer[ 6], m_buffer[ 7]);
+    m_sample.y         = KX022_GET_ACC(m_buffer[ 8], m_buffer[ 9]);
+    m_sample.z         = KX022_GET_ACC(m_buffer[10], m_buffer[11]);
 
 //    NRF_LOG_HEXDUMP_DEBUG(m_adv_data.adv_data.p_data, 29);
-    m_adv_data.adv_data.p_data[payload_idx++] = MSB_16((int16_t) (m_sum.temp    *10/NUMBER_OF_SAMPLES));
-    m_adv_data.adv_data.p_data[payload_idx++] = LSB_16((int16_t) (m_sum.temp    *10/NUMBER_OF_SAMPLES));
-    m_adv_data.adv_data.p_data[payload_idx++] = MSB_16((uint16_t)(m_sum.humidity*10/NUMBER_OF_SAMPLES));
-    m_adv_data.adv_data.p_data[payload_idx++] = LSB_16((uint16_t)(m_sum.humidity*10/NUMBER_OF_SAMPLES));
-    m_adv_data.adv_data.p_data[payload_idx++] = MSB_16(m_sum.x/NUMBER_OF_SAMPLES);
-    m_adv_data.adv_data.p_data[payload_idx++] = LSB_16(m_sum.x/NUMBER_OF_SAMPLES);
-    m_adv_data.adv_data.p_data[payload_idx++] = MSB_16(m_sum.y/NUMBER_OF_SAMPLES);
-    m_adv_data.adv_data.p_data[payload_idx++] = LSB_16(m_sum.y/NUMBER_OF_SAMPLES);
-    m_adv_data.adv_data.p_data[payload_idx++] = MSB_16(m_sum.z/NUMBER_OF_SAMPLES);
-    m_adv_data.adv_data.p_data[payload_idx++] = LSB_16(m_sum.z/NUMBER_OF_SAMPLES);
-    if((m_sample_idx%10) == 0 ){
+    m_adv_data.adv_data.p_data[payload_idx++] = m_buffer[ 0];
+    m_adv_data.adv_data.p_data[payload_idx++] = m_buffer[ 1];
+    m_adv_data.adv_data.p_data[payload_idx++] = m_buffer[ 3];
+    m_adv_data.adv_data.p_data[payload_idx++] = m_buffer[ 4];
+    m_adv_data.adv_data.p_data[payload_idx++] = m_buffer[ 6];
+    m_adv_data.adv_data.p_data[payload_idx++] = m_buffer[ 7];
+    m_adv_data.adv_data.p_data[payload_idx++] = m_buffer[ 8];
+    m_adv_data.adv_data.p_data[payload_idx++] = m_buffer[ 9];
+    m_adv_data.adv_data.p_data[payload_idx++] = m_buffer[10];
+    m_adv_data.adv_data.p_data[payload_idx++] = m_buffer[11];
+    if(counter_show_val%10){
         // Log example: Temp: 220.00 | Hum:340.00 | X: -257, Y: -129, Z: 16204 
         NRF_LOG_RAW_INFO("Temp: " NRF_LOG_FLOAT_MARKER " | Hum:" NRF_LOG_FLOAT_MARKER " | ", 
-        NRF_LOG_FLOAT((float)((m_sum.temp*10) / NUMBER_OF_SAMPLES)),
-        NRF_LOG_FLOAT((float)((m_sum.humidity*10) / NUMBER_OF_SAMPLES)));
+        m_sample.temp,
+        m_sample.humidity);
         NRF_LOG_RAW_INFO("X %6d, Y %6d, Z %6d |", 
-            (int16_t) p_sample->x,
-            (int16_t) p_sample->y,
-            (int16_t) p_sample->z);
-        NRF_LOG_RAW_INFO("sum X %6d, Y %6d, Z %6d |", 
-            (int16_t) (m_sum.x / NUMBER_OF_SAMPLES),
-            (int16_t) (m_sum.y / NUMBER_OF_SAMPLES),
-            (int16_t) (m_sum.z/ NUMBER_OF_SAMPLES));
-        NRF_LOG_RAW_INFO("INS1 %d, INS2 %d, INS3 %d, STAT %d\n",
-            m_buffer[17], m_buffer[18], m_buffer[19], m_buffer[20]); 
+            (int16_t) m_sample.x,
+            (int16_t) m_sample.y,
+            (int16_t) m_sample.z);
+//        NRF_LOG_RAW_INFO("INS1 %d, INS2 %d, INS3 %d, STAT %d\n",
+//            m_buffer[17], m_buffer[18], m_buffer[19], m_buffer[20]); 
     }
 }
 
@@ -517,6 +483,7 @@ static void bsp_event_handler(bsp_event_t event)
 {
     static uint32_t counter_dfu = 0;
     static uint8_t  countdown_dfu = 3;
+    static bool current_leds = false;
 
     NRF_LOG_DEBUG("bsp_event_handler, button %d", event);
 	
@@ -524,6 +491,14 @@ static void bsp_event_handler(bsp_event_t event)
     {
     case BSP_EVENT_KEY_0: // button on beacon pressed
         NRF_LOG_INFO("button BSP_EVENT_KEY_0");
+        if(current_leds){
+            current_leds = false;
+            bsp_board_leds_off();
+        } else {
+            current_leds = true;
+            bsp_board_leds_on();
+        }
+        
         break;
 
     case BSP_EVENT_KEY_0_RELEASED: // button on beacon released
