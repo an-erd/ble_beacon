@@ -267,8 +267,8 @@ void process_all_data()
         m_sample_idx = 0;
 
 //    NRF_LOG_HEXDUMP_DEBUG(m_adv_data.adv_data.p_data, 29);
-    m_adv_data.adv_data.p_data[payload_idx++] = MSB_16((uint16_t)(m_sum.temp    *10/NUMBER_OF_SAMPLES));
-    m_adv_data.adv_data.p_data[payload_idx++] = LSB_16((uint16_t)(m_sum.temp    *10/NUMBER_OF_SAMPLES));
+    m_adv_data.adv_data.p_data[payload_idx++] = MSB_16((int16_t) (m_sum.temp    *10/NUMBER_OF_SAMPLES));
+    m_adv_data.adv_data.p_data[payload_idx++] = LSB_16((int16_t) (m_sum.temp    *10/NUMBER_OF_SAMPLES));
     m_adv_data.adv_data.p_data[payload_idx++] = MSB_16((uint16_t)(m_sum.humidity*10/NUMBER_OF_SAMPLES));
     m_adv_data.adv_data.p_data[payload_idx++] = LSB_16((uint16_t)(m_sum.humidity*10/NUMBER_OF_SAMPLES));
     m_adv_data.adv_data.p_data[payload_idx++] = MSB_16(m_sum.x/NUMBER_OF_SAMPLES);
