@@ -132,7 +132,7 @@
 #define SAADC_BURST_MODE            0       // Set to 1 to enable BURST mode, otherwise set to 0.
 
 // SAADC forward declaration and variables
-void saadc_init(void);
+static void saadc_init(void);
 const  nrf_drv_rtc_t        rtc = NRF_DRV_RTC_INSTANCE(2);
 static nrf_saadc_value_t    m_buffer_pool[2][SAADC_SAMPLES_IN_BUFFER];
 static uint32_t             m_adc_evt_counter = 0;

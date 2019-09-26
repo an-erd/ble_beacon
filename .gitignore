@@ -55,7 +55,7 @@ dkms.conf
 _build/
 pca10040/s132/armgcc/
 pca10040/s132/iar/
-pca10040/s132/ses/
+pca10040/s132/ses/OUTPUT
 pca10040/s132/arm4/
 pca10040/s132/arm5_no_packs/RTE/
 
