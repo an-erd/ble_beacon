@@ -184,7 +184,6 @@ static uint16_t 	m_battery_millivolts = 3333;    // default to some value, say 3
         ((((ADC_VALUE) * ADC_REF_VOLTAGE_IN_MILLIVOLTS) / ADC_RES_12BIT) * ADC_PRE_SCALING_COMPENSATION)
 
 // BLE defines and structs
-#define APP_BLE_CONN_CFG_TAG            1                                   /**< A tag identifying the SoftDevice BLE configuration. */
 #define NON_CONNECTABLE_ADV_INTERVAL    MSEC_TO_UNITS(1000, UNIT_0_625_MS)  /**< The advertising interval for non-connectable advertisement (100 ms). This value can vary between 100ms to 10.24s). */
 
 // beacon data
@@ -214,7 +213,7 @@ static uint16_t 	m_battery_millivolts = 3333;    // default to some value, say 3
 #define ADC_RES_14BIT                   16384   /**< Maximum digital value for 14-bit ADC conversion. */
 
 // BLE Services
-#define DEVICE_NAME                     "OurService"                            /**< Name of device. Will be included in the advertising data. */
+#define DEVICE_NAME                     "AE"                            /**< Name of device. Will be included in the advertising data. */
 #define MANUFACTURER_NAME               "NordicSemiconductor"                   /**< Manufacturer. Will be passed to Device Information Service. */
 #define APP_ADV_INTERVAL                50                                      /**< The advertising interval (in units of 0.625 ms. This value corresponds to 187.5 ms). */
 
@@ -256,41 +255,35 @@ BLE_ADVERTISING_DEF(m_advertising);                                             
 static uint16_t m_conn_handle = BLE_CONN_HANDLE_INVALID;                        /**< Handle of the current connection. */
 
 ble_os_t m_our_service;
+
 static ble_uuid_t m_adv_uuids[] = 
 {
-    {
-        BLE_UUID_OUR_SERVICE,
-        BLE_UUID_TYPE_VENDOR_BEGIN
-    }
+    { BLE_UUID_OUR_SERVICE, BLE_UUID_TYPE_VENDOR_BEGIN }
 };
 
 
-static void advertising_start(void);
+static void advertising_start(bool erase_bonds);
 
-static ble_gap_adv_params_t m_adv_params;       /**< Parameters to be passed to the stack when starting advertising. */
-static uint8_t              m_adv_handle = BLE_GAP_ADV_SET_HANDLE_NOT_SET;  /**< Advertising handle used to identify an advertising set. */
-static uint8_t              m_enc_advdata[BLE_GAP_ADV_SET_DATA_SIZE_MAX];   /**< Buffer for storing an encoded advertising set. */
-static volatile bool        g_setAdvData = false;                           /**< one-shot flag for setting adv data. */
-
-// STEP 1: Declare a ble_os_t service structure for our application
-ble_os_t m_our_service;
-
+//static ble_gap_adv_params_t m_adv_params;       /**< Parameters to be passed to the stack when starting advertising. */
+//static uint8_t              m_adv_handle = BLE_GAP_ADV_SET_HANDLE_NOT_SET;  /**< Advertising handle used to identify an advertising set. */
+//static uint8_t              m_enc_advdata[BLE_GAP_ADV_SET_DATA_SIZE_MAX];   /**< Buffer for storing an encoded advertising set. */
+// static volatile bool        g_setAdvData = false;                           /**< one-shot flag for setting adv data. */
 
 
 /**@brief Struct that contains pointers to the encoded advertising data. */
-static ble_gap_adv_data_t m_adv_data =
-{
-    .adv_data =
-    {
-        .p_data = m_enc_advdata,
-        .len    = BLE_GAP_ADV_SET_DATA_SIZE_MAX
-    },
-    .scan_rsp_data =
-    {
-        .p_data = NULL,
-        .len    = 0
-    }
-};
+//static ble_gap_adv_data_t m_adv_data =
+//{
+//    .adv_data =
+//    {
+//        .p_data = m_enc_advdata,
+//        .len    = BLE_GAP_ADV_SET_DATA_SIZE_MAX
+//    },
+//    .scan_rsp_data =
+//    {
+//        .p_data = NULL,
+//        .len    = 0
+//    }
+//};
 
 /**@brief Function for processing all sensor data.
  *
@@ -312,6 +305,7 @@ void process_all_data()
     m_sample.z         = KX022_GET_ACC(m_buffer[10], m_buffer[11]);
 
 //    NRF_LOG_HEXDUMP_DEBUG(m_adv_data.adv_data.p_data, 29);
+/*  // TODO
     m_adv_data.adv_data.p_data[payload_idx++] = m_buffer[ 0];
     m_adv_data.adv_data.p_data[payload_idx++] = m_buffer[ 1];
     m_adv_data.adv_data.p_data[payload_idx++] = m_buffer[ 3];
@@ -334,6 +328,7 @@ void process_all_data()
 //        NRF_LOG_RAW_INFO("INS1 %d, INS2 %d, INS3 %d, STAT %d\n",
 //            m_buffer[17], m_buffer[18], m_buffer[19], m_buffer[20]); 
     }
+    */
 }
 
 /**@brief Function for multi-step retrieval of sensor data
@@ -491,8 +486,9 @@ void saadc_event_handler(nrf_drv_saadc_evt_t const * p_event)
         NRF_LOG_DEBUG("saadc_event_handler, done, perc %d, volts %d", percentage_batt_lvl, m_battery_millivolts);
 
         uint8_t payload_idx = PAYLOAD_OFFSET_BATTERY_INFO;
-        m_adv_data.adv_data.p_data[payload_idx++] = MSB_16(m_battery_millivolts);
-        m_adv_data.adv_data.p_data[payload_idx++] = LSB_16(m_battery_millivolts);
+        // TODO
+//        m_adv_data.adv_data.p_data[payload_idx++] = MSB_16(m_battery_millivolts);
+//        m_adv_data.adv_data.p_data[payload_idx++] = LSB_16(m_battery_millivolts);
 				
         nrf_drv_saadc_uninit();                                                                   //Unintialize SAADC to disable EasyDMA and save power
         NRF_SAADC->INTENCLR = (SAADC_INTENCLR_END_Clear << SAADC_INTENCLR_END_Pos);               //Disable the SAADC interrupt
@@ -678,17 +674,34 @@ void assert_nrf_callback(uint16_t line_num, const uint8_t * p_file_name)
     app_error_handler(DEAD_BEEF, line_num, p_file_name);
 }
 
-/**@brief Function for starting advertising.
+
+/**@brief Clear bond information from persistent storage.
  */
-static void advertising_start()
+static void delete_bonds(void)
 {
     ret_code_t err_code;
 
-    err_code = sd_ble_gap_adv_start(m_adv_handle, APP_BLE_CONN_CFG_TAG);
-    APP_ERROR_CHECK(err_code);
+    NRF_LOG_INFO("Erase bonds!");
 
-//  err_code = bsp_indication_set(BSP_INDICATE_ADVERTISING);
-//  APP_ERROR_CHECK(err_code);
+    err_code = pm_peers_delete();
+    APP_ERROR_CHECK(err_code);
+}
+
+/**@brief Function for starting advertising.
+ */
+static void advertising_start(bool erase_bonds)
+{
+    if (erase_bonds == true)
+    {
+        delete_bonds();
+        // Advertising is started by PM_EVT_PEERS_DELETED_SUCEEDED event
+    }
+    else
+    {
+        ret_code_t err_code = ble_advertising_start(&m_advertising, BLE_ADV_MODE_FAST);
+
+        APP_ERROR_CHECK(err_code);
+    }
 }
 
 /**@brief Function for handling the idle state (main loop).
@@ -987,7 +1000,7 @@ static void pm_evt_handler(pm_evt_t const * p_evt)
 
         case PM_EVT_PEERS_DELETE_SUCCEEDED:
         {
-            advertising_start();
+            advertising_start(false);
         } break;
 
         case PM_EVT_PEER_DATA_UPDATE_FAILED:
@@ -1211,20 +1224,6 @@ static void peer_manager_init(void)
     APP_ERROR_CHECK(err_code);
 }
 
-
-/**@brief Clear bond information from persistent storage.
- */
-static void delete_bonds(void)
-{
-    ret_code_t err_code;
-
-    NRF_LOG_INFO("Erase bonds!");
-
-    err_code = pm_peers_delete();
-    APP_ERROR_CHECK(err_code);
-}
-
-
 /**@brief Function for initializing the Advertising functionality.
  *
  * @details Encodes the required advertising data and passes it to the stack.
@@ -1233,12 +1232,9 @@ static void delete_bonds(void)
 static void advertising_init()
 {
     uint32_t        err_code;
-    ble_advdata_t   advdata;
-    uint8_t         flags = BLE_GAP_ADV_FLAG_BR_EDR_NOT_SUPPORTED;
 
-    ble_advdata_manuf_data_t manuf_specific_data;
-
-    manuf_specific_data.company_identifier = APP_COMPANY_IDENTIFIER;
+    ble_advertising_init_t init;
+    memset(&init, 0, sizeof(init));
 
 #if defined(USE_UICR_FOR_MAJ_MIN_VALUES)
     // If USE_UICR_FOR_MAJ_MIN_VALUES is defined, the major and minor values will be read from the
@@ -1262,65 +1258,63 @@ static void advertising_init()
     m_beacon_info[index++] = LSB_16(minor_value);
 #endif
 
-    manuf_specific_data.data.p_data = (uint8_t *) m_beacon_info;
-    manuf_specific_data.data.size   = APP_BEACON_INFO_LENGTH;
+    //Set manufacturing data
+    ble_advdata_manuf_data_t                manuf_specific_data;
+    manuf_specific_data.company_identifier  = APP_COMPANY_IDENTIFIER;
+    manuf_specific_data.data.p_data         = (uint8_t *) m_beacon_info;
+    manuf_specific_data.data.size           = APP_BEACON_INFO_LENGTH;
 
     // Build and set advertising data.
-    memset(&advdata, 0, sizeof(advdata));
+    init.advdata.name_type                  = BLE_ADVDATA_NO_NAME;  // BLE_ADVDATA_FULL_NAME
+    init.advdata.flags                      = BLE_GAP_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE;
+    init.advdata.p_manuf_specific_data      = &manuf_specific_data;
+    init.advdata.uuids_complete.uuid_cnt    = sizeof(m_adv_uuids) / sizeof(m_adv_uuids[0]);
+    init.advdata.uuids_complete.p_uuids     = m_adv_uuids;
+    int8_t tx_power                         = 0; // set TX power for advertising
+    init.advdata.p_tx_power_level           = &tx_power;
 
-    advdata.name_type               = BLE_ADVDATA_NO_NAME;
-    advdata.flags                   = flags;
-    advdata.p_manuf_specific_data   = &manuf_specific_data;
+     // Build and set scan response data and manufacturer specific data packet
+    ble_advdata_manuf_data_t                manuf_data_response;
+    uint8_t data_response[]                 = "Many_bytes_of_data";
+    manuf_data_response.company_identifier  = 0x0059;
+    manuf_data_response.data.p_data         = data_response;
+    manuf_data_response.data.size           = sizeof(data_response);
+    init.srdata.name_type                   = BLE_ADVDATA_FULL_NAME; // BLE_ADVDATA_NO_NAME;
+    init.srdata.p_manuf_specific_data       = &manuf_data_response;
+    init.srdata.uuids_complete.uuid_cnt     = sizeof(m_adv_uuids) / sizeof(m_adv_uuids[0]);
+    init.srdata.uuids_complete.p_uuids      = m_adv_uuids;
 
     // Initialize advertising parameters (used when starting advertising).
-    memset(&m_adv_params, 0, sizeof(m_adv_params));
+    // TODO
+//    memset(&m_adv_params, 0, sizeof(m_adv_params));
+//
+//    m_adv_params.properties.type    = BLE_GAP_ADV_TYPE_NONCONNECTABLE_NONSCANNABLE_UNDIRECTED;
+//    m_adv_params.p_peer_addr        = NULL;     // Undirected advertisement.
+//    m_adv_params.filter_policy      = BLE_GAP_ADV_FP_ANY;
+//    m_adv_params.interval           = NON_CONNECTABLE_ADV_INTERVAL;
+//    m_adv_params.duration           = 0;        // Never time out.
 
-    m_adv_params.properties.type    = BLE_GAP_ADV_TYPE_NONCONNECTABLE_NONSCANNABLE_UNDIRECTED;
-    m_adv_params.p_peer_addr        = NULL;     // Undirected advertisement.
-    m_adv_params.filter_policy      = BLE_GAP_ADV_FP_ANY;
-    m_adv_params.interval           = NON_CONNECTABLE_ADV_INTERVAL;
-    m_adv_params.duration           = 0;        // Never time out.
-
-    err_code = ble_advdata_encode(&advdata, m_adv_data.adv_data.p_data, &m_adv_data.adv_data.len);
-    APP_ERROR_CHECK(err_code);
-
-    err_code = sd_ble_gap_adv_set_configure(&m_adv_handle, &m_adv_data, &m_adv_params);
-    APP_ERROR_CHECK(err_code);
-
-    // SET TX POWER FOR ADVERTISING
-    err_code = sd_ble_gap_tx_power_set(BLE_GAP_TX_POWER_ROLE_ADV, m_adv_handle, 0);
-    APP_ERROR_CHECK(err_code); 
-    
-    
-    
-    
-    ble_advertising_init_t init;
-
-    memset(&init, 0, sizeof(init));
-
-    init.advdata.name_type               = BLE_ADVDATA_FULL_NAME;
-    init.advdata.flags                   = BLE_GAP_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE;
-	
-	// STEP 6: Declare and instantiate the scan response
-    init.srdata.uuids_complete.uuid_cnt = sizeof(m_adv_uuids) / sizeof(m_adv_uuids[0]);
-    init.srdata.uuids_complete.p_uuids  = m_adv_uuids;
-
-
-
+    // Set advertising modes and intervals
     init.config.ble_adv_fast_enabled  = true;
     init.config.ble_adv_fast_interval = APP_ADV_INTERVAL;
     init.config.ble_adv_fast_timeout  = APP_ADV_DURATION;
 
+    // Set event handler that will be called upon advertising events
     init.evt_handler = on_adv_evt;
 
+    // TODO
+//    err_code = ble_advdata_encode(&init.advdata, m_adv_data.adv_data.p_data, &m_adv_data.adv_data.len);
+//    APP_ERROR_CHECK(err_code);
+
+ //   err_code = sd_ble_gap_adv_set_configure(&m_adv_handle, &m_adv_data, &m_adv_params);
+ //   APP_ERROR_CHECK(err_code);
+
+    
+    // ble_app
     err_code = ble_advertising_init(&m_advertising, &init);
     APP_ERROR_CHECK(err_code);
 
     ble_advertising_conn_cfg_tag_set(&m_advertising, APP_BLE_CONN_CFG_TAG);
-    
-    
-    
-    
 }
 
 /**
@@ -1328,6 +1322,8 @@ static void advertising_init()
  */
 int main()
 {
+    bool erase_bonds = false;
+
     // Initialization and configuration
     log_init();                 // Initialize logging
     power_management_init();    // Initialize power management	
@@ -1343,7 +1339,7 @@ int main()
     rtc_config();               // Configure RTC
     twi_config();               // Initialize TWI (with transaction manager) 
 
-    nrf_delay_ms(10);           // sensor tartup time: KX022 10 ms, SHT3 1 ms
+    nrf_delay_ms(10);           // sensor startup time: KX022 10 ms, SHT3 1 ms
     sensor_init();              // Initialize sensors
 	
     ble_stack_init();           // Initialize the BLE stack
@@ -1357,7 +1353,7 @@ int main()
     // Start execution.
     NRF_LOG_INFO("Beacon started.");
 
-    advertising_start();
+    advertising_start(erase_bonds);
 
     for (;;)
     {
