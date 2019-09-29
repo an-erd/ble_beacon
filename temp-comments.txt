@@ -1,0 +1,33 @@
+Unknown Name c6:51:1e:c6:2a:0a
+Address type: RandomStatic
+Advertising type:_ connectable unidirected
+Flags LeGeneralDiscMode BrEdrNotSupported LeOnlyLimitedDiscMode LeOnlyGeneral Disc Mode
+
+BLE_GAR_AD_TYPE_MANUFACTURER_SPECIFIC_DATA
+ManufacturerSpecificData
+59 00 4d 61 6e 79 5f 62 79 74 65 73 5f 6f 66 5f 64 61 74 61 00
+
+BLE_GAP_AD_TYPE_TX_POWER_LEVEL
+00
+
+Generic Attribute
+00 00 ab cd 12 12 ef de 15 23 78 5f ef 13 d1 23
+-> BLE_UUID_OUR_BASE_UUID + BLE_UUID_OUR_SERVICE (AB CD)
+
+Device Name 
+AE
+
+
+new ManufacturerSpecificData
+size in byte
+
+MAJ 	2
+MIN		2
+Temp	2
+Hum		2
+X		2
+Y		2
+Z		2
+Batt	2
+
+SUM		16

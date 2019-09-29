@@ -1,23 +1,59 @@
 <!DOCTYPE CrossStudio_Session_File>
 <session>
- <Bookmarks/>
- <Breakpoints groups="Breakpoints" active_group="Breakpoints"/>
+ <Bookmarks>
+  <BookmarkItem objectName="" line="458" column="59" path="C:/msys32/home/AKAEM/nrf52/nRF5_SDK_15.2.0_9412b96/components/ble/ble_advertising/ble_advertising.c" number="4" extra="p_advertising->adv_data.adv_data.p_data = p_advertising->enc_advdata;" color="5"/>
+  <BookmarkItem objectName="" line="473" column="0" path="C:/msys32/home/AKAEM/nrf52/nRF5_SDK_15.2.0_9412b96/components/ble/ble_advertising/ble_advertising.c" number="5" extra="ret = ble_advdata_encode(&amp;p_init->advdata, p_advertising->enc_advdata, &amp;p_advertising->adv_data.adv_data.len);" color="5"/>
+  <BookmarkItem objectName="" line="1255" column="54" path="C:/msys32/home/AKAEM/nrf52/nRF5_SDK_15.2.0_9412b96/examples/ble_peripheral/ble_beacon/main.c" number="3" extra="init.advdata.uuids_complete.p_uuids = m_adv_uuids;" color="5"/>
+  <BookmarkItem objectName="" line="1283" column="0" path="C:/msys32/home/AKAEM/nrf52/nRF5_SDK_15.2.0_9412b96/examples/ble_peripheral/ble_beacon/main.c" number="1" extra="init.config.ble_adv_slow_interval = // was: ble_adv_fast_interval = APP_ADV_INTERVAL;" color="5"/>
+ </Bookmarks>
+ <Breakpoints groups="Breakpoints" active_group="Breakpoints">
+  <BreakpointListItem trigger="" line="73" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="4" filename="../../../../../../components/libraries/util/app_error.c" useHWbreakpoint="false"/>
+  <BreakpointListItem trigger="" line="513" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="2" filename="../../../../../../components/ble/common/ble_advdata.c" useHWbreakpoint="false"/>
+  <BreakpointListItem trigger="" line="534" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="2" filename="../../../../../../components/ble/common/ble_advdata.c" useHWbreakpoint="false"/>
+  <BreakpointListItem trigger="" line="541" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="2" filename="../../../../../../components/ble/common/ble_advdata.c" useHWbreakpoint="false"/>
+  <BreakpointListItem trigger="" line="594" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="2" filename="../../../../../../components/ble/common/ble_advdata.c" useHWbreakpoint="false"/>
+  <BreakpointListItem trigger="" line="474" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="2" filename="../../../../../../components/ble/ble_advertising/ble_advertising.c" useHWbreakpoint="false"/>
+  <BreakpointListItem trigger="" line="1299" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="2" filename="../../../main.c" useHWbreakpoint="false"/>
+  <BreakpointListItem trigger="" line="294" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="2" filename="../../../main.c" useHWbreakpoint="false"/>
+  <Exceptions set="MemManage;UsageFault_Coprocessor;UsageFault_CheckingError;UsageFault_StateError;BusFault;ExceptionEntryReturnFault;HardFault"/>
+ </Breakpoints>
  <ExecutionProfileWindow/>
  <FrameBufferWindow>
   <FrameBufferWindow bufferHeight="-1" addressSpace="" addressText="" bufferWidth="-1"/>
  </FrameBufferWindow>
- <Memory1/>
- <Memory2/>
- <Memory3/>
- <Memory4/>
+ <Memory1>
+  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" addressOrder="0" columnsText="" refreshPeriod="0" name="ble_beacon_pca10040_s132" radix="16" sizeText="31" addressText="0x2000350d"/>
+ </Memory1>
+ <Memory2>
+  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" addressOrder="0" columnsText="" refreshPeriod="0" name="ble_beacon_pca10040_s132" radix="16" sizeText="" addressText=""/>
+ </Memory2>
+ <Memory3>
+  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" addressOrder="0" columnsText="" refreshPeriod="0" name="ble_beacon_pca10040_s132" radix="16" sizeText="" addressText=""/>
+ </Memory3>
+ <Memory4>
+  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" addressOrder="0" columnsText="" refreshPeriod="0" name="ble_beacon_pca10040_s132" radix="16" sizeText="" addressText=""/>
+ </Memory4>
  <Project>
   <ProjectSessionItem path="ble_beacon_pca10040_s132"/>
   <ProjectSessionItem path="ble_beacon_pca10040_s132;ble_beacon_pca10040_s132"/>
+  <ProjectSessionItem path="ble_beacon_pca10040_s132;ble_beacon_pca10040_s132;Application"/>
+  <ProjectSessionItem path="ble_beacon_pca10040_s132;ble_beacon_pca10040_s132;Internal Files"/>
+  <ProjectSessionItem path="ble_beacon_pca10040_s132;ble_beacon_pca10040_s132;nRF_BLE"/>
+  <ProjectSessionItem path="ble_beacon_pca10040_s132;ble_beacon_pca10040_s132;nRF_Libraries"/>
+  <SourceCodeControlLogin password="F9BB6682F5D56822" user=""/>
  </Project>
- <Register1/>
- <Register2/>
- <Register3/>
- <Register4/>
+ <Register1>
+  <RegisterWindow visibleNodes="CPU - Current Context/r0;CPU - Current Context/r1;CPU - Current Context/r2;CPU - Current Context/r3;CPU - Current Context/r4;CPU - Current Context/r5;CPU - Current Context/r6;CPU - Current Context/r7;CPU - Current Context/r8;CPU - Current Context/r9;CPU - Current Context/r10;CPU - Current Context/r11;CPU - Current Context/r12;CPU - Current Context/sp(r13);CPU - Current Context/lr(r14);CPU - Current Context/pc(r15);CPU - Current Context/apsr;CPU/r0;CPU/r1;CPU/r2;CPU/r3;CPU/r4;CPU/r5;CPU/r6;CPU/r7;CPU/r8;CPU/r9;CPU/r10;CPU/r11;CPU/r12;CPU/sp(r13);CPU/lr(r14);CPU/pc(r15);CPU/xpsr;CPU/msp;CPU/psp;CPU/cfbp;CPU/internal" binaryNodes="" asciiNodes="" openNodes="CPU - Current Context" name="ble_beacon_pca10040_s132" decimalNodes="" octalNodes="" unsignedNodes=""/>
+ </Register1>
+ <Register2>
+  <RegisterWindow visibleNodes="CPU - Current Context/r0;CPU - Current Context/r1;CPU - Current Context/r2;CPU - Current Context/r3;CPU - Current Context/r4;CPU - Current Context/r5;CPU - Current Context/r6;CPU - Current Context/r7;CPU - Current Context/r8;CPU - Current Context/r9;CPU - Current Context/r10;CPU - Current Context/r11;CPU - Current Context/r12;CPU - Current Context/sp(r13);CPU - Current Context/lr(r14);CPU - Current Context/pc(r15);CPU - Current Context/apsr;CPU/r0;CPU/r1;CPU/r2;CPU/r3;CPU/r4;CPU/r5;CPU/r6;CPU/r7;CPU/r8;CPU/r9;CPU/r10;CPU/r11;CPU/r12;CPU/sp(r13);CPU/lr(r14);CPU/pc(r15);CPU/xpsr;CPU/msp;CPU/psp;CPU/cfbp;CPU/internal" binaryNodes="" asciiNodes="" openNodes="CPU - Current Context" name="ble_beacon_pca10040_s132" decimalNodes="" octalNodes="" unsignedNodes=""/>
+ </Register2>
+ <Register3>
+  <RegisterWindow visibleNodes="CPU - Current Context/r0;CPU - Current Context/r1;CPU - Current Context/r2;CPU - Current Context/r3;CPU - Current Context/r4;CPU - Current Context/r5;CPU - Current Context/r6;CPU - Current Context/r7;CPU - Current Context/r8;CPU - Current Context/r9;CPU - Current Context/r10;CPU - Current Context/r11;CPU - Current Context/r12;CPU - Current Context/sp(r13);CPU - Current Context/lr(r14);CPU - Current Context/pc(r15);CPU - Current Context/apsr;CPU/r0;CPU/r1;CPU/r2;CPU/r3;CPU/r4;CPU/r5;CPU/r6;CPU/r7;CPU/r8;CPU/r9;CPU/r10;CPU/r11;CPU/r12;CPU/sp(r13);CPU/lr(r14);CPU/pc(r15);CPU/xpsr;CPU/msp;CPU/psp;CPU/cfbp;CPU/internal" binaryNodes="" asciiNodes="" openNodes="CPU - Current Context" name="ble_beacon_pca10040_s132" decimalNodes="" octalNodes="" unsignedNodes=""/>
+ </Register3>
+ <Register4>
+  <RegisterWindow visibleNodes="CPU - Current Context/r0;CPU - Current Context/r1;CPU - Current Context/r2;CPU - Current Context/r3;CPU - Current Context/r4;CPU - Current Context/r5;CPU - Current Context/r6;CPU - Current Context/r7;CPU - Current Context/r8;CPU - Current Context/r9;CPU - Current Context/r10;CPU - Current Context/r11;CPU - Current Context/r12;CPU - Current Context/sp(r13);CPU - Current Context/lr(r14);CPU - Current Context/pc(r15);CPU - Current Context/apsr;CPU/r0;CPU/r1;CPU/r2;CPU/r3;CPU/r4;CPU/r5;CPU/r6;CPU/r7;CPU/r8;CPU/r9;CPU/r10;CPU/r11;CPU/r12;CPU/sp(r13);CPU/lr(r14);CPU/pc(r15);CPU/xpsr;CPU/msp;CPU/psp;CPU/cfbp;CPU/internal" binaryNodes="" asciiNodes="" openNodes="CPU - Current Context" name="ble_beacon_pca10040_s132" decimalNodes="" octalNodes="" unsignedNodes=""/>
+ </Register4>
  <Threads>
   <ThreadsWindow showLists=""/>
  </Threads>
@@ -37,7 +73,10 @@
   <Watches active="0" update="Never"/>
  </Watch4>
  <Files>
-  <SessionOpenFile windowGroup="DockEditLeft" x="27" y="68" useTextEdit="1" useBinaryEdit="0" left="0" path="../../../main.c" selected="1" top="42" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="0" useTextEdit="1" useBinaryEdit="0" left="0" path="../../../main.c" selected="1" top="0" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="24" y="136" useTextEdit="1" useBinaryEdit="0" left="0" path="../../../../../../components/ble/ble_advertising/ble_advertising.h" selected="0" top="108" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="474" useTextEdit="1" useBinaryEdit="0" left="0" path="../../../../../../components/ble/ble_advertising/ble_advertising.c" selected="0" top="463" codecName=""/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="593" useTextEdit="1" useBinaryEdit="0" left="0" path="../../../../../../components/ble/common/ble_advdata.c" selected="0" top="565" codecName=""/>
  </Files>
- <ARMCrossStudioWindow activeProject="ble_beacon_pca10040_s132" fileDialogDefaultFilter="*.c" autoConnectTarget="J-Link" buildConfiguration="Debug" sessionSettings="" debugSearchFileMap="" fileDialogInitialDirectory="C:/msys32/home/AKAEM/nrf52/nRF5_SDK_15.2.0_9412b96/components/libraries/gpiote" debugSearchPath="" autoConnectCapabilities="3199"/>
+ <ARMCrossStudioWindow activeProject="ble_beacon_pca10040_s132" fileDialogDefaultFilter="*.c" autoConnectTarget="J-Link" buildConfiguration="Debug" sessionSettings="" debugSearchFileMap="" fileDialogInitialDirectory="C:/msys32/home/AKAEM/nrf52/nRF5_SDK_15.2.0_9412b96/components/libraries/gpiote" debugSearchPath="" autoConnectCapabilities="3711"/>
 </session>
