@@ -122,7 +122,7 @@
 // - Sensor sample  15 sec
 
 // RTC defines
-#define RTC_CC_VALUE 				8       // prescale 256 Hz, RTC_CC_VALUE=8 => 1/32 sec
+#define RTC_CC_VALUE                8       // prescale 256 Hz, RTC_CC_VALUE=8 => 1/32 sec
 #define RTC_SADC_UPDATE             1875
 #define RTC_SENSOR_UPDATE           480
 
@@ -138,9 +138,6 @@ static nrf_saadc_value_t    m_buffer_pool[2][SAADC_SAMPLES_IN_BUFFER];
 static uint32_t             m_adc_evt_counter = 0;
 static bool                 m_saadc_initialized = false;      
 
-// led defines
-//static bool                 m_indicate_adv = false;
-
 // TWI defines
 #define TWI_INSTANCE_ID     0
 static const nrf_drv_twi_t  m_twi = NRF_DRV_TWI_INSTANCE(TWI_INSTANCE_ID);
@@ -153,7 +150,7 @@ static const nrf_drv_twi_t  m_twi = NRF_DRV_TWI_INSTANCE(TWI_INSTANCE_ID);
 #endif
 
 // Sensor defines
-#define BUFFER_SIZE         21  // read buffer from sensors: temp+hum (6=2*msb,lsb,crc) + xyz (6=3*lsb,msb) + INT_REL (5) + INS1 (4)
+#define BUFFER_SIZE             21  // read buffer from sensors: temp+hum (6=2*msb,lsb,crc) + xyz (6=3*lsb,msb) + INT_REL (5) + INS1 (4)
 static uint8_t m_buffer[BUFFER_SIZE];
 
 // DFU defines
@@ -168,7 +165,7 @@ typedef struct
     int16_t z;
 } sample_t;
 static sample_t     m_sample = { 0, 0, 0, 0, 0 };
-static uint16_t 	m_battery_millivolts = 3333;    // default to some value, say 3333
+static uint16_t     m_battery_millivolts = 3333;    // default to some value, say 3333
 
 #if (BUFFER_SIZE < 21)
     #error Buffer too small.
@@ -185,15 +182,17 @@ static uint16_t 	m_battery_millivolts = 3333;    // default to some value, say 3
 
 // BLE defines and structs
 #define NON_CONNECTABLE_ADV_INTERVAL    MSEC_TO_UNITS(1000, UNIT_0_625_MS)  /**< The advertising interval for non-connectable advertisement (100 ms). This value can vary between 100ms to 10.24s). */
+#define APP_FAST_ADV_INTERVAL           50
+#define APP_SLOW_ADV_INTERVAL           MSEC_TO_UNITS(1000, UNIT_0_625_MS)
 
 // beacon data
-#define APP_BEACON_INFO_LENGTH  0x17            /**< Total length of information advertised by the Beacon. */
-#define APP_ADV_DATA_LENGTH     0x15            /**< Length of manufacturer specific data in the advertisement. */
+#define APP_BEACON_INFO_LENGTH  0x10            /**< Total length of information advertised by the Beacon. */
+//#define APP_ADV_DATA_LENGTH     0x15            /**< Length of manufacturer specific data in the advertisement. */
 #define APP_DEVICE_TYPE         0x02            /**< 0x02 refers to Beacon. */
 #define APP_COMPANY_IDENTIFIER  0x0059          /**< Company identifier for Nordic Semiconductor ASA. as per www.bluetooth.org. */
 #define APP_BEACON_UUID_SHORT   0x01, 0x12, 0x23, 0x34  /**< Proprietary UUID for Beacon. */
 #define APP_MAJOR_VALUE         0x00, 0x07      /**< Major value used to identify Beacons. */
-#define APP_MINOR_VALUE         0x00, 0x01      /**< Minor value used to identify Beacons. -> caution: see UICR*/
+#define APP_MINOR_VALUE         0x00, 0x08      /**< Minor value used to identify Beacons. -> caution: see UICR*/
 #define APP_MEASURED_RSSI       0xC3            /**< The Beacon's measured RSSI at 1 meter distance in dBm. */
 #define APP_DATA_TEMP           0xfe, 0xfe      /**< Temperature data. */
 #define APP_DATA_HUM            0xfd, 0xfd      /**< Humidity data. */
@@ -204,6 +203,7 @@ static uint16_t 	m_battery_millivolts = 3333;    // default to some value, say 3
 #define APP_BEACON_PAD          0x99            /**< Padding data (maybe used, maybe not. */
 
 #define PAYLOAD_OFFSET_IN_BEACON_INFO   18      /**< First position to write the payload to */
+#define PAYLOAD_OFFSET_IN_BEACON_INFO_ADV   18      /**< NEW: First position to write the payload to with new adv code // TODO */
 #define PAYLOAD_OFFSET_BATTERY_INFO     (PAYLOAD_OFFSET_IN_BEACON_INFO+10)  /**< Position to write the battery voltage payload to */									
 #define ADC_REF_VOLTAGE_IN_MILLIVOLTS   600     /**< Reference voltage (in milli volts) used by ADC while doing conversion. */
 #define ADC_PRE_SCALING_COMPENSATION    6       /**< The ADC is configured to use VDD with 1/3 prescaling as input. And hence the result of conversion is to be multiplied by 3 to get the actual value of the battery voltage.*/
@@ -213,9 +213,9 @@ static uint16_t 	m_battery_millivolts = 3333;    // default to some value, say 3
 #define ADC_RES_14BIT                   16384   /**< Maximum digital value for 14-bit ADC conversion. */
 
 // BLE Services
-#define DEVICE_NAME                     "AE"                            /**< Name of device. Will be included in the advertising data. */
+#define DEVICE_NAME                     "Beac8"                                 /**< Name of device. Will be included in the advertising data. */
 #define MANUFACTURER_NAME               "NordicSemiconductor"                   /**< Manufacturer. Will be passed to Device Information Service. */
-#define APP_ADV_INTERVAL                50                                      /**< The advertising interval (in units of 0.625 ms. This value corresponds to 187.5 ms). */
+//#define APP_ADV_INTERVAL                50                                      /**< The advertising interval (in units of 0.625 ms. This value corresponds to 187.5 ms). */
 
 #define APP_ADV_DURATION                18000                                   /**< The advertising duration (180 seconds) in units of 10 milliseconds. */
 #define APP_BLE_OBSERVER_PRIO           3                                       /**< Application's BLE observer priority. You shouldn't need to modify this value. */
@@ -258,32 +258,11 @@ ble_os_t m_our_service;
 
 static ble_uuid_t m_adv_uuids[] = 
 {
-    { BLE_UUID_OUR_SERVICE, BLE_UUID_TYPE_VENDOR_BEGIN }
+    { BLE_UUID_OUR_SERVICE, BLE_UUID_TYPE_BLE  }    // only short 16bit UUID in advdata
 };
 
 
 static void advertising_start(bool erase_bonds);
-
-//static ble_gap_adv_params_t m_adv_params;       /**< Parameters to be passed to the stack when starting advertising. */
-//static uint8_t              m_adv_handle = BLE_GAP_ADV_SET_HANDLE_NOT_SET;  /**< Advertising handle used to identify an advertising set. */
-//static uint8_t              m_enc_advdata[BLE_GAP_ADV_SET_DATA_SIZE_MAX];   /**< Buffer for storing an encoded advertising set. */
-// static volatile bool        g_setAdvData = false;                           /**< one-shot flag for setting adv data. */
-
-
-/**@brief Struct that contains pointers to the encoded advertising data. */
-//static ble_gap_adv_data_t m_adv_data =
-//{
-//    .adv_data =
-//    {
-//        .p_data = m_enc_advdata,
-//        .len    = BLE_GAP_ADV_SET_DATA_SIZE_MAX
-//    },
-//    .scan_rsp_data =
-//    {
-//        .p_data = NULL,
-//        .len    = 0
-//    }
-//};
 
 /**@brief Function for processing all sensor data.
  *
@@ -292,9 +271,16 @@ static void advertising_start(bool erase_bonds);
  */
 void process_all_data()
 {
+//m_advertising.enc_advdata[PAYLOAD_OFFSET_IN_BEACON_INFO_ADV] = 0xFF;
+//return;    // TODO
     NRF_LOG_DEBUG("process_all_data()");
 	
-    uint8_t payload_idx = PAYLOAD_OFFSET_IN_BEACON_INFO;
+    if(!m_advertising.initialized) {
+        NRF_LOG_DEBUG("m_advertising not initialized -> exiting process_all_data()");
+        return;
+    } 
+
+    uint8_t payload_idx = PAYLOAD_OFFSET_IN_BEACON_INFO_ADV; // TODO PAYLOAD_OFFSET_IN_BEACON_INFO;
     static uint8_t counter_show_val = 0;
 
     // calculate values from raw data, but for adv package take already encoded data
@@ -305,17 +291,16 @@ void process_all_data()
     m_sample.z         = KX022_GET_ACC(m_buffer[10], m_buffer[11]);
 
 //    NRF_LOG_HEXDUMP_DEBUG(m_adv_data.adv_data.p_data, 29);
-/*  // TODO
-    m_adv_data.adv_data.p_data[payload_idx++] = m_buffer[ 0];
-    m_adv_data.adv_data.p_data[payload_idx++] = m_buffer[ 1];
-    m_adv_data.adv_data.p_data[payload_idx++] = m_buffer[ 3];
-    m_adv_data.adv_data.p_data[payload_idx++] = m_buffer[ 4];
-    m_adv_data.adv_data.p_data[payload_idx++] = m_buffer[ 6];
-    m_adv_data.adv_data.p_data[payload_idx++] = m_buffer[ 7];
-    m_adv_data.adv_data.p_data[payload_idx++] = m_buffer[ 8];
-    m_adv_data.adv_data.p_data[payload_idx++] = m_buffer[ 9];
-    m_adv_data.adv_data.p_data[payload_idx++] = m_buffer[10];
-    m_adv_data.adv_data.p_data[payload_idx++] = m_buffer[11];
+    m_advertising.enc_advdata[payload_idx++] = m_buffer[ 0];
+    m_advertising.enc_advdata[payload_idx++] = m_buffer[ 1];
+    m_advertising.enc_advdata[payload_idx++] = m_buffer[ 3];
+    m_advertising.enc_advdata[payload_idx++] = m_buffer[ 4];
+    m_advertising.enc_advdata[payload_idx++] = m_buffer[ 6];
+    m_advertising.enc_advdata[payload_idx++] = m_buffer[ 7];
+    m_advertising.enc_advdata[payload_idx++] = m_buffer[ 8];
+    m_advertising.enc_advdata[payload_idx++] = m_buffer[ 9];
+    m_advertising.enc_advdata[payload_idx++] = m_buffer[10];
+    m_advertising.enc_advdata[payload_idx++] = m_buffer[11];
     if(counter_show_val%10){
         // Log example: Temp: 220.00 | Hum:340.00 | X: -257, Y: -129, Z: 16204 
         NRF_LOG_RAW_INFO("Temp: " NRF_LOG_FLOAT_MARKER " | Hum:" NRF_LOG_FLOAT_MARKER " | ", 
@@ -328,7 +313,7 @@ void process_all_data()
 //        NRF_LOG_RAW_INFO("INS1 %d, INS2 %d, INS3 %d, STAT %d\n",
 //            m_buffer[17], m_buffer[18], m_buffer[19], m_buffer[20]); 
     }
-    */
+ 
 }
 
 /**@brief Function for multi-step retrieval of sensor data
@@ -486,9 +471,8 @@ void saadc_event_handler(nrf_drv_saadc_evt_t const * p_event)
         NRF_LOG_DEBUG("saadc_event_handler, done, perc %d, volts %d", percentage_batt_lvl, m_battery_millivolts);
 
         uint8_t payload_idx = PAYLOAD_OFFSET_BATTERY_INFO;
-        // TODO
-//        m_adv_data.adv_data.p_data[payload_idx++] = MSB_16(m_battery_millivolts);
-//        m_adv_data.adv_data.p_data[payload_idx++] = LSB_16(m_battery_millivolts);
+        m_advertising.enc_advdata[payload_idx++] = MSB_16(m_battery_millivolts);
+        m_advertising.enc_advdata[payload_idx++] = LSB_16(m_battery_millivolts);
 				
         nrf_drv_saadc_uninit();                                                                   //Unintialize SAADC to disable EasyDMA and save power
         NRF_SAADC->INTENCLR = (SAADC_INTENCLR_END_Clear << SAADC_INTENCLR_END_Pos);               //Disable the SAADC interrupt
@@ -643,12 +627,12 @@ static void bsp_event_handler(bsp_event_t event)
 
 static uint8_t m_beacon_info[APP_BEACON_INFO_LENGTH] =      /**< Information advertised by the Beacon. */
 {
-    APP_DEVICE_TYPE,        // Manufacturer specific information.
-    APP_ADV_DATA_LENGTH,    // Manufacturer specific information. Length of the manufacturer specific data 
-    APP_BEACON_UUID_SHORT,  // short UUID value.
+//    APP_DEVICE_TYPE,        // Manufacturer specific information.
+//    APP_ADV_DATA_LENGTH,    // Manufacturer specific information. Length of the manufacturer specific data 
+//    APP_BEACON_UUID_SHORT,  // short UUID value.
     APP_MAJOR_VALUE,        // Device major value
     APP_MINOR_VALUE,        // Device minor value
-    APP_MEASURED_RSSI,      // Beacon's measured TX power 
+//    APP_MEASURED_RSSI,      // Beacon's measured TX power 
     APP_DATA_TEMP,          // temperature
     APP_DATA_HUM,           // humidity
     APP_DAT_X,              // accel x pos
@@ -1235,7 +1219,7 @@ static void advertising_init()
 
     ble_advertising_init_t init;
     memset(&init, 0, sizeof(init));
-
+/*
 #if defined(USE_UICR_FOR_MAJ_MIN_VALUES)
     // If USE_UICR_FOR_MAJ_MIN_VALUES is defined, the major and minor values will be read from the
     // UICR instead of using the default values. The major and minor values obtained from the UICR
@@ -1257,7 +1241,7 @@ static void advertising_init()
     m_beacon_info[index++] = MSB_16(minor_value);
     m_beacon_info[index++] = LSB_16(minor_value);
 #endif
-
+*/
     //Set manufacturing data
     ble_advdata_manuf_data_t                manuf_specific_data;
     manuf_specific_data.company_identifier  = APP_COMPANY_IDENTIFIER;
@@ -1270,19 +1254,20 @@ static void advertising_init()
     init.advdata.p_manuf_specific_data      = &manuf_specific_data;
     init.advdata.uuids_complete.uuid_cnt    = sizeof(m_adv_uuids) / sizeof(m_adv_uuids[0]);
     init.advdata.uuids_complete.p_uuids     = m_adv_uuids;
+
     int8_t tx_power                         = 0; // set TX power for advertising
     init.advdata.p_tx_power_level           = &tx_power;
 
      // Build and set scan response data and manufacturer specific data packet
-    ble_advdata_manuf_data_t                manuf_data_response;
-    uint8_t data_response[]                 = "Many_bytes_of_data";
-    manuf_data_response.company_identifier  = 0x0059;
-    manuf_data_response.data.p_data         = data_response;
-    manuf_data_response.data.size           = sizeof(data_response);
-    init.srdata.name_type                   = BLE_ADVDATA_FULL_NAME; // BLE_ADVDATA_NO_NAME;
-    init.srdata.p_manuf_specific_data       = &manuf_data_response;
-    init.srdata.uuids_complete.uuid_cnt     = sizeof(m_adv_uuids) / sizeof(m_adv_uuids[0]);
-    init.srdata.uuids_complete.p_uuids      = m_adv_uuids;
+//    ble_advdata_manuf_data_t                manuf_data_response;
+//    uint8_t data_response[]                 = "Many_bytes_of_data";
+//    manuf_data_response.company_identifier  = 0x0059;
+//    manuf_data_response.data.p_data         = data_response;
+//    manuf_data_response.data.size           = sizeof(data_response);
+//    init.srdata.name_type                   = BLE_ADVDATA_NO_NAME; // BLE_ADVDATA_NO_NAME; BLE_ADVDATA_FULL_NAME;
+//    init.srdata.p_manuf_specific_data       = &manuf_data_response;
+//    init.srdata.uuids_complete.uuid_cnt     = sizeof(m_adv_uuids) / sizeof(m_adv_uuids[0]);
+//    init.srdata.uuids_complete.p_uuids      = m_adv_uuids;
 
     // Initialize advertising parameters (used when starting advertising).
     // TODO
@@ -1295,9 +1280,9 @@ static void advertising_init()
 //    m_adv_params.duration           = 0;        // Never time out.
 
     // Set advertising modes and intervals
-    init.config.ble_adv_fast_enabled  = true;
-    init.config.ble_adv_fast_interval = APP_ADV_INTERVAL;
-    init.config.ble_adv_fast_timeout  = APP_ADV_DURATION;
+    init.config.ble_adv_slow_enabled = true;    // was:  ble_adv_fast_enabled  = true;
+    init.config.ble_adv_slow_interval = APP_SLOW_ADV_INTERVAL;        // was: ble_adv_fast_interval = APP_ADV_INTERVAL;
+    init.config.ble_adv_slow_timeout = 0;      // was: ble_adv_fast_timeout  = APP_ADV_DURATION;
 
     // Set event handler that will be called upon advertising events
     init.evt_handler = on_adv_evt;
