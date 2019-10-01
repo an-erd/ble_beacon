@@ -72,6 +72,7 @@
 #include "ble_advertising.h"
 #include "ble_conn_params.h"
 #include "ble_dfu.h"
+#include "ble_dis.h"
 #include "nrf_delay.h"
 #include "app_util_platform.h"
 #include "app_timer.h"
@@ -117,6 +118,7 @@
 
 
 // Event scheduled
+// TODO check, sensor sample 10 or 15 sec
 // - BLE adv         1 sec
 // - SADC sample    60 sec
 // - Sensor sample  15 sec
@@ -212,9 +214,11 @@ static uint16_t     m_battery_millivolts = 3333;    // default to some value, sa
 #define ADC_RES_12BIT                   4096    /**< Maximum digital value for 12-bit ADC conversion. */
 #define ADC_RES_14BIT                   16384   /**< Maximum digital value for 14-bit ADC conversion. */
 
-// BLE Services
+// BLE Services + Device information service (DIS) defines
 #define DEVICE_NAME                     "Beac8"                                 /**< Name of device. Will be included in the advertising data. */
 #define MANUFACTURER_NAME               "NordicSemiconductor"                   /**< Manufacturer. Will be passed to Device Information Service. */
+#define SERIAL_NUMBER                   "0000000000000001" 
+
 //#define APP_ADV_INTERVAL                50                                      /**< The advertising interval (in units of 0.625 ms. This value corresponds to 187.5 ms). */
 
 #define APP_ADV_DURATION                18000                                   /**< The advertising duration (180 seconds) in units of 10 milliseconds. */
@@ -240,6 +244,8 @@ static uint16_t     m_battery_millivolts = 3333;    // default to some value, sa
 #define SEC_PARAM_MAX_KEY_SIZE          16                                      /**< Maximum encryption key size. */
 
 
+
+
 #define DEAD_BEEF                       0xDEADBEEF  /**< Value used as error code on stack dump, can be used to identify stack location on stack unwind. */
 
 #if defined(USE_UICR_FOR_MAJ_MIN_VALUES)
@@ -258,7 +264,8 @@ ble_os_t m_our_service;
 
 static ble_uuid_t m_adv_uuids[] = 
 {
-    { BLE_UUID_OUR_SERVICE, BLE_UUID_TYPE_BLE  }    // only short 16bit UUID in advdata
+    { BLE_UUID_OUR_SERVICE,                 BLE_UUID_TYPE_BLE  },    // only short 16bit UUID in advdata
+//    { BLE_UUID_DEVICE_INFORMATION_SERVICE,  BLE_UUID_TYPE_BLE}
 };
 
 
@@ -278,7 +285,9 @@ void process_all_data()
     if(!m_advertising.initialized) {
         NRF_LOG_DEBUG("m_advertising not initialized -> exiting process_all_data()");
         return;
-    } 
+    } else {
+        NRF_LOG_INFO("process_all_data");
+    }
 
     uint8_t payload_idx = PAYLOAD_OFFSET_IN_BEACON_INFO_ADV; // TODO PAYLOAD_OFFSET_IN_BEACON_INFO;
     static uint8_t counter_show_val = 0;
@@ -313,6 +322,12 @@ void process_all_data()
 //        NRF_LOG_RAW_INFO("INS1 %d, INS2 %d, INS3 %d, STAT %d\n",
 //            m_buffer[17], m_buffer[18], m_buffer[19], m_buffer[20]); 
     }
+
+    // TODO  
+    int32_t temperature = ((m_buffer[1]<< 8) | m_buffer[0]);   
+    NRF_LOG_INFO("to update %d %d %d", m_buffer[1], m_buffer[0], temperature);
+//    sd_temp_get(&temperature);
+    our_service_characteristic_update(&m_our_service, &temperature);
  
 }
 
@@ -682,7 +697,7 @@ static void advertising_start(bool erase_bonds)
     }
     else
     {
-        ret_code_t err_code = ble_advertising_start(&m_advertising, BLE_ADV_MODE_FAST);
+        ret_code_t err_code = ble_advertising_start(&m_advertising, BLE_ADV_MODE_SLOW); // TODO was BLE_ADV_MODE_FAST
 
         APP_ERROR_CHECK(err_code);
     }
@@ -830,11 +845,18 @@ static void on_adv_evt(ble_adv_evt_t ble_adv_evt)
     {
         case BLE_ADV_EVT_FAST:
             NRF_LOG_INFO("Fast advertising.");
-            err_code = bsp_indication_set(BSP_INDICATE_ADVERTISING);
-            APP_ERROR_CHECK(err_code);
+//            err_code = bsp_indication_set(BSP_INDICATE_ADVERTISING);
+//            APP_ERROR_CHECK(err_code);
+            break;
+
+        case BLE_ADV_EVT_SLOW:
+            NRF_LOG_INFO("Slow advertising.");
+//            err_code = bsp_indication_set(BSP_INDICATE_ADVERTISING);
+//            APP_ERROR_CHECK(err_code);
             break;
 
         case BLE_ADV_EVT_IDLE:
+            NRF_LOG_INFO("Idle advertising.");
 //            sleep_mode_enter();   // TODO
             break;
 
@@ -857,13 +879,14 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
     {
         case BLE_GAP_EVT_DISCONNECTED:
             NRF_LOG_INFO("Disconnected.");
+            m_conn_handle = BLE_CONN_HANDLE_INVALID;
             // LED indication will be changed when advertising starts.
             break;
 
         case BLE_GAP_EVT_CONNECTED:
             NRF_LOG_INFO("Connected.");
-            err_code = bsp_indication_set(BSP_INDICATE_CONNECTED);
-            APP_ERROR_CHECK(err_code);
+//            err_code = bsp_indication_set(BSP_INDICATE_CONNECTED);
+//            APP_ERROR_CHECK(err_code);
             m_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
             err_code = nrf_ble_qwr_conn_handle_assign(&m_qwr, m_conn_handle);
             APP_ERROR_CHECK(err_code);
@@ -926,6 +949,9 @@ static void ble_stack_init()
 
     // Register a handler for BLE events.
     NRF_SDH_BLE_OBSERVER(m_ble_observer, APP_BLE_OBSERVER_PRIO, ble_evt_handler, NULL);
+
+    // Call ble_our_service_on_ble_evt() to do housekeeping of ble connections related to our service and characteristics
+    NRF_SDH_BLE_OBSERVER(m_our_service_observer, APP_BLE_OBSERVER_PRIO, ble_our_service_on_ble_evt, (void*) &m_our_service);
 }
 
 /**@brief Function for handling Peer Manager events.
@@ -1108,15 +1134,27 @@ static void services_init(void)
 {
     ret_code_t         err_code;
     nrf_ble_qwr_init_t qwr_init = {0};
+    ble_dis_init_t     dis_init;
 
     // Initialize Queued Write Module.
     qwr_init.error_handler = nrf_qwr_error_handler;
 
     err_code = nrf_ble_qwr_init(&m_qwr, &qwr_init);
     APP_ERROR_CHECK(err_code);
-	
-	// STEP 2: Add code to initialize the services used by the application.
+
+    // Initialize our own service 
     our_service_init (&m_our_service);
+
+    // Initialize Device Information Service.
+    memset(&dis_init, 0, sizeof(dis_init));
+
+    ble_srv_ascii_to_utf8(&dis_init.manufact_name_str, (char *)MANUFACTURER_NAME);
+    ble_srv_ascii_to_utf8(&dis_init.serial_num_str, (char *)SERIAL_NUMBER);
+
+    dis_init.dis_char_rd_sec = SEC_OPEN;
+
+    err_code = ble_dis_init(&dis_init);
+    APP_ERROR_CHECK(err_code);
 }
 
 
@@ -1280,21 +1318,16 @@ static void advertising_init()
 //    m_adv_params.duration           = 0;        // Never time out.
 
     // Set advertising modes and intervals
-    init.config.ble_adv_slow_enabled = true;    // was:  ble_adv_fast_enabled  = true;
-    init.config.ble_adv_slow_interval = APP_SLOW_ADV_INTERVAL;        // was: ble_adv_fast_interval = APP_ADV_INTERVAL;
-    init.config.ble_adv_slow_timeout = 0;      // was: ble_adv_fast_timeout  = APP_ADV_DURATION;
+    init.config.ble_adv_fast_enabled    = true;
+    init.config.ble_adv_fast_interval   = APP_FAST_ADV_INTERVAL;
+    init.config.ble_adv_fast_timeout    = APP_ADV_DURATION;
+    init.config.ble_adv_slow_enabled    = true;
+    init.config.ble_adv_slow_interval   = APP_SLOW_ADV_INTERVAL;
+    init.config.ble_adv_slow_timeout    = 0;
 
     // Set event handler that will be called upon advertising events
     init.evt_handler = on_adv_evt;
 
-    // TODO
-//    err_code = ble_advdata_encode(&init.advdata, m_adv_data.adv_data.p_data, &m_adv_data.adv_data.len);
-//    APP_ERROR_CHECK(err_code);
-
- //   err_code = sd_ble_gap_adv_set_configure(&m_adv_handle, &m_adv_data, &m_adv_params);
- //   APP_ERROR_CHECK(err_code);
-
-    
     // ble_app
     err_code = ble_advertising_init(&m_advertising, &init);
     APP_ERROR_CHECK(err_code);

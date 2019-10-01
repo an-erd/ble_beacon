@@ -1,10 +1,10 @@
 <!DOCTYPE CrossStudio_Session_File>
 <session>
  <Bookmarks>
+  <BookmarkItem objectName="" line="1311" column="0" path="C:/msys32/home/AKAEM/nrf52/nRF5_SDK_15.2.0_9412b96/examples/ble_peripheral/ble_beacon/main.c" number="1" extra="init.config.ble_adv_slow_interval = // was: ble_adv_fast_interval = APP_ADV_INTERVAL;" color="5"/>
   <BookmarkItem objectName="" line="458" column="59" path="C:/msys32/home/AKAEM/nrf52/nRF5_SDK_15.2.0_9412b96/components/ble/ble_advertising/ble_advertising.c" number="4" extra="p_advertising->adv_data.adv_data.p_data = p_advertising->enc_advdata;" color="5"/>
   <BookmarkItem objectName="" line="473" column="0" path="C:/msys32/home/AKAEM/nrf52/nRF5_SDK_15.2.0_9412b96/components/ble/ble_advertising/ble_advertising.c" number="5" extra="ret = ble_advdata_encode(&amp;p_init->advdata, p_advertising->enc_advdata, &amp;p_advertising->adv_data.adv_data.len);" color="5"/>
-  <BookmarkItem objectName="" line="1255" column="54" path="C:/msys32/home/AKAEM/nrf52/nRF5_SDK_15.2.0_9412b96/examples/ble_peripheral/ble_beacon/main.c" number="3" extra="init.advdata.uuids_complete.p_uuids = m_adv_uuids;" color="5"/>
-  <BookmarkItem objectName="" line="1283" column="0" path="C:/msys32/home/AKAEM/nrf52/nRF5_SDK_15.2.0_9412b96/examples/ble_peripheral/ble_beacon/main.c" number="1" extra="init.config.ble_adv_slow_interval = // was: ble_adv_fast_interval = APP_ADV_INTERVAL;" color="5"/>
+  <BookmarkItem objectName="" line="1283" column="54" path="C:/msys32/home/AKAEM/nrf52/nRF5_SDK_15.2.0_9412b96/examples/ble_peripheral/ble_beacon/main.c" number="3" extra="init.advdata.uuids_complete.p_uuids = m_adv_uuids;" color="5"/>
  </Bookmarks>
  <Breakpoints groups="Breakpoints" active_group="Breakpoints">
   <BreakpointListItem trigger="" line="73" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="4" filename="../../../../../../components/libraries/util/app_error.c" useHWbreakpoint="false"/>
@@ -13,8 +13,8 @@
   <BreakpointListItem trigger="" line="541" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="2" filename="../../../../../../components/ble/common/ble_advdata.c" useHWbreakpoint="false"/>
   <BreakpointListItem trigger="" line="594" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="2" filename="../../../../../../components/ble/common/ble_advdata.c" useHWbreakpoint="false"/>
   <BreakpointListItem trigger="" line="474" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="2" filename="../../../../../../components/ble/ble_advertising/ble_advertising.c" useHWbreakpoint="false"/>
-  <BreakpointListItem trigger="" line="1299" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="2" filename="../../../main.c" useHWbreakpoint="false"/>
-  <BreakpointListItem trigger="" line="294" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="2" filename="../../../main.c" useHWbreakpoint="false"/>
+  <BreakpointListItem trigger="" line="1322" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="2" filename="../../../main.c" useHWbreakpoint="false"/>
+  <BreakpointListItem trigger="" line="302" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="2" filename="../../../main.c" useHWbreakpoint="false"/>
   <Exceptions set="MemManage;UsageFault_Coprocessor;UsageFault_CheckingError;UsageFault_StateError;BusFault;ExceptionEntryReturnFault;HardFault"/>
  </Breakpoints>
  <ExecutionProfileWindow/>
@@ -39,6 +39,7 @@
   <ProjectSessionItem path="ble_beacon_pca10040_s132;ble_beacon_pca10040_s132;Application"/>
   <ProjectSessionItem path="ble_beacon_pca10040_s132;ble_beacon_pca10040_s132;Internal Files"/>
   <ProjectSessionItem path="ble_beacon_pca10040_s132;ble_beacon_pca10040_s132;nRF_BLE"/>
+  <ProjectSessionItem path="ble_beacon_pca10040_s132;ble_beacon_pca10040_s132;nRF_BLE_Services"/>
   <ProjectSessionItem path="ble_beacon_pca10040_s132;ble_beacon_pca10040_s132;nRF_Libraries"/>
   <SourceCodeControlLogin password="F9BB6682F5D56822" user=""/>
  </Project>
@@ -73,10 +74,11 @@
   <Watches active="0" update="Never"/>
  </Watch4>
  <Files>
-  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="0" useTextEdit="1" useBinaryEdit="0" left="0" path="../../../main.c" selected="1" top="0" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="24" y="136" useTextEdit="1" useBinaryEdit="0" left="0" path="../../../../../../components/ble/ble_advertising/ble_advertising.h" selected="0" top="108" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="474" useTextEdit="1" useBinaryEdit="0" left="0" path="../../../../../../components/ble/ble_advertising/ble_advertising.c" selected="0" top="463" codecName=""/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="593" useTextEdit="1" useBinaryEdit="0" left="0" path="../../../../../../components/ble/common/ble_advdata.c" selected="0" top="565" codecName=""/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="267" useTextEdit="1" useBinaryEdit="0" left="0" path="../../../main.c" selected="1" top="235" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="28" y="10258" useTextEdit="1" useBinaryEdit="0" left="0" path="../config/sdk_config.h" selected="0" top="10249" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="473" useTextEdit="1" useBinaryEdit="0" left="0" path="../../../../../../components/ble/ble_advertising/ble_advertising.c" selected="0" top="445" codecName=""/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="0" useTextEdit="1" useBinaryEdit="0" left="0" path="../../../../../../components/ble/common/ble_advdata.c" selected="0" top="102" codecName=""/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="99" useTextEdit="1" useBinaryEdit="0" left="0" path="../../../../../../components/libraries/util/app_error_weak.c" selected="0" top="71" codecName=""/>
  </Files>
- <ARMCrossStudioWindow activeProject="ble_beacon_pca10040_s132" fileDialogDefaultFilter="*.c" autoConnectTarget="J-Link" buildConfiguration="Debug" sessionSettings="" debugSearchFileMap="" fileDialogInitialDirectory="C:/msys32/home/AKAEM/nrf52/nRF5_SDK_15.2.0_9412b96/components/libraries/gpiote" debugSearchPath="" autoConnectCapabilities="3711"/>
+ <ARMCrossStudioWindow activeProject="ble_beacon_pca10040_s132" fileDialogDefaultFilter="*.c" autoConnectTarget="J-Link" buildConfiguration="Debug" sessionSettings="" debugSearchFileMap="" fileDialogInitialDirectory="C:/msys32/home/AKAEM/nrf52/nRF5_SDK_15.2.0_9412b96/components/ble/ble_services/ble_dis" debugSearchPath="" autoConnectCapabilities="3711"/>
 </session>
