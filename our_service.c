@@ -40,13 +40,14 @@
 
 #include <stdint.h>
 #include <string.h>
+#include "nrf_log.h"
 #include "our_service.h"
 #include "ble_srv_common.h"
 #include "app_error.h"
 #include "SEGGER_RTT.h"
 
 
-// ALREADY_DONE_FOR_YOU: Declaration of a function that will take care of some housekeeping of ble connections related to our service and characteristic
+// Declaration of a function that will take care of some housekeeping of ble connections related to our service and characteristic
 void ble_our_service_on_ble_evt(ble_evt_t const * p_ble_evt, void * p_context)
 {
     ble_os_t * p_our_service =(ble_os_t *) p_context;  
@@ -60,8 +61,10 @@ void ble_our_service_on_ble_evt(ble_evt_t const * p_ble_evt, void * p_context)
         case BLE_GAP_EVT_DISCONNECTED:
             p_our_service->conn_handle = BLE_CONN_HANDLE_INVALID;
             break;
+//        case BLE_EVT_TX_COMPLETE
         default:
             // No implementation needed.
+
             break;
     }		
 }
@@ -73,14 +76,13 @@ void ble_our_service_on_ble_evt(ble_evt_t const * p_ble_evt, void * p_context)
  */
 static uint32_t our_char_add(ble_os_t * p_our_service)
 {
-    // OUR_JOB: Step 2.A, Add a custom characteristic UUID
+    // Add a custom characteristic UUID
     uint32_t            err_code;
     ble_uuid_t          char_uuid;
     ble_uuid128_t       base_uuid = BLE_UUID_OUR_BASE_UUID;
     char_uuid.uuid      = BLE_UUID_VAL_CHAR;
     err_code = sd_ble_uuid_vs_add(&base_uuid, &char_uuid.type);
     APP_ERROR_CHECK(err_code); 
-
     
     // Add read/write properties to our characteristic
     ble_gatts_char_md_t char_md;
@@ -111,9 +113,7 @@ static uint32_t our_char_add(ble_os_t * p_our_service)
     memset(&attr_char_value, 0, sizeof(attr_char_value));
     attr_char_value.p_uuid      = &char_uuid;
     attr_char_value.p_attr_md   = &attr_md;
-
-
-    
+   
     // Set characteristic length in number of bytes
     attr_char_value.max_len     = 4;
     attr_char_value.init_len    = 4;
@@ -145,34 +145,33 @@ void our_service_init(ble_os_t * p_our_service)
     err_code = sd_ble_uuid_vs_add(&base_uuid, &service_uuid.type);
     APP_ERROR_CHECK(err_code);    
 	
-    SEGGER_RTT_WriteString(0, "Executing our_service_init().\n"); // Print message to RTT to the application flow
-    SEGGER_RTT_printf(0, "Service UUID: 0x%#04x\n", service_uuid.uuid); // Print service UUID should match definition BLE_UUID_OUR_SERVICE
-    SEGGER_RTT_printf(0, "Service UUID type: 0x%#02x\n", service_uuid.type); // Print UUID type. Should match BLE_UUID_TYPE_VENDOR_BEGIN. Search for BLE_UUID_TYPES in ble_types.h for more info
-    SEGGER_RTT_printf(0, "Service handle: 0x%#04x\n", p_our_service->service_handle); // Print out the service handle. Should match service handle shown in MCP under Attribute values
-
     // Set our service connection handle to default value. I.e. an invalid handle since we are not yet in a connection.
     p_our_service->conn_handle = BLE_CONN_HANDLE_INVALID;
 	
 
-    // FROM_SERVICE_TUTORIAL: Add our service
-		err_code = sd_ble_gatts_service_add(BLE_GATTS_SRVC_TYPE_PRIMARY,
+    // Add our service
+    err_code = sd_ble_gatts_service_add(BLE_GATTS_SRVC_TYPE_PRIMARY,
                                         &service_uuid,
                                         &p_our_service->service_handle);
     
     APP_ERROR_CHECK(err_code);
     
-    // OUR_JOB: Call the function our_char_add() to add our new characteristic to the service. 
+    // Call the function our_char_add() to add our new characteristic to the service. 
     our_char_add(p_our_service);
 }
 
 
 // Function to be called when updating characteristic value
+//void our_service_characteristic_update(ble_os_t *p_our_service, int8_t *p_transfer_dataset)
 void our_service_characteristic_update(ble_os_t *p_our_service, int32_t *temperature_value)
 {
+    uint32_t        err_code;
+
+    NRF_LOG_INFO("our_service_characteristic_update");
     // Update characteristic value
     if (p_our_service->conn_handle != BLE_CONN_HANDLE_INVALID)
     {
-        uint16_t               len = 4;
+        uint16_t               len = 4;    // TODO was 4
         ble_gatts_hvx_params_t hvx_params;
         memset(&hvx_params, 0, sizeof(hvx_params));
 
@@ -180,8 +179,10 @@ void our_service_characteristic_update(ble_os_t *p_our_service, int32_t *tempera
         hvx_params.type   = BLE_GATT_HVX_NOTIFICATION;
         hvx_params.offset = 0;
         hvx_params.p_len  = &len;
+        //hvx_params.p_data = (uint8_t*)p_transfer_dataset;  
         hvx_params.p_data = (uint8_t*)temperature_value;  
-
+        
+        NRF_LOG_INFO("sd_ble_gatts_hvx");
         sd_ble_gatts_hvx(p_our_service->conn_handle, &hvx_params);
     }
 }

@@ -173,6 +173,12 @@ static uint16_t     m_battery_millivolts = 3333;    // default to some value, sa
     #error Buffer too small.
 #endif
 
+#define TRANSFER_BUFFER_SIZE    1000
+#define TRANSFER_DATA_SIZE      5
+static int m_transferbuffer_counter = 0;
+static uint32_t m_transferbuffer[TRANSFER_BUFFER_SIZE][TRANSFER_DATA_SIZE] = { 0xFF };
+void test_data_send_array(int num_to_send, bool restart);
+
 /**@brief Macro to convert the result of ADC conversion in millivolts.
  *
  * @param[in]  ADC_VALUE   ADC result.
@@ -323,11 +329,16 @@ void process_all_data()
 //            m_buffer[17], m_buffer[18], m_buffer[19], m_buffer[20]); 
     }
 
-    // TODO  
-    int32_t temperature = ((m_buffer[1]<< 8) | m_buffer[0]);   
-    NRF_LOG_INFO("to update %d %d %d", m_buffer[1], m_buffer[0], temperature);
-//    sd_temp_get(&temperature);
-    our_service_characteristic_update(&m_our_service, &temperature);
+//    // TODO  
+//    int32_t temperature = ((m_buffer[1]<< 8) | m_buffer[0]);   
+//    NRF_LOG_INFO("to update %d %d %d", m_buffer[1], m_buffer[0], temperature);
+//    our_service_characteristic_update(&m_our_service, &m_transferbuffer[0][0]);
+//    m_transferbuffer[0][0]++;
+//  our_service_characteristic_update(&m_our_service, &temperature);
+
+    NRF_LOG_INFO("sending test data");
+    NRF_LOG_FLUSH();
+    test_data_send_array(100, true);
  
 }
 
@@ -880,13 +891,10 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
         case BLE_GAP_EVT_DISCONNECTED:
             NRF_LOG_INFO("Disconnected.");
             m_conn_handle = BLE_CONN_HANDLE_INVALID;
-            // LED indication will be changed when advertising starts.
             break;
 
         case BLE_GAP_EVT_CONNECTED:
             NRF_LOG_INFO("Connected.");
-//            err_code = bsp_indication_set(BSP_INDICATE_CONNECTED);
-//            APP_ERROR_CHECK(err_code);
             m_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
             err_code = nrf_ble_qwr_conn_handle_assign(&m_qwr, m_conn_handle);
             APP_ERROR_CHECK(err_code);
@@ -1318,7 +1326,7 @@ static void advertising_init()
 //    m_adv_params.duration           = 0;        // Never time out.
 
     // Set advertising modes and intervals
-    init.config.ble_adv_fast_enabled    = true;
+    init.config.ble_adv_fast_enabled    = false;    // don't allow, after disconnect always fast is taken
     init.config.ble_adv_fast_interval   = APP_FAST_ADV_INTERVAL;
     init.config.ble_adv_fast_timeout    = APP_ADV_DURATION;
     init.config.ble_adv_slow_enabled    = true;
@@ -1334,6 +1342,55 @@ static void advertising_init()
 
     ble_advertising_conn_cfg_tag_set(&m_advertising, APP_BLE_CONN_CFG_TAG);
 }
+
+
+void fill_test_data(void) 
+{
+    for (int i = 0; i < TRANSFER_BUFFER_SIZE; i++){
+        for (int j = 0; j < TRANSFER_DATA_SIZE; j++){
+            m_transferbuffer[i][j] = m_transferbuffer_counter++;
+        }
+    }
+}
+
+void test_data_send_array(int num_to_send, bool restart)
+{
+    static uint32_t cnt = 0;
+    if (restart) {
+        cnt = 0;
+    }
+
+    while (cnt < num_to_send){
+        our_service_characteristic_update(&m_our_service, &m_transferbuffer[cnt][0]);
+        cnt++;
+    }
+/*
+    uint32_t        err_code;
+ 
+    bool result = false;
+    while (cnt < num_to_send)
+    {
+        err_code = our_service_characteristic_update(&m_our_service, m_transferbuffer[cnt]);
+        if (err_code == BLE_ERROR_NO_TX_BUFFERS ||
+            err_code == NRF_ERROR_INVALID_STATE || 
+            err_code == BLE_ERROR_GATTS_SYS_ATTR_MISSING)
+        {
+            break;
+        }
+        else if (err_code != NRF_SUCCESS) 
+        {
+            APP_ERROR_HANDLER(err_code);
+        }
+        cnt++;
+    }
+
+    if(cnt == num_to_send)
+        result = true;
+
+    return resvoid
+    */
+}
+
 
 /**
  * @brief Function for application main entry.
@@ -1370,6 +1427,8 @@ int main()
 		
     // Start execution.
     NRF_LOG_INFO("Beacon started.");
+    fill_test_data();
+    NRF_LOG_INFO("Testdata done.");
 
     advertising_start(erase_bonds);
 

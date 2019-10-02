@@ -87,6 +87,7 @@ void our_service_init(ble_os_t * p_our_service);
  * @param[in]   characteristic_value     New characteristic value.
  */
 void our_service_characteristic_update(ble_os_t *p_our_service, int32_t *temperature_value);
+//void our_service_characteristic_update(ble_os_t *p_our_service, int8_t *p_transfer_dataset);
 
 
 #endif  /* _ OUR_SERVICE_H__ */
