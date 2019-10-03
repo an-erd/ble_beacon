@@ -46,8 +46,12 @@
 #include "app_error.h"
 #include "SEGGER_RTT.h"
 
-
-// Declaration of a function that will take care of some housekeeping of ble connections related to our service and characteristic
+/**@brief Declaration of a function that will take care of some housekeeping of ble connections related to our service and characteristic 
+ *
+ * @param[in]   p_ble_evt       ble event.
+ * @param[in]   p_context       context for the event
+ *
+ */
 void ble_our_service_on_ble_evt(ble_evt_t const * p_ble_evt, void * p_context)
 {
     ble_os_t * p_our_service =(ble_os_t *) p_context;  
@@ -61,7 +65,6 @@ void ble_our_service_on_ble_evt(ble_evt_t const * p_ble_evt, void * p_context)
         case BLE_GAP_EVT_DISCONNECTED:
             p_our_service->conn_handle = BLE_CONN_HANDLE_INVALID;
             break;
-//        case BLE_EVT_TX_COMPLETE
         default:
             // No implementation needed.
 
@@ -69,7 +72,7 @@ void ble_our_service_on_ble_evt(ble_evt_t const * p_ble_evt, void * p_context)
     }		
 }
 
-/**@brief Function for adding our new characterstic to "Our service" that we initiated in the previous tutorial. 
+/**@brief Function for adding our new characterstic to service
  *
  * @param[in]   p_our_service        Our Service structure.
  *
@@ -161,8 +164,13 @@ void our_service_init(ble_os_t * p_our_service)
 }
 
 
-// Function to be called when updating characteristic value
-//void our_service_characteristic_update(ble_os_t *p_our_service, int8_t *p_transfer_dataset)
+// 
+/**@brief Function to be called when updating characteristic value
+ *
+ * @param[in]   p_our_service        Our Service structure.
+ * @param[in]   temperature_value    Example data to use to update characteristic
+ *
+ */
 void our_service_characteristic_update(ble_os_t *p_our_service, int32_t *temperature_value)
 {
     uint32_t        err_code;

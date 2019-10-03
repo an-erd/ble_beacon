@@ -39,9 +39,9 @@
  */
 /** @file
  *
- * @defgroup ble_sdk_app_beacon_main_ae main.c
+ * @defgroup ble_beacon main.c
  * @{
- * @ingroup ble_sdk_app_beacon
+ * @ingroup ble_beacon
  * @brief Beacon Transmitter Application main file.
  *
  * This file contains the source code for an Beacon transmitter which sends
@@ -116,13 +116,6 @@
     __ASM(".global _printf_float");
 #endif
 
-
-// Event scheduled
-// TODO check, sensor sample 10 or 15 sec
-// - BLE adv         1 sec
-// - SADC sample    60 sec
-// - Sensor sample  15 sec
-
 // RTC defines
 #define RTC_CC_VALUE                8       // prescale 256 Hz, RTC_CC_VALUE=8 => 1/32 sec
 #define RTC_SADC_UPDATE             1875
@@ -140,6 +133,14 @@ static nrf_saadc_value_t    m_buffer_pool[2][SAADC_SAMPLES_IN_BUFFER];
 static uint32_t             m_adc_evt_counter = 0;
 static bool                 m_saadc_initialized = false;      
 
+// SAADC reference and conversion data
+#define ADC_REF_VOLTAGE_IN_MILLIVOLTS   600     /**< Reference voltage (in milli volts) used by ADC while doing conversion. */
+#define ADC_PRE_SCALING_COMPENSATION    6       /**< The ADC is configured to use VDD with 1/3 prescaling as input. And hence the result of conversion is to be multiplied by 3 to get the actual value of the battery voltage.*/
+#define DIODE_FWD_VOLT_DROP_MILLIVOLTS  0       /**< Typical forward voltage drop of the diode (270 mV), but no diode on this beacon. */
+#define ADC_RES_10BIT                   1024    /**< Maximum digital value for 10-bit ADC conversion. */
+#define ADC_RES_12BIT                   4096    /**< Maximum digital value for 12-bit ADC conversion. */
+#define ADC_RES_14BIT                   16384   /**< Maximum digital value for 14-bit ADC conversion. */
+
 // TWI defines
 #define TWI_INSTANCE_ID     0
 static const nrf_drv_twi_t  m_twi = NRF_DRV_TWI_INSTANCE(TWI_INSTANCE_ID);
@@ -155,29 +156,20 @@ static const nrf_drv_twi_t  m_twi = NRF_DRV_TWI_INSTANCE(TWI_INSTANCE_ID);
 #define BUFFER_SIZE             21  // read buffer from sensors: temp+hum (6=2*msb,lsb,crc) + xyz (6=3*lsb,msb) + INT_REL (5) + INS1 (4)
 static uint8_t m_buffer[BUFFER_SIZE];
 
-// DFU defines
-#define INITIATE_DFU_TIMEOUT    15  // secs in which the code (long-long-long button press must be completed)
-
-typedef struct
-{
-    float   temp;
-    float   humidity;
-    int16_t x;
-    int16_t y;
-    int16_t z;
-} sample_t;
-static sample_t     m_sample = { 0, 0, 0, 0, 0 };
-static uint16_t     m_battery_millivolts = 3333;    // default to some value, say 3333
-
 #if (BUFFER_SIZE < 21)
     #error Buffer too small.
 #endif
 
+// DFU defines
+#define INITIATE_DFU_TIMEOUT    15  // secs in which the code (long-long-long button press must be completed)
+
+// TODO
 #define TRANSFER_BUFFER_SIZE    1000
 #define TRANSFER_DATA_SIZE      5
 static int m_transferbuffer_counter = 0;
 static uint32_t m_transferbuffer[TRANSFER_BUFFER_SIZE][TRANSFER_DATA_SIZE] = { 0xFF };
 void test_data_send_array(int num_to_send, bool restart);
+
 
 /**@brief Macro to convert the result of ADC conversion in millivolts.
  *
@@ -188,98 +180,82 @@ void test_data_send_array(int num_to_send, bool restart);
 #define ADC_RESULT_IN_MILLI_VOLTS(ADC_VALUE)\
         ((((ADC_VALUE) * ADC_REF_VOLTAGE_IN_MILLIVOLTS) / ADC_RES_12BIT) * ADC_PRE_SCALING_COMPENSATION)
 
-// BLE defines and structs
-#define NON_CONNECTABLE_ADV_INTERVAL    MSEC_TO_UNITS(1000, UNIT_0_625_MS)  /**< The advertising interval for non-connectable advertisement (100 ms). This value can vary between 100ms to 10.24s). */
-#define APP_FAST_ADV_INTERVAL           50
-#define APP_SLOW_ADV_INTERVAL           MSEC_TO_UNITS(1000, UNIT_0_625_MS)
+// BLE defines 
+#define APP_FAST_ADV_INTERVAL           50                                  /**< The advertising interval for fast advertisement. */
+#define APP_SLOW_ADV_INTERVAL           MSEC_TO_UNITS(1000, UNIT_0_625_MS)  /**< The advertising interval for slow advertisement. */
+#define APP_ADV_FAST_DURATION           18000                               /**< The advertising duration (180 seconds) in units of 10 milliseconds. */
+#define APP_ADV_SLOW_DURATION           0                                   /**< The advertising duration (180 seconds) in units of 10 milliseconds. */
+#define APP_BLE_OBSERVER_PRIO           3                                   /**< Application's BLE observer priority. You shouldn't need to modify this value. */
+#define APP_BLE_CONN_CFG_TAG            1                                   /**< A tag identifying the SoftDevice BLE configuration. */
 
-// beacon data
+#define MIN_CONN_INTERVAL               MSEC_TO_UNITS(100, UNIT_1_25_MS)    /**< Minimum acceptable connection interval (0.1 seconds). */
+#define MAX_CONN_INTERVAL               MSEC_TO_UNITS(200, UNIT_1_25_MS)    /**< Maximum acceptable connection interval (0.2 second). */
+#define SLAVE_LATENCY                   0                                   /**< Slave latency. */
+#define CONN_SUP_TIMEOUT                MSEC_TO_UNITS(4000, UNIT_10_MS)     /**< Connection supervisory timeout (4 seconds). */
+
+#define FIRST_CONN_PARAMS_UPDATE_DELAY  APP_TIMER_TICKS(5000)               /**< Time from initiating event (connect or start of notification) to first time sd_ble_gap_conn_param_update is called (5 seconds). */
+#define NEXT_CONN_PARAMS_UPDATE_DELAY   APP_TIMER_TICKS(30000)              /**< Time between each call to sd_ble_gap_conn_param_update after the first call (30 seconds). */
+#define MAX_CONN_PARAMS_UPDATE_COUNT    3                                   /**< Number of attempts before giving up the connection parameter negotiation. */
+
+#define SEC_PARAM_BOND                  1                                   /**< Perform bonding. */
+#define SEC_PARAM_MITM                  0                                   /**< Man In The Middle protection not required. */
+#define SEC_PARAM_LESC                  0                                   /**< LE Secure Connections not enabled. */
+#define SEC_PARAM_KEYPRESS              0                                   /**< Keypress notifications not enabled. */
+#define SEC_PARAM_IO_CAPABILITIES       BLE_GAP_IO_CAPS_NONE                /**< No I/O capabilities. */
+#define SEC_PARAM_OOB                   0                                   /**< Out Of Band data not available. */
+#define SEC_PARAM_MIN_KEY_SIZE          7                                   /**< Minimum encryption key size. */
+#define SEC_PARAM_MAX_KEY_SIZE          16                                  /**< Maximum encryption key size. */
+
+// Initialise the BLE advertising data with some rememberable values, only used during advertising_init()
 #define APP_BEACON_INFO_LENGTH  0x10            /**< Total length of information advertised by the Beacon. */
-//#define APP_ADV_DATA_LENGTH     0x15            /**< Length of manufacturer specific data in the advertisement. */
-#define APP_DEVICE_TYPE         0x02            /**< 0x02 refers to Beacon. */
 #define APP_COMPANY_IDENTIFIER  0x0059          /**< Company identifier for Nordic Semiconductor ASA. as per www.bluetooth.org. */
-#define APP_BEACON_UUID_SHORT   0x01, 0x12, 0x23, 0x34  /**< Proprietary UUID for Beacon. */
 #define APP_MAJOR_VALUE         0x00, 0x07      /**< Major value used to identify Beacons. */
-#define APP_MINOR_VALUE         0x00, 0x08      /**< Minor value used to identify Beacons. -> caution: see UICR*/
-#define APP_MEASURED_RSSI       0xC3            /**< The Beacon's measured RSSI at 1 meter distance in dBm. */
-#define APP_DATA_TEMP           0xfe, 0xfe      /**< Temperature data. */
-#define APP_DATA_HUM            0xfd, 0xfd      /**< Humidity data. */
+#define APP_MINOR_VALUE         0x00, 0xFF      /**< Minor value used to identify Beacons. -> caution: see UICR */
+#define APP_DATA_TEMP           0xfd, 0xfd      /**< Temperature data. */
+#define APP_DATA_HUM            0xfe, 0xde      /**< Humidity data. */
 #define APP_DAT_X               0xaa, 0xaa      /**< Acceleration X data. */
 #define APP_DAT_y               0xbb, 0xbb      /**< Acceleration Y data. */
 #define APP_DAT_Z               0xcc, 0xcc      /**< Acceleration Z Temperature data. */
 #define APP_DAT_BATTERY         0x0B, 0xB8      /**< Battery voltage data. */
-#define APP_BEACON_PAD          0x99            /**< Padding data (maybe used, maybe not. */
+#define APP_BEACON_PAD          0xFF            /**< Padding data (maybe used, maybe not.) */
 
-#define PAYLOAD_OFFSET_IN_BEACON_INFO   18      /**< First position to write the payload to */
-#define PAYLOAD_OFFSET_IN_BEACON_INFO_ADV   18      /**< NEW: First position to write the payload to with new adv code // TODO */
-#define PAYLOAD_OFFSET_BATTERY_INFO     (PAYLOAD_OFFSET_IN_BEACON_INFO+10)  /**< Position to write the battery voltage payload to */									
-#define ADC_REF_VOLTAGE_IN_MILLIVOLTS   600     /**< Reference voltage (in milli volts) used by ADC while doing conversion. */
-#define ADC_PRE_SCALING_COMPENSATION    6       /**< The ADC is configured to use VDD with 1/3 prescaling as input. And hence the result of conversion is to be multiplied by 3 to get the actual value of the battery voltage.*/
-#define DIODE_FWD_VOLT_DROP_MILLIVOLTS  0       /**< Typical forward voltage drop of the diode (270 mV), but no diode on this beacon. */
-#define ADC_RES_10BIT                   1024    /**< Maximum digital value for 10-bit ADC conversion. */
-#define ADC_RES_12BIT                   4096    /**< Maximum digital value for 12-bit ADC conversion. */
-#define ADC_RES_14BIT                   16384   /**< Maximum digital value for 14-bit ADC conversion. */
+#define PAYLOAD_OFFSET_IN_BEACON_INFO_ADV   18  /**< First position to write the payload to in enc advdata */
+#define PAYLOAD_OFFSET_BATTERY_INFO     (PAYLOAD_OFFSET_IN_BEACON_INFO_ADV + 10)  /**< Position to write the battery voltage payload to */									
+
+#define DEAD_BEEF                       0xDEADBEEF  /**< Value used as error code on stack dump, can be used to identify stack location on stack unwind. */
 
 // BLE Services + Device information service (DIS) defines
-#define DEVICE_NAME                     "Beac8"                                 /**< Name of device. Will be included in the advertising data. */
-#define DIS_MANUFACTURER_NAME           "schoeneKunst"                   /**< Manufacturer. Will be passed to Device Information Service. */
+#define DEVICE_NAME                     "Beac8"                 /**< Name of device. Will be included in the advertising data. */
+#define DIS_MANUFACTURER_NAME           "ansprechendeKunst"     /**< Manufacturer. Will be passed to Device Information Service. */
 #define DIS_MODEL_NUMBER                "1"
 #define DIS_SERIAL_NUMBER               "8" 
 #define DIS_HW_REV                      "1.0"
 #define DIS_SW_REV                      "0.9"
 #define DIS_FW_REV                      "0.1a"
 
-//#define APP_ADV_INTERVAL                50                                      /**< The advertising interval (in units of 0.625 ms. This value corresponds to 187.5 ms). */
-
-#define APP_ADV_DURATION                18000                                   /**< The advertising duration (180 seconds) in units of 10 milliseconds. */
-#define APP_BLE_OBSERVER_PRIO           3                                       /**< Application's BLE observer priority. You shouldn't need to modify this value. */
-#define APP_BLE_CONN_CFG_TAG            1                                       /**< A tag identifying the SoftDevice BLE configuration. */
-
-#define MIN_CONN_INTERVAL               MSEC_TO_UNITS(100, UNIT_1_25_MS)        /**< Minimum acceptable connection interval (0.1 seconds). */
-#define MAX_CONN_INTERVAL               MSEC_TO_UNITS(200, UNIT_1_25_MS)        /**< Maximum acceptable connection interval (0.2 second). */
-#define SLAVE_LATENCY                   0                                       /**< Slave latency. */
-#define CONN_SUP_TIMEOUT                MSEC_TO_UNITS(4000, UNIT_10_MS)         /**< Connection supervisory timeout (4 seconds). */
-
-#define FIRST_CONN_PARAMS_UPDATE_DELAY  APP_TIMER_TICKS(5000)                   /**< Time from initiating event (connect or start of notification) to first time sd_ble_gap_conn_param_update is called (5 seconds). */
-#define NEXT_CONN_PARAMS_UPDATE_DELAY   APP_TIMER_TICKS(30000)                  /**< Time between each call to sd_ble_gap_conn_param_update after the first call (30 seconds). */
-#define MAX_CONN_PARAMS_UPDATE_COUNT    3                                       /**< Number of attempts before giving up the connection parameter negotiation. */
-
-#define SEC_PARAM_BOND                  1                                       /**< Perform bonding. */
-#define SEC_PARAM_MITM                  0                                       /**< Man In The Middle protection not required. */
-#define SEC_PARAM_LESC                  0                                       /**< LE Secure Connections not enabled. */
-#define SEC_PARAM_KEYPRESS              0                                       /**< Keypress notifications not enabled. */
-#define SEC_PARAM_IO_CAPABILITIES       BLE_GAP_IO_CAPS_NONE                    /**< No I/O capabilities. */
-#define SEC_PARAM_OOB                   0                                       /**< Out Of Band data not available. */
-#define SEC_PARAM_MIN_KEY_SIZE          7                                       /**< Minimum encryption key size. */
-#define SEC_PARAM_MAX_KEY_SIZE          16                                      /**< Maximum encryption key size. */
-
-
-
-
-#define DEAD_BEEF                       0xDEADBEEF  /**< Value used as error code on stack dump, can be used to identify stack location on stack unwind. */
-
 #if defined(USE_UICR_FOR_MAJ_MIN_VALUES)
-#define MAJ_VAL_OFFSET_IN_BEACON_INFO   6       /**< Position of the MSB of the Major Value in m_beacon_info array. */
-#define UICR_ADDRESS            0x10001080      /**< Address of the UICR register  */
+#define MAJ_VAL_OFFSET_IN_BEACON_INFO   6                       /**< Position of the MSB of the Major Value in m_beacon_info array. */
+#define UICR_ADDRESS                    0x10001080              /**< Address of the UICR register  */
 #endif
 
-NRF_BLE_GATT_DEF(m_gatt);                                                       /**< GATT module instance. */
-NRF_BLE_QWR_DEF(m_qwr);                                                         /**< Context for the Queued Write module.*/
-BLE_ADVERTISING_DEF(m_advertising);                                             /**< Advertising module instance. */
+
+NRF_BLE_GATT_DEF(m_gatt);                                       /**< GATT module instance. */
+NRF_BLE_QWR_DEF(m_qwr);                                         /**< Context for the Queued Write module.*/
+BLE_ADVERTISING_DEF(m_advertising);                             /**< Advertising module instance. */
 
 
-static uint16_t m_conn_handle = BLE_CONN_HANDLE_INVALID;                        /**< Handle of the current connection. */
+static uint16_t m_conn_handle = BLE_CONN_HANDLE_INVALID;        /**< Handle of the current connection. */
 
 ble_os_t m_our_service;
 
 static ble_uuid_t m_adv_uuids[] = 
 {
-    { BLE_UUID_OUR_SERVICE,                 BLE_UUID_TYPE_BLE  },    // only short 16bit UUID in advdata
-//    { BLE_UUID_DEVICE_INFORMATION_SERVICE,  BLE_UUID_TYPE_BLE}
+    { BLE_UUID_OUR_SERVICE, BLE_UUID_TYPE_BLE  },               /**< 16-bit UUID for our service. */
 };
 
-
+// forward declaration
 static void advertising_start(bool erase_bonds);
+
 
 /**@brief Function for processing all sensor data.
  *
@@ -288,34 +264,35 @@ static void advertising_start(bool erase_bonds);
  */
 void process_all_data()
 {
-//m_advertising.enc_advdata[PAYLOAD_OFFSET_IN_BEACON_INFO_ADV] = 0xFF;
-//return;    // TODO
     NRF_LOG_DEBUG("process_all_data()");
 	
     if(!m_advertising.initialized) {
         NRF_LOG_DEBUG("m_advertising not initialized -> exiting process_all_data()");
         return;
-    } else {
-        NRF_LOG_INFO("process_all_data");
-        uint32_t currentcounter = nrfx_rtc_counter_get(&rtc);
-        int16_t secgone = currentcounter / NRFX_RTC_DEFAULT_CONFIG_FREQUENCY;
-        NRF_LOG_INFO("secgone = %d", secgone);
-            
+    } 
 
-
-    }
-
-    uint8_t payload_idx = PAYLOAD_OFFSET_IN_BEACON_INFO_ADV; // TODO PAYLOAD_OFFSET_IN_BEACON_INFO;
+#ifdef DEBUG
     static uint8_t counter_show_val = 0;
 
-    // calculate values from raw data, but for adv package take already encoded data
-    m_sample.temp      = SHT3_GET_TEMPERATURE_VALUE(m_buffer[0], m_buffer[1]);
-    m_sample.humidity  = SHT3_GET_HUMIDITY_VALUE   (m_buffer[3], m_buffer[4]);
-    m_sample.x         = KX022_GET_ACC(m_buffer[ 6], m_buffer[ 7]);
-    m_sample.y         = KX022_GET_ACC(m_buffer[ 8], m_buffer[ 9]);
-    m_sample.z         = KX022_GET_ACC(m_buffer[10], m_buffer[11]);
+    if(counter_show_val % 10){
+        // calculate values from raw data, used only for debug. 
+        // For adv package take already encoded data from sensor
+        float   temp        = SHT3_GET_TEMPERATURE_VALUE(m_buffer[0], m_buffer[1]);
+        float   humidity    = SHT3_GET_HUMIDITY_VALUE   (m_buffer[3], m_buffer[4]);
+        int16_t x           = KX022_GET_ACC(m_buffer[ 6], m_buffer[ 7]);
+        int16_t y           = KX022_GET_ACC(m_buffer[ 8], m_buffer[ 9]);
+        int16_t z           = KX022_GET_ACC(m_buffer[10], m_buffer[11]);
 
-//    NRF_LOG_HEXDUMP_DEBUG(m_adv_data.adv_data.p_data, 29);
+        // Log example: Temp: 220.00 | Hum:340.00 | X: -257, Y: -129, Z: 16204 
+        NRF_LOG_RAW_INFO("Temp: " NRF_LOG_FLOAT_MARKER " | Hum:" NRF_LOG_FLOAT_MARKER " | ", temp, humidity);
+        NRF_LOG_RAW_INFO("X %6d, Y %6d, Z %6d |", x, y, z);
+//        NRF_LOG_RAW_INFO("INS1 %d, INS2 %d, INS3 %d, STAT %d\n",
+//            m_buffer[17], m_buffer[18], m_buffer[19], m_buffer[20]); 
+    }
+#endif // DEBUG
+
+    // update payload data in encoded advertising data
+    uint8_t payload_idx = PAYLOAD_OFFSET_IN_BEACON_INFO_ADV;
     m_advertising.enc_advdata[payload_idx++] = m_buffer[ 0];
     m_advertising.enc_advdata[payload_idx++] = m_buffer[ 1];
     m_advertising.enc_advdata[payload_idx++] = m_buffer[ 3];
@@ -326,30 +303,6 @@ void process_all_data()
     m_advertising.enc_advdata[payload_idx++] = m_buffer[ 9];
     m_advertising.enc_advdata[payload_idx++] = m_buffer[10];
     m_advertising.enc_advdata[payload_idx++] = m_buffer[11];
-    if(counter_show_val%10){
-        // Log example: Temp: 220.00 | Hum:340.00 | X: -257, Y: -129, Z: 16204 
-        NRF_LOG_RAW_INFO("Temp: " NRF_LOG_FLOAT_MARKER " | Hum:" NRF_LOG_FLOAT_MARKER " | ", 
-        m_sample.temp,
-        m_sample.humidity);
-        NRF_LOG_RAW_INFO("X %6d, Y %6d, Z %6d |", 
-            (int16_t) m_sample.x,
-            (int16_t) m_sample.y,
-            (int16_t) m_sample.z);
-//        NRF_LOG_RAW_INFO("INS1 %d, INS2 %d, INS3 %d, STAT %d\n",
-//            m_buffer[17], m_buffer[18], m_buffer[19], m_buffer[20]); 
-    }
-
-//    // TODO  
-//    int32_t temperature = ((m_buffer[1]<< 8) | m_buffer[0]);   
-//    NRF_LOG_INFO("to update %d %d %d", m_buffer[1], m_buffer[0], temperature);
-//    our_service_characteristic_update(&m_our_service, &m_transferbuffer[0][0]);
-//    m_transferbuffer[0][0]++;
-//  our_service_characteristic_update(&m_our_service, &temperature);
-
-    NRF_LOG_INFO("sending test data");
-    NRF_LOG_FLUSH();
-    test_data_send_array(100, true);
- 
 }
 
 /**@brief Function for multi-step retrieval of sensor data
@@ -360,10 +313,10 @@ void process_all_data()
 static void read_all_sensors(bool restart)
 {
     // KX022 
-    static uint8_t config_kx022_0[2] = {KX022_1020_REG_CNTL1, 				0x00 };	// KX022_1020_STANDBY 
-    static uint8_t config_kx022_1[2] = {KX022_1020_REG_CNTL1, 				0x40 };	// KX022_1020_STANDBY | KX022_1020_HIGH_RESOLUTION
-    static uint8_t config_kx022_2[2] = {KX022_1020_REG_ODCNTL, 			 	0x04 };	// KX022_1020_OUTPUT_RATE_200_HZ
-    static uint8_t config_kx022_3[2] = {KX022_1020_REG_CNTL1, 				0xC0 };	// KX022_1020_OPERATE | KX022_1020_HIGH_RESOLUTION
+    static uint8_t config_kx022_0[2] = {KX022_1020_REG_CNTL1,   0x00 }; // KX022_1020_STANDBY 
+    static uint8_t config_kx022_1[2] = {KX022_1020_REG_CNTL1, 	0x40 };	// KX022_1020_STANDBY | KX022_1020_HIGH_RESOLUTION
+    static uint8_t config_kx022_2[2] = {KX022_1020_REG_ODCNTL, 	0x04 };	// KX022_1020_OUTPUT_RATE_200_HZ
+    static uint8_t config_kx022_3[2] = {KX022_1020_REG_CNTL1, 	0xC0 };	// KX022_1020_OPERATE | KX022_1020_HIGH_RESOLUTION
 
     // SHT3
     static uint8_t config_SHT3_0[2]  = {SHT3_MEAS_HIGHREP >> 8, SHT3_MEAS_HIGHREP & 0xFF};
@@ -455,7 +408,7 @@ static void read_all_sensors(bool restart)
         APP_ERROR_CHECK(nrf_drv_twi_rx(&m_twi, SHT3_ADDR, &m_buffer[0], 6));
             
         process_all_data();
-    
+        // TODO work on INS1 and INT_REL
         //  KX022_READ_XYZ(&m_buffer[6])        // read 6 bytes (x (lsb+msb), y (lsb+msb), z (lsb+msb)
         //  KX022_READ_INS1(&m_buffer[17])      // read 4 bytes 
         //  KX022_READ_INT_REL(&m_buffer[12])   // read 5 byte interrupt source information
@@ -478,6 +431,7 @@ void saadc_event_handler(nrf_drv_saadc_evt_t const * p_event)
     uint32_t            err_code;
     nrf_saadc_value_t   adc_result;
     uint8_t             percentage_batt_lvl;
+    static uint16_t     m_battery_millivolts = 3333;    // default to some value, say 3333
 
     NRF_LOG_DEBUG("saadc_event_handler");
 
@@ -506,6 +460,7 @@ void saadc_event_handler(nrf_drv_saadc_evt_t const * p_event)
 
         NRF_LOG_DEBUG("saadc_event_handler, done, perc %d, volts %d", percentage_batt_lvl, m_battery_millivolts);
 
+        // update payload data in encoded advertising data
         uint8_t payload_idx = PAYLOAD_OFFSET_BATTERY_INFO;
         m_advertising.enc_advdata[payload_idx++] = MSB_16(m_battery_millivolts);
         m_advertising.enc_advdata[payload_idx++] = LSB_16(m_battery_millivolts);
@@ -661,22 +616,6 @@ static void bsp_event_handler(bsp_event_t event)
     }
 }
 
-static uint8_t m_beacon_info[APP_BEACON_INFO_LENGTH] =      /**< Information advertised by the Beacon. */
-{
-//    APP_DEVICE_TYPE,        // Manufacturer specific information.
-//    APP_ADV_DATA_LENGTH,    // Manufacturer specific information. Length of the manufacturer specific data 
-//    APP_BEACON_UUID_SHORT,  // short UUID value.
-    APP_MAJOR_VALUE,        // Device major value
-    APP_MINOR_VALUE,        // Device minor value
-//    APP_MEASURED_RSSI,      // Beacon's measured TX power 
-    APP_DATA_TEMP,          // temperature
-    APP_DATA_HUM,           // humidity
-    APP_DAT_X,              // accel x pos
-    APP_DAT_y,              // accel y pos
-    APP_DAT_Z,              // accel z pos
-    APP_DAT_BATTERY         // battery voltage
-};
-
 
 /**@brief Callback function for asserts in the SoftDevice.
  *
@@ -718,7 +657,7 @@ static void advertising_start(bool erase_bonds)
     }
     else
     {
-        ret_code_t err_code = ble_advertising_start(&m_advertising, BLE_ADV_MODE_SLOW); // TODO was BLE_ADV_MODE_FAST
+        ret_code_t err_code = ble_advertising_start(&m_advertising, BLE_ADV_MODE_SLOW);
 
         APP_ERROR_CHECK(err_code);
     }
@@ -866,19 +805,14 @@ static void on_adv_evt(ble_adv_evt_t ble_adv_evt)
     {
         case BLE_ADV_EVT_FAST:
             NRF_LOG_INFO("Fast advertising.");
-//            err_code = bsp_indication_set(BSP_INDICATE_ADVERTISING);
-//            APP_ERROR_CHECK(err_code);
             break;
 
         case BLE_ADV_EVT_SLOW:
             NRF_LOG_INFO("Slow advertising.");
-//            err_code = bsp_indication_set(BSP_INDICATE_ADVERTISING);
-//            APP_ERROR_CHECK(err_code);
             break;
 
         case BLE_ADV_EVT_IDLE:
             NRF_LOG_INFO("Idle advertising.");
-//            sleep_mode_enter();   // TODO
             break;
 
         default:
@@ -1166,12 +1100,12 @@ static void services_init(void)
     // Initialize Device Information Service.
     memset(&dis_init, 0, sizeof(dis_init));
 
-    ble_srv_ascii_to_utf8(&dis_init.manufact_name_str, (char *)DIS_MANUFACTURER_NAME);
-    ble_srv_ascii_to_utf8(&dis_init.serial_num_str, (char *)DIS_SERIAL_NUMBER);
-    ble_srv_ascii_to_utf8(&dis_init.model_num_str, (char *)DIS_MODEL_NUMBER);
-    ble_srv_ascii_to_utf8(&dis_init.hw_rev_str, (char *)DIS_HW_REV);
-    ble_srv_ascii_to_utf8(&dis_init.sw_rev_str, (char *)DIS_SW_REV);
-    ble_srv_ascii_to_utf8(&dis_init.fw_rev_str, (char *)DIS_FW_REV);
+    ble_srv_ascii_to_utf8(&dis_init.manufact_name_str,  (char *)DIS_MANUFACTURER_NAME);
+    ble_srv_ascii_to_utf8(&dis_init.serial_num_str,     (char *)DIS_SERIAL_NUMBER);
+    ble_srv_ascii_to_utf8(&dis_init.model_num_str,      (char *)DIS_MODEL_NUMBER);
+    ble_srv_ascii_to_utf8(&dis_init.hw_rev_str,         (char *)DIS_HW_REV);
+    ble_srv_ascii_to_utf8(&dis_init.sw_rev_str,         (char *)DIS_SW_REV);
+    ble_srv_ascii_to_utf8(&dis_init.fw_rev_str,         (char *)DIS_FW_REV);
     dis_init.dis_char_rd_sec = SEC_OPEN;
 
     err_code = ble_dis_init(&dis_init);
@@ -1278,6 +1212,21 @@ static void advertising_init()
 
     ble_advertising_init_t init;
     memset(&init, 0, sizeof(init));
+
+
+    uint8_t init_manuf_data[APP_BEACON_INFO_LENGTH] =      /**< Information advertised by the Beacon. */
+    {
+        APP_MAJOR_VALUE,        // Device major value
+        APP_MINOR_VALUE,        // Device minor value
+        APP_DATA_TEMP,          // temperature
+        APP_DATA_HUM,           // humidity
+        APP_DAT_X,              // accel x pos
+        APP_DAT_y,              // accel y pos
+        APP_DAT_Z,              // accel z pos
+        APP_DAT_BATTERY         // battery voltage
+    };
+
+
 /*
 #if defined(USE_UICR_FOR_MAJ_MIN_VALUES)
     // If USE_UICR_FOR_MAJ_MIN_VALUES is defined, the major and minor values will be read from the
@@ -1286,9 +1235,6 @@ static void advertising_init()
     // To set the UICR used by this example to a desired value, write to the address 0x10001080
     // using the nrfjprog tool. The command to be used is as follows.
     // nrfjprog --snr <Segger-chip-Serial-Number> --memwr 0x10001080 --val <your major/minor value>
-    // For example, for a major value and minor value of 0xabcd and 0x0102 respectively, the
-    // the following command should be used.
-    // nrfjprog --snr <Segger-chip-Serial-Number> --memwr 0x10001080 --val 0xabcd0102
     uint16_t major_value = ((*(uint32_t *)UICR_ADDRESS) & 0xFFFF0000) >> 16;
     uint16_t minor_value = ((*(uint32_t *)UICR_ADDRESS) & 0x0000FFFF);
 
@@ -1304,7 +1250,7 @@ static void advertising_init()
     //Set manufacturing data
     ble_advdata_manuf_data_t                manuf_specific_data;
     manuf_specific_data.company_identifier  = APP_COMPANY_IDENTIFIER;
-    manuf_specific_data.data.p_data         = (uint8_t *) m_beacon_info;
+    manuf_specific_data.data.p_data         = (uint8_t *) init_manuf_data;
     manuf_specific_data.data.size           = APP_BEACON_INFO_LENGTH;
 
     // Build and set advertising data.
@@ -1317,6 +1263,7 @@ static void advertising_init()
     int8_t tx_power                         = 0; // set TX power for advertising
     init.advdata.p_tx_power_level           = &tx_power;
 
+    // TODO work on scan response. Necessary?
      // Build and set scan response data and manufacturer specific data packet
 //    ble_advdata_manuf_data_t                manuf_data_response;
 //    uint8_t data_response[]                 = "Many_bytes_of_data";
@@ -1328,23 +1275,13 @@ static void advertising_init()
 //    init.srdata.uuids_complete.uuid_cnt     = sizeof(m_adv_uuids) / sizeof(m_adv_uuids[0]);
 //    init.srdata.uuids_complete.p_uuids      = m_adv_uuids;
 
-    // Initialize advertising parameters (used when starting advertising).
-    // TODO
-//    memset(&m_adv_params, 0, sizeof(m_adv_params));
-//
-//    m_adv_params.properties.type    = BLE_GAP_ADV_TYPE_NONCONNECTABLE_NONSCANNABLE_UNDIRECTED;
-//    m_adv_params.p_peer_addr        = NULL;     // Undirected advertisement.
-//    m_adv_params.filter_policy      = BLE_GAP_ADV_FP_ANY;
-//    m_adv_params.interval           = NON_CONNECTABLE_ADV_INTERVAL;
-//    m_adv_params.duration           = 0;        // Never time out.
-
     // Set advertising modes and intervals
-    init.config.ble_adv_fast_enabled    = false;    // don't allow, after disconnect always fast is taken
+    init.config.ble_adv_fast_enabled    = false;    // currently only use slow
     init.config.ble_adv_fast_interval   = APP_FAST_ADV_INTERVAL;
-    init.config.ble_adv_fast_timeout    = APP_ADV_DURATION;
+    init.config.ble_adv_fast_timeout    = APP_ADV_FAST_DURATION;
     init.config.ble_adv_slow_enabled    = true;
     init.config.ble_adv_slow_interval   = APP_SLOW_ADV_INTERVAL;
-    init.config.ble_adv_slow_timeout    = 0;
+    init.config.ble_adv_slow_timeout    = APP_ADV_SLOW_DURATION;
 
     // Set event handler that will be called upon advertising events
     init.evt_handler = on_adv_evt;
@@ -1356,53 +1293,6 @@ static void advertising_init()
     ble_advertising_conn_cfg_tag_set(&m_advertising, APP_BLE_CONN_CFG_TAG);
 }
 
-
-void fill_test_data(void) 
-{
-    for (int i = 0; i < TRANSFER_BUFFER_SIZE; i++){
-        for (int j = 0; j < TRANSFER_DATA_SIZE; j++){
-            m_transferbuffer[i][j] = m_transferbuffer_counter++;
-        }
-    }
-}
-
-void test_data_send_array(int num_to_send, bool restart)
-{
-    static uint32_t cnt = 0;
-    if (restart) {
-        cnt = 0;
-    }
-
-    while (cnt < num_to_send){
-        our_service_characteristic_update(&m_our_service, &m_transferbuffer[cnt][0]);
-        cnt++;
-    }
-/*
-    uint32_t        err_code;
- 
-    bool result = false;
-    while (cnt < num_to_send)
-    {
-        err_code = our_service_characteristic_update(&m_our_service, m_transferbuffer[cnt]);
-        if (err_code == BLE_ERROR_NO_TX_BUFFERS ||
-            err_code == NRF_ERROR_INVALID_STATE || 
-            err_code == BLE_ERROR_GATTS_SYS_ATTR_MISSING)
-        {
-            break;
-        }
-        else if (err_code != NRF_SUCCESS) 
-        {
-            APP_ERROR_HANDLER(err_code);
-        }
-        cnt++;
-    }
-
-    if(cnt == num_to_send)
-        result = true;
-
-    return resvoid
-    */
-}
 
 
 /**
@@ -1440,9 +1330,6 @@ int main()
 		
     // Start execution.
     NRF_LOG_INFO("Beacon started.");
-    fill_test_data();
-    NRF_LOG_INFO("Testdata done.");
-
     advertising_start(erase_bonds);
 
     for (;;)
