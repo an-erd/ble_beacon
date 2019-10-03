@@ -1,12 +1,12 @@
 <!DOCTYPE CrossStudio_Session_File>
 <session>
  <Bookmarks>
+  <BookmarkItem objectName="" line="1353" column="4" path="C:/msys32/home/AKAEM/nrf52/nRF5_SDK_15.2.0_9412b96/examples/ble_peripheral/ble_beacon/main.c" number="2" extra="void fill_test_data(void)" color="5"/>
   <BookmarkItem objectName="" line="175" column="13" path="C:/msys32/home/AKAEM/nrf52/nRF5_SDK_15.2.0_9412b96/examples/ble_peripheral/ble_beacon/main.c" number="1" extra="#define TRANSFER_BUFFER_SIZE 1000" color="5"/>
-  <BookmarkItem objectName="" line="1346" column="4" path="C:/msys32/home/AKAEM/nrf52/nRF5_SDK_15.2.0_9412b96/examples/ble_peripheral/ble_beacon/main.c" number="2" extra="void fill_test_data(void)" color="5"/>
  </Bookmarks>
  <Breakpoints groups="Breakpoints" active_group="Breakpoints">
   <BreakpointListItem trigger="" line="73" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="4" filename="../../../../../../components/libraries/util/app_error.c" useHWbreakpoint="false"/>
-  <BreakpointListItem trigger="" line="339" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="2" filename="../../../main.c" useHWbreakpoint="false"/>
+  <BreakpointListItem trigger="" line="573" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="4" filename="../../../main.c" useHWbreakpoint="false"/>
   <BreakpointListItem trigger="" line="174" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="2" filename="../../../our_service.c" useHWbreakpoint="false"/>
  </Breakpoints>
  <ExecutionProfileWindow/>
@@ -29,6 +29,7 @@
   <ProjectSessionItem path="ble_beacon_pca10040_s132"/>
   <ProjectSessionItem path="ble_beacon_pca10040_s132;ble_beacon_pca10040_s132"/>
   <ProjectSessionItem path="ble_beacon_pca10040_s132;ble_beacon_pca10040_s132;Application"/>
+  <ProjectSessionItem path="ble_beacon_pca10040_s132;ble_beacon_pca10040_s132;Board Definition"/>
   <ProjectSessionItem path="ble_beacon_pca10040_s132;ble_beacon_pca10040_s132;Internal Files"/>
   <ProjectSessionItem path="ble_beacon_pca10040_s132;ble_beacon_pca10040_s132;nRF_BLE"/>
   <ProjectSessionItem path="ble_beacon_pca10040_s132;ble_beacon_pca10040_s132;nRF_BLE_Services"/>
@@ -66,9 +67,14 @@
   <Watches active="0" update="Never"/>
  </Watch4>
  <Files>
-  <SessionOpenFile windowGroup="DockEditLeft" x="1" y="341" useTextEdit="1" useBinaryEdit="0" left="0" path="../../../main.c" selected="1" top="316" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="30" y="179" useTextEdit="1" useBinaryEdit="0" left="0" path="../../../our_service.c" selected="0" top="155" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="38" y="88" useTextEdit="1" useBinaryEdit="0" left="0" path="../../../our_service.h" selected="0" top="57" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="342" useTextEdit="1" useBinaryEdit="0" left="0" path="../../../main.c" selected="1" top="318" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="126" useTextEdit="1" useBinaryEdit="0" left="0" path="../../../our_service.c" selected="0" top="93" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="48" useTextEdit="1" useBinaryEdit="0" left="0" path="../../../our_service.h" selected="0" top="36" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="272" useTextEdit="1" useBinaryEdit="0" left="0" path="../../../../../../components/softdevice/s132/headers/ble_gatts.h" selected="0" top="248" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="0" useTextEdit="1" useBinaryEdit="0" left="0" path="../config/sdk_config.h" selected="0" top="0" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="0" useTextEdit="1" useBinaryEdit="0" left="0" path="../../../../../../components/boards/boards.c" selected="0" top="0" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="76" useTextEdit="1" useBinaryEdit="0" left="0" path="../../../../../../components/boards/custom_board.h" selected="0" top="51" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="161" useTextEdit="1" useBinaryEdit="0" left="0" path="../../../../../../components/libraries/bsp/bsp.h" selected="0" top="127" codecName="Default"/>
  </Files>
  <ARMCrossStudioWindow activeProject="ble_beacon_pca10040_s132" fileDialogDefaultFilter="*.c" autoConnectTarget="J-Link" buildConfiguration="Debug" sessionSettings="" debugSearchFileMap="" fileDialogInitialDirectory="C:/msys32/home/AKAEM/nrf52/nRF5_SDK_15.2.0_9412b96/components/ble/ble_services/ble_dis" debugSearchPath="" autoConnectCapabilities="3711"/>
 </session>

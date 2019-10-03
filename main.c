@@ -222,8 +222,12 @@ void test_data_send_array(int num_to_send, bool restart);
 
 // BLE Services + Device information service (DIS) defines
 #define DEVICE_NAME                     "Beac8"                                 /**< Name of device. Will be included in the advertising data. */
-#define MANUFACTURER_NAME               "NordicSemiconductor"                   /**< Manufacturer. Will be passed to Device Information Service. */
-#define SERIAL_NUMBER                   "0000000000000001" 
+#define DIS_MANUFACTURER_NAME           "schoeneKunst"                   /**< Manufacturer. Will be passed to Device Information Service. */
+#define DIS_MODEL_NUMBER                "1"
+#define DIS_SERIAL_NUMBER               "8" 
+#define DIS_HW_REV                      "1.0"
+#define DIS_SW_REV                      "0.9"
+#define DIS_FW_REV                      "0.1a"
 
 //#define APP_ADV_INTERVAL                50                                      /**< The advertising interval (in units of 0.625 ms. This value corresponds to 187.5 ms). */
 
@@ -293,6 +297,12 @@ void process_all_data()
         return;
     } else {
         NRF_LOG_INFO("process_all_data");
+        uint32_t currentcounter = nrfx_rtc_counter_get(&rtc);
+        int16_t secgone = currentcounter / NRFX_RTC_DEFAULT_CONFIG_FREQUENCY;
+        NRF_LOG_INFO("secgone = %d", secgone);
+            
+
+
     }
 
     uint8_t payload_idx = PAYLOAD_OFFSET_IN_BEACON_INFO_ADV; // TODO PAYLOAD_OFFSET_IN_BEACON_INFO;
@@ -1156,9 +1166,12 @@ static void services_init(void)
     // Initialize Device Information Service.
     memset(&dis_init, 0, sizeof(dis_init));
 
-    ble_srv_ascii_to_utf8(&dis_init.manufact_name_str, (char *)MANUFACTURER_NAME);
-    ble_srv_ascii_to_utf8(&dis_init.serial_num_str, (char *)SERIAL_NUMBER);
-
+    ble_srv_ascii_to_utf8(&dis_init.manufact_name_str, (char *)DIS_MANUFACTURER_NAME);
+    ble_srv_ascii_to_utf8(&dis_init.serial_num_str, (char *)DIS_SERIAL_NUMBER);
+    ble_srv_ascii_to_utf8(&dis_init.model_num_str, (char *)DIS_MODEL_NUMBER);
+    ble_srv_ascii_to_utf8(&dis_init.hw_rev_str, (char *)DIS_HW_REV);
+    ble_srv_ascii_to_utf8(&dis_init.sw_rev_str, (char *)DIS_SW_REV);
+    ble_srv_ascii_to_utf8(&dis_init.fw_rev_str, (char *)DIS_FW_REV);
     dis_init.dis_char_rd_sec = SEC_OPEN;
 
     err_code = ble_dis_init(&dis_init);

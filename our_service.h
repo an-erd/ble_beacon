@@ -46,9 +46,11 @@
 #include "ble_srv_common.h"
 
 // randomly generated 128-bit base UUID: 612f3d33-37f5-4c4f-9ff2-320c4ba2b73c
-#define BLE_UUID_OUR_BASE_UUID              {0x3C, 0xB7, 0xA2, 0x4B, 0x0C, 0x32, 0xF2, 0x9F, 0x4F, 0x4C, 0xF5, 0x37, 0x00, 0x00, 0x2F, 0x61} 
-#define BLE_UUID_OUR_SERVICE                0x1400  // 16-bit service UUIDs
-#define BLE_UUID_VAL_CHAR                   0x1401  // 16-bit characteristic UUID
+#define BLE_UUID_OUR_BASE_UUID      {0x3C, 0xB7, 0xA2, 0x4B, 0x0C, 0x32, 0xF2, 0x9F, 0x4F, 0x4C, 0xF5, 0x37, 0x00, 0x00, 0x2F, 0x61} 
+#define BLE_UUID_OUR_SERVICE        0x1400  // 16-bit service UUIDs
+#define BLE_UUID_VAL_CHAR           0x1401  // 16-bit characteristic UUID, 
+#define BLE_UUID_VAL_COUNT_CHAR     0x1402  // 16-bit characteristic UUID for the count of data entries available for BLE_UUID_VAL_CHAR
+#define BLE_UUID_VAL_CMD_CHAR       0x140F  // 16-bit characteristic UUID for commands to the BLE_UUID_VAL_CHAR
 
 /**
  * @brief This structure contains various status information for our service. 
@@ -59,9 +61,12 @@
  */
 typedef struct
 {
-    uint16_t    conn_handle;        /**< Handle of the current connection (is BLE_CONN_HANDLE_INVALID if not in a connection).*/
-    uint16_t    service_handle;     /**< Handle of Our Service  */
-    ble_gatts_char_handles_t    char_handles; /**< Handles of our characteristic */
+    uint16_t                    conn_handle;            /**< Handle of the current connection (is BLE_CONN_HANDLE_INVALID if not in a connection).*/
+    uint16_t                    service_handle;         /**< Handle of Our Service  */
+    ble_gatts_char_handles_t    char_handles;           /**< Handles of our characteristic */
+    ble_gatts_char_handles_t    char_val_handles;       /**< Handles of our characteristic BLE_UUID_VAL_CHAR */
+    ble_gatts_char_handles_t    char_val_count_handles; /**< Handles of our characteristic BLE_UUID_VAL_COUNT_CHAR */
+    ble_gatts_char_handles_t    char_val_cmd_handles;   /**< Handles of our characteristic BLE_UUID_VAL_CMD_CHAR */
 } ble_os_t;
 
 /**@brief Function for handling BLE Stack events related to our service and characteristic.
