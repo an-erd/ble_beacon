@@ -50,4 +50,7 @@
     <ProgramSection alignment="8" size="__STACKSIZE__" load="No" place_from_segment_end="Yes" name=".stack"  address_symbol="__StackLimit" end_symbol="__StackTop"/>
     <ProgramSection alignment="8" size="__STACKSIZE_PROCESS__" load="No" name=".stack_process" />
   </MemorySegment>
+  <MemorySegment name="UICR" start="0x10001000" size="0x210">
+    <ProgramSection alignment="4" keep="Yes" load="Yes" name=".UICR_0x80" start="0x10001080"/>
+</MemorySegment>
 </Root>

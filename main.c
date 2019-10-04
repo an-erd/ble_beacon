@@ -234,7 +234,7 @@ void test_data_send_array(int num_to_send, bool restart);
 #define DIS_FW_REV                      "0.1a"
 
 #if defined(USE_UICR_FOR_MAJ_MIN_VALUES)
-#define MAJ_VAL_OFFSET_IN_BEACON_INFO   6                       /**< Position of the MSB of the Major Value in m_beacon_info array. */
+#define MAJ_VAL_OFFSET_IN_MANUF_DATA    0                       /**< Position of the MSB of the Major Value in m_beacon_info array. */
 #define UICR_ADDRESS                    0x10001080              /**< Address of the UICR register  */
 #endif
 
@@ -1226,8 +1226,6 @@ static void advertising_init()
         APP_DAT_BATTERY         // battery voltage
     };
 
-
-/*
 #if defined(USE_UICR_FOR_MAJ_MIN_VALUES)
     // If USE_UICR_FOR_MAJ_MIN_VALUES is defined, the major and minor values will be read from the
     // UICR instead of using the default values. The major and minor values obtained from the UICR
@@ -1238,15 +1236,15 @@ static void advertising_init()
     uint16_t major_value = ((*(uint32_t *)UICR_ADDRESS) & 0xFFFF0000) >> 16;
     uint16_t minor_value = ((*(uint32_t *)UICR_ADDRESS) & 0x0000FFFF);
 
-    uint8_t index = MAJ_VAL_OFFSET_IN_BEACON_INFO;
+    uint8_t index = MAJ_VAL_OFFSET_IN_MANUF_DATA;
 
-    m_beacon_info[index++] = MSB_16(major_value);
-    m_beacon_info[index++] = LSB_16(major_value);
+    init_manuf_data[index++] = MSB_16(major_value);
+    init_manuf_data[index++] = LSB_16(major_value);
 
-    m_beacon_info[index++] = MSB_16(minor_value);
-    m_beacon_info[index++] = LSB_16(minor_value);
+    init_manuf_data[index++] = MSB_16(minor_value);
+    init_manuf_data[index++] = LSB_16(minor_value);
 #endif
-*/
+
     //Set manufacturing data
     ble_advdata_manuf_data_t                manuf_specific_data;
     manuf_specific_data.company_identifier  = APP_COMPANY_IDENTIFIER;
