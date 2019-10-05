@@ -163,12 +163,17 @@ static uint8_t m_buffer[BUFFER_SIZE];
 // DFU defines
 #define INITIATE_DFU_TIMEOUT    15  // secs in which the code (long-long-long button press must be completed)
 
-// TODO
-#define TRANSFER_BUFFER_SIZE    1000
-#define TRANSFER_DATA_SIZE      5
-static int m_transferbuffer_counter = 0;
-static uint32_t m_transferbuffer[TRANSFER_BUFFER_SIZE][TRANSFER_DATA_SIZE] = { 0xFF };
-void test_data_send_array(int num_to_send, bool restart);
+// Offline Buffer
+// Time (4 byte), Temerature (2 byte), Humidity (2 byte) -> 8 x uint8_t byte/entry
+// 20 KB = 20.000 Byte -> 2.500 entries a 8 byte
+#define OFFLINE_BUFFER_RESERVED_BYTE    20000   // 20 KB RAM reserved
+#define OFFLINE_BUFFER_SIZE_PER_ENTRY   8       // uint8_t
+#define OFFLINE_BUFFER_SIZE             (OFFLINE_BUFFER_RESERVED_BYTE / OFFLINE_BUFFER_SIZE_PER_ENTRY)
+static int m_offlinebuffer_counter = 0;         // next entry in buffer
+static uint8_t m_offlinebuffer[OFFLINE_BUFFER_SIZE][OFFLINE_BUFFER_SIZE_PER_ENTRY] = { 0xFF };
+void offline_buffer_init();
+bool offline_buffer_update(uint32_t counter, uint8_t *buffer);
+//void test_data_send_array(int num_to_send, bool restart);
 
 
 /**@brief Macro to convert the result of ADC conversion in millivolts.
@@ -303,6 +308,10 @@ void process_all_data()
     m_advertising.enc_advdata[payload_idx++] = m_buffer[ 9];
     m_advertising.enc_advdata[payload_idx++] = m_buffer[10];
     m_advertising.enc_advdata[payload_idx++] = m_buffer[11];
+
+    // update offline buffer
+    // TODO
+    offline_buffer_update(nrfx_rtc_counter_get(&rtc), &m_advertising.enc_advdata[PAYLOAD_OFFSET_IN_BEACON_INFO_ADV]);
 }
 
 /**@brief Function for multi-step retrieval of sensor data
@@ -519,6 +528,36 @@ static void rtc_handler(nrf_drv_rtc_int_type_t int_type)
         // Trigger the sensor retrieval task for subsequent steps
         read_all_sensors(false);
     }
+}
+
+/**@brief Function to initialize the offline buffer.
+ *
+ * @details  This function initializes the counter for current entry and the buffer array.
+ */
+void offline_buffer_init()
+{
+    m_offlinebuffer_counter = 0;
+    memset(m_offlinebuffer, 0xFF, sizeof(m_offlinebuffer));
+}
+
+/**@brief Function to update next entry in offline buffer.
+ *
+ * @details  This functions stores the next entry in the offline buffer, returns true on succes or false if buffer full.
+ */
+bool offline_buffer_update(uint32_t counter, uint8_t *buffer)
+{
+    if (m_offlinebuffer_counter == OFFLINE_BUFFER_SIZE)
+        return false;
+
+    m_offlinebuffer[m_offlinebuffer_counter][0];
+    memcpy(&m_offlinebuffer[m_offlinebuffer_counter][0], (uint8_t *)&counter, 4);
+    memcpy(&m_offlinebuffer[m_offlinebuffer_counter][4], buffer, 4);
+    NRF_LOG_INFO("counter %d", counter);
+    NRF_LOG_HEXDUMP_INFO((uint8_t *)&counter, 4);
+    NRF_LOG_HEXDUMP_INFO(&m_offlinebuffer[m_offlinebuffer_counter][0], 8);
+    m_offlinebuffer_counter++;
+
+    return true;
 }
 
 /**@brief Function for handling BSP events.
@@ -1314,6 +1353,8 @@ int main()
     bsp_event_to_button_action_assign(1, BSP_BUTTON_ACTION_LONG_PUSH,  BSP_EVENT_KEY_1_LONG);    
     rtc_config();               // Configure RTC
     twi_config();               // Initialize TWI (with transaction manager) 
+
+    offline_buffer_init();      // Initialize offline buffer
 
     nrf_delay_ms(10);           // sensor startup time: KX022 10 ms, SHT3 1 ms
     sensor_init();              // Initialize sensors
