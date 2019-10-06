@@ -72,10 +72,13 @@
 #include "ble_advertising.h"
 #include "ble_conn_params.h"
 #include "ble_dfu.h"
+#include "ble_cts_c.h"
+#include "ble_db_discovery.h"
 #include "ble_dis.h"
 #include "nrf_delay.h"
 #include "app_util_platform.h"
 #include "app_timer.h"
+#include "app_scheduler.h"
 #include "app_gpiote.h"
 #include "nrf_pwr_mgmt.h"
 #include "nrf_drv_power.h"
@@ -97,6 +100,7 @@
 
 #include "fds.h"
 #include "peer_manager.h"
+#include "peer_manager_handler.h"
 #include "bsp_btn_ble.h"
 #include "ble_conn_state.h"
 #include "nrf_ble_gatt.h"
@@ -115,6 +119,13 @@
     // Please note, however, that this adds about 13 kB code footprint...
     __ASM(".global _printf_float");
 #endif
+
+// Opt in/out services for power consumption measurement
+#undef USE_DIS
+#undef USE_CTS
+#undef USE_GATT
+#undef OFFLINE_FUNCTION
+
 
 // RTC defines
 #define RTC_CC_VALUE                8       // prescale 256 Hz, RTC_CC_VALUE=8 => 1/32 sec
@@ -166,6 +177,7 @@ static uint8_t m_buffer[BUFFER_SIZE];
 // Offline Buffer
 // Time (4 byte), Temerature (2 byte), Humidity (2 byte) -> 8 x uint8_t byte/entry
 // 20 KB = 20.000 Byte -> 2.500 entries a 8 byte
+#ifdef OFFLINE_FUNCTION
 #define OFFLINE_BUFFER_RESERVED_BYTE    20000   // 20 KB RAM reserved
 #define OFFLINE_BUFFER_SIZE_PER_ENTRY   8       // uint8_t
 #define OFFLINE_BUFFER_SIZE             (OFFLINE_BUFFER_RESERVED_BYTE / OFFLINE_BUFFER_SIZE_PER_ENTRY)
@@ -174,7 +186,7 @@ static uint8_t m_offlinebuffer[OFFLINE_BUFFER_SIZE][OFFLINE_BUFFER_SIZE_PER_ENTR
 void offline_buffer_init();
 bool offline_buffer_update(uint32_t counter, uint8_t *buffer);
 //void test_data_send_array(int num_to_send, bool restart);
-
+#endif // OFFLINE_FUCTION
 
 /**@brief Macro to convert the result of ADC conversion in millivolts.
  *
@@ -227,29 +239,53 @@ bool offline_buffer_update(uint32_t counter, uint8_t *buffer);
 #define PAYLOAD_OFFSET_IN_BEACON_INFO_ADV   18  /**< First position to write the payload to in enc advdata */
 #define PAYLOAD_OFFSET_BATTERY_INFO     (PAYLOAD_OFFSET_IN_BEACON_INFO_ADV + 10)  /**< Position to write the battery voltage payload to */									
 
+#ifdef USE_CTS
+#define SCHED_MAX_EVENT_DATA_SIZE APP_TIMER_SCHED_EVENT_DATA_SIZE                   /**< Maximum size of scheduler events. Note that scheduler BLE stack events do not contain any data, as the events are being pulled from the stack in the event handler. */
+#ifdef SVCALL_AS_NORMAL_FUNCTION
+#define SCHED_QUEUE_SIZE                20                                          /**< Maximum number of events in the scheduler queue. More is needed in case of Serialization. */
+#else
+#define SCHED_QUEUE_SIZE                10                                          /**< Maximum number of events in the scheduler queue. */
+#endif
+#endif // USE_CTS
+
 #define DEAD_BEEF                       0xDEADBEEF  /**< Value used as error code on stack dump, can be used to identify stack location on stack unwind. */
 
 // BLE Services + Device information service (DIS) defines
 #define DEVICE_NAME                     "Beac8"                 /**< Name of device. Will be included in the advertising data. */
+
+#ifdef USE_DIS
 #define DIS_MANUFACTURER_NAME           "ansprechendeKunst"     /**< Manufacturer. Will be passed to Device Information Service. */
 #define DIS_MODEL_NUMBER                "1"
 #define DIS_SERIAL_NUMBER               "8" 
 #define DIS_HW_REV                      "1.0"
 #define DIS_SW_REV                      "0.9"
 #define DIS_FW_REV                      "0.1a"
+#endif // USE_DIS
 
 #if defined(USE_UICR_FOR_MAJ_MIN_VALUES)
 #define MAJ_VAL_OFFSET_IN_MANUF_DATA    0                       /**< Position of the MSB of the Major Value in m_beacon_info array. */
 #define UICR_ADDRESS                    0x10001080              /**< Address of the UICR register  */
 #endif
 
+#ifdef USE_CTS
+BLE_CTS_C_DEF(m_cts_c);                                         /**< Current Time service instance. */
+BLE_DB_DISCOVERY_DEF(m_ble_db_discovery);                                           /**< DB discovery module instance. */
+#endif
 
+#ifdef USE_GATT
 NRF_BLE_GATT_DEF(m_gatt);                                       /**< GATT module instance. */
 NRF_BLE_QWR_DEF(m_qwr);                                         /**< Context for the Queued Write module.*/
+#endif
 BLE_ADVERTISING_DEF(m_advertising);                             /**< Advertising module instance. */
 
 
 static uint16_t m_conn_handle = BLE_CONN_HANDLE_INVALID;        /**< Handle of the current connection. */
+
+#ifdef USE_CTS
+static pm_peer_id_t m_peer_id;                                                      /**< Device reference handle to the current bonded central. */
+static pm_peer_id_t m_whitelist_peers[BLE_GAP_WHITELIST_ADDR_MAX_COUNT];            /**< List of peers currently in the whitelist. */
+static uint32_t     m_whitelist_peer_cnt;                                           /**< Number of peers currently in the whitelist. */
+#endif
 
 ble_os_t m_our_service;
 
@@ -257,6 +293,37 @@ static ble_uuid_t m_adv_uuids[] =
 {
     { BLE_UUID_OUR_SERVICE, BLE_UUID_TYPE_BLE  },               /**< 16-bit UUID for our service. */
 };
+
+#ifdef USE_CTS
+static char const * day_of_week[] =
+{
+    "Unknown",
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+    "Sunday"
+};
+
+static char const * month_of_year[] =
+{
+    "Unknown",
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December"
+};
+#endif
 
 // forward declaration
 static void advertising_start(bool erase_bonds);
@@ -309,9 +376,11 @@ void process_all_data()
     m_advertising.enc_advdata[payload_idx++] = m_buffer[10];
     m_advertising.enc_advdata[payload_idx++] = m_buffer[11];
 
+#ifdef OFFLINE_FUNCTION
     // update offline buffer
     // TODO
     offline_buffer_update(nrfx_rtc_counter_get(&rtc), &m_advertising.enc_advdata[PAYLOAD_OFFSET_IN_BEACON_INFO_ADV]);
+#endif // OFFLINE_FUNCTION
 }
 
 /**@brief Function for multi-step retrieval of sensor data
@@ -529,7 +598,7 @@ static void rtc_handler(nrf_drv_rtc_int_type_t int_type)
         read_all_sensors(false);
     }
 }
-
+#ifdef OFFLINE_FUNCTION
 /**@brief Function to initialize the offline buffer.
  *
  * @details  This function initializes the counter for current entry and the buffer array.
@@ -559,6 +628,8 @@ bool offline_buffer_update(uint32_t counter, uint8_t *buffer)
 
     return true;
 }
+#endif // OFFLINE_FUNCTION
+
 
 /**@brief Function for handling BSP events.
  *
@@ -566,6 +637,7 @@ bool offline_buffer_update(uint32_t counter, uint8_t *buffer)
  */
 static void bsp_event_handler(bsp_event_t event)
 {
+    ret_code_t err_code;
     static uint32_t counter_dfu = 0;
     static uint8_t  countdown_dfu = 3;
     static bool current_leds = false;
@@ -615,11 +687,21 @@ static void bsp_event_handler(bsp_event_t event)
             break;
         }
         break;
-    
+
     case BSP_EVENT_KEY_1: // button on jig pressed
         NRF_LOG_INFO("button BSP_EVENT_KEY_1");
+#ifdef USE_CTS
+        if (m_cts_c.conn_handle != BLE_CONN_HANDLE_INVALID)
+        {
+            err_code = ble_cts_c_current_time_read(&m_cts_c);
+            if (err_code == NRF_ERROR_NOT_FOUND)
+            {
+                NRF_LOG_INFO("Current Time Service is not discovered.");
+            }
+        }
+#endif
         break;
-
+    
     case BSP_EVENT_KEY_1_RELEASED: // button on jig released
         NRF_LOG_INFO("button BSP_EVENT_KEY_1_RELEASED");
         break;
@@ -650,6 +732,22 @@ static void bsp_event_handler(bsp_event_t event)
             break;
         }
         break;
+
+    case BSP_EVENT_WHITELIST_OFF:
+        NRF_LOG_INFO("BSP_EVENT_WHITELIST_OFF");    
+#ifdef USE_CTS
+
+        if (m_cts_c.conn_handle == BLE_CONN_HANDLE_INVALID)
+        {
+            err_code = ble_advertising_restart_without_whitelist(&m_advertising);
+            if (err_code != NRF_ERROR_INVALID_STATE)
+            {
+                APP_ERROR_CHECK(err_code);
+            }
+        }
+#endif
+        break;
+
     default:
         break;
     }
@@ -672,6 +770,32 @@ void assert_nrf_callback(uint16_t line_num, const uint8_t * p_file_name)
     app_error_handler(DEAD_BEEF, line_num, p_file_name);
 }
 
+#ifdef USE_CTS
+
+/**@brief Fetch the list of peer manager peer IDs.
+ *
+ * @param[inout] p_peers   The buffer where to store the list of peer IDs.
+ * @param[inout] p_size    In: The size of the @p p_peers buffer.
+ *                         Out: The number of peers copied in the buffer.
+ */
+static void peer_list_get(pm_peer_id_t * p_peers, uint32_t * p_size)
+{
+    pm_peer_id_t peer_id;
+    uint32_t     peers_to_copy;
+
+    peers_to_copy = (*p_size < BLE_GAP_WHITELIST_ADDR_MAX_COUNT) ?
+                     *p_size : BLE_GAP_WHITELIST_ADDR_MAX_COUNT;
+
+    peer_id = pm_next_peer_id_get(PM_PEER_ID_INVALID);
+    *p_size = 0;
+
+    while ((peer_id != PM_PEER_ID_INVALID) && (peers_to_copy--))
+    {
+        p_peers[(*p_size)++] = peer_id;
+        peer_id = pm_next_peer_id_get(peer_id);
+    }
+}
+#endif // USE_CTS
 
 /**@brief Clear bond information from persistent storage.
  */
@@ -696,8 +820,27 @@ static void advertising_start(bool erase_bonds)
     }
     else
     {
-        ret_code_t err_code = ble_advertising_start(&m_advertising, BLE_ADV_MODE_SLOW);
+        ret_code_t err_code;
+#ifdef USE_CTS
+        memset(m_whitelist_peers, PM_PEER_ID_INVALID, sizeof(m_whitelist_peers));
+        m_whitelist_peer_cnt = (sizeof(m_whitelist_peers) / sizeof(pm_peer_id_t));
 
+        peer_list_get(m_whitelist_peers, &m_whitelist_peer_cnt);
+
+        err_code = pm_whitelist_set(m_whitelist_peers, m_whitelist_peer_cnt);
+        APP_ERROR_CHECK(err_code);
+
+        // Setup the device identies list.
+        // Some SoftDevices do not support this feature.
+        err_code = pm_device_identities_list_set(m_whitelist_peers, m_whitelist_peer_cnt);
+        if (err_code != NRF_ERROR_NOT_SUPPORTED)
+        {
+            APP_ERROR_CHECK(err_code);
+        }
+
+#endif // USE_CTS
+
+        err_code = ble_advertising_start(&m_advertising, BLE_ADV_MODE_SLOW);
         APP_ERROR_CHECK(err_code);
     }
 }
@@ -854,6 +997,41 @@ static void on_adv_evt(ble_adv_evt_t ble_adv_evt)
             NRF_LOG_INFO("Idle advertising.");
             break;
 
+#ifdef USE_CTS
+        case BLE_ADV_EVT_FAST_WHITELIST:
+            NRF_LOG_INFO("Fast advertising with WhiteList");
+            break;
+
+        case BLE_ADV_EVT_SLOW_WHITELIST:
+            NRF_LOG_INFO("Slow advertising with WhiteList");
+            err_code = ble_advertising_restart_without_whitelist(&m_advertising);
+            APP_ERROR_CHECK(err_code);
+            break;
+
+        case BLE_ADV_EVT_WHITELIST_REQUEST:
+        {
+            ble_gap_addr_t whitelist_addrs[BLE_GAP_WHITELIST_ADDR_MAX_COUNT];
+            ble_gap_irk_t  whitelist_irks[BLE_GAP_WHITELIST_ADDR_MAX_COUNT];
+            uint32_t       addr_cnt = BLE_GAP_WHITELIST_ADDR_MAX_COUNT;
+            uint32_t       irk_cnt  = BLE_GAP_WHITELIST_ADDR_MAX_COUNT;
+
+            err_code = pm_whitelist_get(whitelist_addrs, &addr_cnt,
+                                        whitelist_irks,  &irk_cnt);
+            APP_ERROR_CHECK(err_code);
+            NRF_LOG_DEBUG("pm_whitelist_get returns %d addr in whitelist and %d irk whitelist",
+                           addr_cnt,
+                           irk_cnt);
+
+            // Apply the whitelist.
+            err_code = ble_advertising_whitelist_reply(&m_advertising,
+                                                       whitelist_addrs,
+                                                       addr_cnt,
+                                                       whitelist_irks,
+                                                       irk_cnt);
+            APP_ERROR_CHECK(err_code);
+        }
+        break;
+#endif // USE_CTS
         default:
             break;
     }
@@ -869,18 +1047,29 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
 {
     ret_code_t err_code = NRF_SUCCESS;
 
+#ifdef USE_CTS
+    pm_handler_secure_on_connection(p_ble_evt);
+#endif // USE_CTS
     switch (p_ble_evt->header.evt_id)
     {
         case BLE_GAP_EVT_DISCONNECTED:
             NRF_LOG_INFO("Disconnected.");
             m_conn_handle = BLE_CONN_HANDLE_INVALID;
+#ifdef USE_CTS
+            if (p_ble_evt->evt.gap_evt.conn_handle == m_cts_c.conn_handle)
+            {
+                m_cts_c.conn_handle = BLE_CONN_HANDLE_INVALID;
+            }
+#endif
             break;
 
         case BLE_GAP_EVT_CONNECTED:
             NRF_LOG_INFO("Connected.");
             m_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
+#ifdef USE_GATT
             err_code = nrf_ble_qwr_conn_handle_assign(&m_qwr, m_conn_handle);
             APP_ERROR_CHECK(err_code);
+#endif
             break;
 
         case BLE_GAP_EVT_PHY_UPDATE_REQUEST:
@@ -945,6 +1134,15 @@ static void ble_stack_init()
     NRF_SDH_BLE_OBSERVER(m_our_service_observer, APP_BLE_OBSERVER_PRIO, ble_our_service_on_ble_evt, (void*) &m_our_service);
 }
 
+#ifdef USE_CTS
+/**@brief Function for the Event Scheduler initialization.
+ */
+static void scheduler_init(void)
+{
+    APP_SCHED_INIT(SCHED_MAX_EVENT_DATA_SIZE, SCHED_QUEUE_SIZE);
+}
+#endif
+
 /**@brief Function for handling Peer Manager events.
  *
  * @param[in] p_evt  Peer Manager event.
@@ -953,6 +1151,10 @@ static void pm_evt_handler(pm_evt_t const * p_evt)
 {
     ret_code_t err_code;
 
+#ifdef USE_CTS
+    pm_handler_on_pm_evt(p_evt);
+    pm_handler_flash_clean(p_evt);
+#endif
     switch (p_evt->evt_id)
     {
         case PM_EVT_BONDED_PEER_CONNECTED:
@@ -966,6 +1168,13 @@ static void pm_evt_handler(pm_evt_t const * p_evt)
                          ble_conn_state_role(p_evt->conn_handle),
                          p_evt->conn_handle,
                          p_evt->params.conn_sec_succeeded.procedure);
+#ifdef USE_CTS
+            m_peer_id = p_evt->peer_id;
+
+            // Discover peer's services.
+            err_code  = ble_db_discovery_start(&m_ble_db_discovery, p_evt->conn_handle);
+            APP_ERROR_CHECK(err_code);
+#endif
         } break;
 
         case PM_EVT_CONN_SEC_FAILED:
@@ -1028,8 +1237,37 @@ static void pm_evt_handler(pm_evt_t const * p_evt)
             APP_ERROR_CHECK(p_evt->params.error_unexpected.error);
         } break;
 
-        case PM_EVT_CONN_SEC_START:
+#ifdef USE_CTS
         case PM_EVT_PEER_DATA_UPDATE_SUCCEEDED:
+        {
+            // Note: You should check on what kind of white list policy your application should use.
+            if (     p_evt->params.peer_data_update_succeeded.flash_changed
+                 && (p_evt->params.peer_data_update_succeeded.data_id == PM_PEER_DATA_ID_BONDING))
+            {
+                NRF_LOG_DEBUG("New Bond, add the peer to the whitelist if possible");
+                NRF_LOG_DEBUG("\tm_whitelist_peer_cnt %d, MAX_PEERS_WLIST %d",
+                               m_whitelist_peer_cnt + 1,
+                               BLE_GAP_WHITELIST_ADDR_MAX_COUNT);
+
+                if (m_whitelist_peer_cnt < BLE_GAP_WHITELIST_ADDR_MAX_COUNT)
+                {
+                    // Bonded to a new peer, add it to the whitelist.
+                    m_whitelist_peers[m_whitelist_peer_cnt++] = m_peer_id;
+
+                    // The whitelist has been modified, update it in the Peer Manager.
+                    err_code = pm_device_identities_list_set(m_whitelist_peers, m_whitelist_peer_cnt);
+                    if (err_code != NRF_ERROR_NOT_SUPPORTED)
+                    {
+                        APP_ERROR_CHECK(err_code);
+                    }
+
+                    err_code = pm_whitelist_set(m_whitelist_peers, m_whitelist_peer_cnt);
+                    APP_ERROR_CHECK(err_code);
+                }
+            }
+        } break;
+#endif
+        case PM_EVT_CONN_SEC_START:
         case PM_EVT_PEER_DELETE_SUCCEEDED:
         case PM_EVT_LOCAL_DB_CACHE_APPLIED:
         case PM_EVT_LOCAL_DB_CACHE_APPLY_FAILED:
@@ -1041,6 +1279,126 @@ static void pm_evt_handler(pm_evt_t const * p_evt)
     }
 }
 
+#ifdef USE_CTS
+/**@brief Function for handling the Current Time Service errors.
+ *
+ * @param[in]  nrf_error  Error code containing information about what went wrong.
+ */
+static void current_time_error_handler(uint32_t nrf_error)
+{
+    APP_ERROR_HANDLER(nrf_error);
+}
+
+
+/**@brief Function for handling the Current Time Service errors.
+ *
+ * @param[in] p_evt  Event received from the Current Time Service client.
+ */
+static void current_time_print(ble_cts_c_evt_t * p_evt)
+{
+    NRF_LOG_INFO("\r\nCurrent Time:");
+    NRF_LOG_INFO("\r\nDate:");
+
+    NRF_LOG_INFO("\tDay of week   %s", (uint32_t)day_of_week[p_evt->
+                                                         params.
+                                                         current_time.
+                                                         exact_time_256.
+                                                         day_date_time.
+                                                         day_of_week]);
+
+    if (p_evt->params.current_time.exact_time_256.day_date_time.date_time.day == 0)
+    {
+        NRF_LOG_INFO("\tDay of month  Unknown");
+    }
+    else
+    {
+        NRF_LOG_INFO("\tDay of month  %i",
+                       p_evt->params.current_time.exact_time_256.day_date_time.date_time.day);
+    }
+
+    NRF_LOG_INFO("\tMonth of year %s",
+    (uint32_t)month_of_year[p_evt->params.current_time.exact_time_256.day_date_time.date_time.month]);
+    if (p_evt->params.current_time.exact_time_256.day_date_time.date_time.year == 0)
+    {
+        NRF_LOG_INFO("\tYear          Unknown");
+    }
+    else
+    {
+        NRF_LOG_INFO("\tYear          %i",
+                       p_evt->params.current_time.exact_time_256.day_date_time.date_time.year);
+    }
+    NRF_LOG_INFO("\r\nTime:");
+    NRF_LOG_INFO("\tHours     %i",
+                   p_evt->params.current_time.exact_time_256.day_date_time.date_time.hours);
+    NRF_LOG_INFO("\tMinutes   %i",
+                   p_evt->params.current_time.exact_time_256.day_date_time.date_time.minutes);
+    NRF_LOG_INFO("\tSeconds   %i",
+                   p_evt->params.current_time.exact_time_256.day_date_time.date_time.seconds);
+    NRF_LOG_INFO("\tFractions %i/256 of a second",
+                   p_evt->params.current_time.exact_time_256.fractions256);
+
+    NRF_LOG_INFO("\r\nAdjust reason:\r");
+    NRF_LOG_INFO("\tDaylight savings %x",
+                   p_evt->params.current_time.adjust_reason.change_of_daylight_savings_time);
+    NRF_LOG_INFO("\tTime zone        %x",
+                   p_evt->params.current_time.adjust_reason.change_of_time_zone);
+    NRF_LOG_INFO("\tExternal update  %x",
+                   p_evt->params.current_time.adjust_reason.external_reference_time_update);
+    NRF_LOG_INFO("\tManual update    %x",
+                   p_evt->params.current_time.adjust_reason.manual_time_update);
+}
+
+/**@brief Function for handling the Current Time Service client events.
+ *
+ * @details This function will be called for all events in the Current Time Service client that
+ *          are passed to the application.
+ *
+ * @param[in] p_evt Event received from the Current Time Service client.
+ */
+static void on_cts_c_evt(ble_cts_c_t * p_cts, ble_cts_c_evt_t * p_evt)
+{
+    ret_code_t err_code;
+
+    switch (p_evt->evt_type)
+    {
+        case BLE_CTS_C_EVT_DISCOVERY_COMPLETE:
+            NRF_LOG_INFO("Current Time Service discovered on server.");
+            err_code = ble_cts_c_handles_assign(&m_cts_c,
+                                                p_evt->conn_handle,
+                                                &p_evt->params.char_handles);
+            APP_ERROR_CHECK(err_code);
+            break;
+
+        case BLE_CTS_C_EVT_DISCOVERY_FAILED:
+            NRF_LOG_INFO("Current Time Service not found on server. ");
+            // CTS not found in this case we just disconnect. There is no reason to stay
+            // in the connection for this simple app since it all wants is to interact with CT
+            if (p_evt->conn_handle != BLE_CONN_HANDLE_INVALID)
+            {
+                err_code = sd_ble_gap_disconnect(p_evt->conn_handle,
+                                                 BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
+                APP_ERROR_CHECK(err_code);
+            }
+            break;
+
+        case BLE_CTS_C_EVT_DISCONN_COMPLETE:
+            NRF_LOG_INFO("Disconnect Complete.");
+            break;
+
+        case BLE_CTS_C_EVT_CURRENT_TIME:
+            NRF_LOG_INFO("Current Time received.");
+            current_time_print(p_evt);
+            break;
+
+        case BLE_CTS_C_EVT_INVALID_TIME:
+            NRF_LOG_INFO("Invalid Time received.");
+            break;
+
+        default:
+            break;
+    }
+}
+#endif // USE_CTS
 
 /**@brief Function for the GAP initialization.
  *
@@ -1071,7 +1429,7 @@ static void gap_params_init(void)
     APP_ERROR_CHECK(err_code);
 }
 
-
+#ifdef USE_GATT
 /**@brief Function for initializing the GATT module.
  */
 static void gatt_init(void)
@@ -1079,7 +1437,7 @@ static void gatt_init(void)
     ret_code_t err_code = nrf_ble_gatt_init(&m_gatt, NULL);
     APP_ERROR_CHECK(err_code);
 }
-
+#endif
 
 /**@brief Function for handling the YYY Service events.
  * YOUR_JOB implement a service handler function depending on the event the service you are using can generate
@@ -1125,8 +1483,15 @@ static void services_init(void)
 {
     ret_code_t         err_code;
     nrf_ble_qwr_init_t qwr_init = {0};
-    ble_dis_init_t     dis_init;
+#ifdef USE_CTS
+    ble_cts_c_init_t   cts_init = {0};
+#endif
 
+#ifdef USE_DIS
+    ble_dis_init_t     dis_init;
+#endif
+
+#ifdef USE_GATT
     // Initialize Queued Write Module.
     qwr_init.error_handler = nrf_qwr_error_handler;
 
@@ -1135,8 +1500,10 @@ static void services_init(void)
 
     // Initialize our own service 
     our_service_init (&m_our_service);
+#endif
 
     // Initialize Device Information Service.
+#ifdef USE_DIS
     memset(&dis_init, 0, sizeof(dis_init));
 
     ble_srv_ascii_to_utf8(&dis_init.manufact_name_str,  (char *)DIS_MANUFACTURER_NAME);
@@ -1149,6 +1516,15 @@ static void services_init(void)
 
     err_code = ble_dis_init(&dis_init);
     APP_ERROR_CHECK(err_code);
+#endif // USE_DIS
+
+#ifdef USE_CTS
+    // Initialize CTS.
+    cts_init.evt_handler   = on_cts_c_evt;
+    cts_init.error_handler = current_time_error_handler;
+    err_code               = ble_cts_c_init(&m_cts_c, &cts_init);
+    APP_ERROR_CHECK(err_code);
+#endif // USE_CTS
 }
 
 
@@ -1206,6 +1582,20 @@ static void conn_params_init(void)
     APP_ERROR_CHECK(err_code);
 }
 
+#ifdef USE_CTS
+/**@brief Function for handling Database Discovery events.
+ *
+ * @details This function is a callback function to handle events from the database discovery module.
+ *          Depending on the UUIDs that are discovered, this function should forward the events
+ *          to their respective service instances.
+ *
+ * @param[in] p_event  Pointer to the database discovery event.
+ */
+static void db_disc_handler(ble_db_discovery_evt_t * p_evt)
+{
+    ble_cts_c_on_db_disc_evt(&m_cts_c, p_evt);
+}
+#endif // USE_CTS
 
 /**@brief Function for the Peer Manager initialization.
  */
@@ -1330,7 +1720,16 @@ static void advertising_init()
     ble_advertising_conn_cfg_tag_set(&m_advertising, APP_BLE_CONN_CFG_TAG);
 }
 
-
+#ifdef USE_CTS
+/**
+ * @brief Database discovery collector initialization.
+ */
+static void db_discovery_init(void)
+{
+    ret_code_t err_code = ble_db_discovery_init(db_disc_handler);
+    APP_ERROR_CHECK(err_code);
+}
+#endif // USE_CTS
 
 /**
  * @brief Function for application main entry.
@@ -1354,18 +1753,27 @@ int main()
     rtc_config();               // Configure RTC
     twi_config();               // Initialize TWI (with transaction manager) 
 
+#ifdef OFFLINE_FUNCTION
     offline_buffer_init();      // Initialize offline buffer
+#endif // OFFLINE_FUNCTION
 
     nrf_delay_ms(10);           // sensor startup time: KX022 10 ms, SHT3 1 ms
     sensor_init();              // Initialize sensors
 	
     ble_stack_init();           // Initialize the BLE stack
+#ifdef USE_GATT
     gap_params_init();
     gatt_init();
+#endif
+#ifdef USE_CTS
+    db_discovery_init();
+#endif // USE_CTS
     services_init();
     advertising_init();         // Initialize the advertising functionality
+#ifdef USE_GATT
     conn_params_init();
     peer_manager_init();    
+#endif
 		
     // Start execution.
     NRF_LOG_INFO("Beacon started.");

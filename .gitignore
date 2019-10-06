@@ -67,3 +67,4 @@ pca10040/s132/arm5_no_packs/ble_app_beacon_pca10040_s132.uvguix.AKAEM
 Keys/private.key
 Documentation/power_consumption/~$wer_Consumption.docx
 pca10040/s132/ses/ble_beacon_pca10040_s132.emSession
+pca10040/s132/ses/ble_beacon_pca10040_s132_Release.jlink
