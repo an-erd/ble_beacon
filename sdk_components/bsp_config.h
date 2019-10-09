@@ -86,7 +86,7 @@ extern "C" {
 /**@brief Types of BSP initialization.
  */
 
-#define ADVERTISING_LED_ON_INTERVAL            20			// 200
+#define ADVERTISING_LED_ON_INTERVAL            20		// 200
 #define ADVERTISING_LED_OFF_INTERVAL           4980		// 1800
 
 #define ADVERTISING_DIRECTED_LED_ON_INTERVAL   200

@@ -56,7 +56,7 @@
 #include "boards.h"
 #include "nordic_common.h"
 #include "nrf.h"
-#include "nrf_drv_saadc.h"
+#include "nrfx_saadc.h"
 #include "nrf_drv_ppi.h"
 #include "nordic_common.h"
 #include "bsp.h"
@@ -121,10 +121,25 @@
 #endif
 
 // Opt in/out services for power consumption measurement
-#undef USE_DIS
-#undef USE_CTS
-#undef USE_GATT
-#undef OFFLINE_FUNCTION
+#undef  GOTO_SYSTEM_OFF
+#define USE_LOG_INIT
+#undef  USE_DCDCEN
+#define USE_LFCLK_APP_TIMER
+#define USE_BSP
+#define USE_TWI
+#define USE_SENSOR
+#undef  USE_SENSORINIT_SHT3
+#define USE_SENSORINIT_KX022
+#define USE_SHT3_TEST
+#undef  USE_DISABLE_TWI_AFTER_SENSORINIT
+#define USE_RTC
+#undef  USE_RTC_COMPARE0
+#undef  USE_RTC_COMPARE1
+#undef  USE_DISABLE_TWI_BETWEEN_SENSOR_UPDATE
+#undef  OFFLINE_FUNCTION
+#undef  USE_GATT
+#undef  USE_CTS
+#undef  USE_DIS
 
 
 // RTC defines
@@ -170,6 +185,7 @@ static uint8_t m_buffer[BUFFER_SIZE];
 #if (BUFFER_SIZE < 21)
     #error Buffer too small.
 #endif
+static void sensor_sht3_reset();
 
 // DFU defines
 #define INITIATE_DFU_TIMEOUT    15  // secs in which the code (long-long-long button press must be completed)
@@ -481,7 +497,7 @@ static void read_all_sensors(bool restart)
     
     case 3:
         NRF_LOG_DEBUG("read_all step3");
-    
+
         // read 6 bytes (temp (msb+lsb+crc) and hum (msb+lsb+crc)
         APP_ERROR_CHECK(nrf_drv_twi_rx(&m_twi, SHT3_ADDR, &m_buffer[0], 6));
             
@@ -492,6 +508,10 @@ static void read_all_sensors(bool restart)
         //  KX022_READ_INT_REL(&m_buffer[12])   // read 5 byte interrupt source information
         
         step = 0;   // reset for next sensor retrieval cycle
+#ifdef USE_DISABLE_TWI_BETWEEN_SENSOR_UPDATE
+    nrf_drv_twi_disable(&m_twi);
+    nrf_drv_twi_uninit(&m_twi);
+#endif // USE_DISABLE_TWI_BETWEEN_SENSOR_UPDATE
         break;
     default:
         NRF_LOG_ERROR("read_all: default -> should not happen");
@@ -504,7 +524,7 @@ static void read_all_sensors(bool restart)
  * @details  This function will fetch the conversion result from the ADC, convert the value into
  *           percentage and send it to peer.
  */
-void saadc_event_handler(nrf_drv_saadc_evt_t const * p_event)
+void saadc_event_handler(nrfx_saadc_evt_t const * p_event)
 {
     uint32_t            err_code;
     nrf_saadc_value_t   adc_result;
@@ -514,7 +534,7 @@ void saadc_event_handler(nrf_drv_saadc_evt_t const * p_event)
     NRF_LOG_DEBUG("saadc_event_handler");
 
     // regular SAADC sensor calibration 
-    if (p_event->type == NRF_DRV_SAADC_EVT_DONE){
+    if (p_event->type == NRFX_SAADC_EVT_DONE){
         if((m_adc_evt_counter % SAADC_CALIBRATION_INTERVAL) == 0){
             NRF_LOG_DEBUG("SAADC calibration starting...");
             NRF_SAADC->EVENTS_CALIBRATEDONE = 0; 
@@ -526,7 +546,7 @@ void saadc_event_handler(nrf_drv_saadc_evt_t const * p_event)
 
         m_adc_evt_counter++;
 				
-        err_code = nrf_drv_saadc_buffer_convert(p_event->data.done.p_buffer, SAADC_SAMPLES_IN_BUFFER);  //Set buffer so the SAADC can write to it again. This is either "buffer 1" or "buffer 2"
+        err_code = nrfx_saadc_buffer_convert(p_event->data.done.p_buffer, SAADC_SAMPLES_IN_BUFFER);  //Set buffer so the SAADC can write to it again. This is either "buffer 1" or "buffer 2"
         APP_ERROR_CHECK(err_code);
 			
         adc_result = p_event->data.done.p_buffer[0];
@@ -543,7 +563,7 @@ void saadc_event_handler(nrf_drv_saadc_evt_t const * p_event)
         m_advertising.enc_advdata[payload_idx++] = MSB_16(m_battery_millivolts);
         m_advertising.enc_advdata[payload_idx++] = LSB_16(m_battery_millivolts);
 				
-        nrf_drv_saadc_uninit();                                                                   //Unintialize SAADC to disable EasyDMA and save power
+        nrfx_saadc_uninit();                                                                   //Unintialize SAADC to disable EasyDMA and save power
         NRF_SAADC->INTENCLR = (SAADC_INTENCLR_END_Clear << SAADC_INTENCLR_END_Pos);               //Disable the SAADC interrupt
         NVIC_ClearPendingIRQ(SAADC_IRQn);                                                         //Clear the SAADC interrupt if set
         m_saadc_initialized = false;                                                              //Set SAADC as uninitialized
@@ -571,7 +591,7 @@ static void rtc_handler(nrf_drv_rtc_int_type_t int_type)
         m_saadc_initialized = true;
 
         // Trigger the SAADC SAMPLE task
-        nrf_drv_saadc_sample();
+        nrfx_saadc_sample();
 		
         // Set counter for next sample
         counter_current = nrfx_rtc_counter_get(&rtc);
@@ -596,6 +616,12 @@ static void rtc_handler(nrf_drv_rtc_int_type_t int_type)
     if (int_type == NRF_DRV_RTC_INT_COMPARE2){
         // Trigger the sensor retrieval task for subsequent steps
         read_all_sensors(false);
+    }
+
+    // help function for power consumption optimization
+    if (int_type == NRF_DRV_RTC_INT_COMPARE3){
+        NRF_LOG_DEBUG("rtc_handler COMPARE3");
+        sensor_sht3_reset();
     }
 }
 #ifdef OFFLINE_FUNCTION
@@ -895,11 +921,20 @@ static void rtc_config()
     // Initialize RTC with callback handler
     APP_ERROR_CHECK(nrf_drv_rtc_init(&rtc, &rtc_configuration, rtc_handler));
 
+#ifdef USE_RTC_COMPARE0
     //Set RTC compare0 value to trigger first interrupt 
     APP_ERROR_CHECK(nrf_drv_rtc_cc_set(&rtc, 0, RTC_CC_VALUE*16, true));
+#endif // USE_RTC_COMPARE0
 
+#ifdef USE_RTC_COMPARE1
     //Set RTC compare1 value to trigger first interrupt 
     APP_ERROR_CHECK(nrf_drv_rtc_cc_set(&rtc, 1, RTC_CC_VALUE*32, true));
+#endif // USE_RTC_COMPARE1
+
+#ifdef USE_SHT3_TEST
+    // complete a break command to see the power consumption values
+    APP_ERROR_CHECK(nrf_drv_rtc_cc_set(&rtc, 3, RTC_CC_VALUE*32, true));
+#endif
 
     //Enable RTC instance
     nrf_drv_rtc_enable(&rtc);
@@ -910,17 +945,17 @@ static void rtc_config()
 static void saadc_init()
 {
     //Configure SAADC
-    nrf_drv_saadc_config_t saadc_config = NRFX_SAADC_DEFAULT_CONFIG;
+    nrfx_saadc_config_t saadc_config = NRFX_SAADC_DEFAULT_CONFIG;
 	
     // Initialize SAADC
-    APP_ERROR_CHECK(nrf_drv_saadc_init(&saadc_config, saadc_event_handler));
+    APP_ERROR_CHECK(nrfx_saadc_init(&saadc_config, saadc_event_handler));
 
     //Configure SAADC channel
     nrf_saadc_channel_config_t channel_config =
-        NRF_DRV_SAADC_DEFAULT_CHANNEL_CONFIG_SE(NRF_SAADC_INPUT_VDD);
+        NRFX_SAADC_DEFAULT_CHANNEL_CONFIG_SE(NRF_SAADC_INPUT_VDD);
 
     //Initialize SAADC channel
-    APP_ERROR_CHECK(nrf_drv_saadc_channel_init(0, &channel_config));
+    APP_ERROR_CHECK(nrfx_saadc_channel_init(0, &channel_config));
 
 		// Configure burst mode for channel 0
     if(SAADC_BURST_MODE){
@@ -928,10 +963,10 @@ static void saadc_init()
     }
 
     //Set SAADC buffer 1. The SAADC will start to write to this buffer
-    APP_ERROR_CHECK(nrf_drv_saadc_buffer_convert(m_buffer_pool[0], SAADC_SAMPLES_IN_BUFFER));    
+    APP_ERROR_CHECK(nrfx_saadc_buffer_convert(m_buffer_pool[0], SAADC_SAMPLES_IN_BUFFER));    
 
     //Set SAADC buffer 2. The SAADC will write to this buffer when buffer 1 is full. This will give the applicaiton time to process data in buffer 1.
-    APP_ERROR_CHECK(nrf_drv_saadc_buffer_convert(m_buffer_pool[1],SAADC_SAMPLES_IN_BUFFER));   
+    APP_ERROR_CHECK(nrfx_saadc_buffer_convert(m_buffer_pool[1],SAADC_SAMPLES_IN_BUFFER));   
 }
 
 
@@ -964,13 +999,37 @@ static void twi_config()
  */
 static void sensor_init()
 {	
+#ifdef USE_SENSORINIT_SHT3
     // SHT3
     static uint8_t config_sht3_0[2] = { (SHT3_SOFTRESET >> 8), (SHT3_SOFTRESET & 0xFF) };
     APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, SHT3_ADDR, config_sht3_0, 2, false));
-		
+#endif 
+
+#ifdef USE_SHT3_TEST
+#define SHT3_MPS1_HIGH_REP_MEAS     0x2130
+#define SHT3_MPS10_HIGH_REP_MEAS    0x2737
+    static uint8_t config_sht3_0[2] = { (SHT3_MPS10_HIGH_REP_MEAS >> 8), (SHT3_MPS10_HIGH_REP_MEAS & 0xFF) };
+    APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, SHT3_ADDR, config_sht3_0, 2, false));
+    NRF_LOG_INFO("sensor init sht3, 1 MPS");
+#endif // USE_SHT3_TEST
+
+#ifdef USE_SENSORINIT_KX022
     // KX022 
     static uint8_t config_kx022_0[2] = {KX022_1020_REG_CNTL1, 0x00 };	// KX022_1020_STANDBY 
     APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, config_kx022_0, 2, false));
+#endif
+}
+
+static void sensor_sht3_reset()
+{
+#define SHT3_BREAK_CMD              0x3093
+#define SHT3_MPS4_HIGH_REP_MEAS     0x2334
+    static uint8_t config_sht3_0[2] = { (SHT3_BREAK_CMD >> 8), (SHT3_BREAK_CMD & 0xFF) };
+    APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, SHT3_ADDR, config_sht3_0, 2, false));
+    nrf_delay_ms(15);      
+    static uint8_t config_sht3_1[2] = { (SHT3_SOFTRESET >> 8), (SHT3_SOFTRESET & 0xFF) };
+    APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, SHT3_ADDR, config_sht3_1, 2, false));
+    NRF_LOG_INFO("sensor reset sht3");
 }
 
 /**@brief Function for handling advertising events.
@@ -1738,29 +1797,56 @@ int main()
 {
     bool erase_bonds = false;
 
+#ifdef GOTO_SYSTEM_OFF
+    NRF_POWER->SYSTEMOFF = 1;
+#endif
+
     // Initialization and configuration
+#ifdef USE_LOG_INIT
     log_init();                 // Initialize logging
+#endif // USE_LOG_INIT
+
     power_management_init();    // Initialize power management	
+
+#ifdef USE_DCDCEN
     NRF_POWER->DCDCEN = 1;      // Enabling the DCDC converter for lower current consumption
+#endif // USEDCDCEN
+#ifdef USE_LFCLK_APP_TIMER
     lfclk_config();             // Configure low frequency 32kHz clock
     app_timer_init();           // Initialize app timer
+#endif // USE_LFCLK_APP_TIMER
     
+#ifdef USE_BSP
     bsp_configuration();        // Initialize BSP (leds and buttons)
     bsp_event_to_button_action_assign(0, BSP_BUTTON_ACTION_RELEASE,  BSP_EVENT_KEY_0_RELEASED);
     bsp_event_to_button_action_assign(0, BSP_BUTTON_ACTION_LONG_PUSH,  BSP_EVENT_KEY_0_LONG);
     bsp_event_to_button_action_assign(1, BSP_BUTTON_ACTION_RELEASE,  BSP_EVENT_KEY_1_RELEASED);
     bsp_event_to_button_action_assign(1, BSP_BUTTON_ACTION_LONG_PUSH,  BSP_EVENT_KEY_1_LONG);    
-    rtc_config();               // Configure RTC
+#endif // USE_BSP
+
+#ifdef USE_TWI
     twi_config();               // Initialize TWI (with transaction manager) 
+    nrf_delay_ms(10);           // sensor startup time: KX022 10 ms, SHT3 1 ms
+#endif // USE_TWI
+
+#ifdef USE_SENSOR
+    sensor_init();              // Initialize sensors
+#endif // USE_SENSOR
+
+#ifdef USE_DISABLE_TWI_AFTER_SENSORINIT
+    nrf_drv_twi_disable(&m_twi);
+#endif // USE_DISABLE_TWI_AFTER_SENSORINIT
+
+#ifdef USE_RTC
+    rtc_config();               // Configure RTC
+#endif // USE_RTC
 
 #ifdef OFFLINE_FUNCTION
     offline_buffer_init();      // Initialize offline buffer
 #endif // OFFLINE_FUNCTION
 
-    nrf_delay_ms(10);           // sensor startup time: KX022 10 ms, SHT3 1 ms
-    sensor_init();              // Initialize sensors
 	
-    ble_stack_init();           // Initialize the BLE stack
+//    ble_stack_init();           // Initialize the BLE stack
 #ifdef USE_GATT
     gap_params_init();
     gatt_init();
@@ -1768,8 +1854,8 @@ int main()
 #ifdef USE_CTS
     db_discovery_init();
 #endif // USE_CTS
-    services_init();
-    advertising_init();         // Initialize the advertising functionality
+//    services_init();
+//    advertising_init();         // Initialize the advertising functionality
 #ifdef USE_GATT
     conn_params_init();
     peer_manager_init();    
@@ -1777,8 +1863,8 @@ int main()
 		
     // Start execution.
     NRF_LOG_INFO("Beacon started.");
-    advertising_start(erase_bonds);
-
+//    advertising_start(erase_bonds);
+//sd_power_system_off();
     for (;;)
     {
         NRF_LOG_FLUSH();
