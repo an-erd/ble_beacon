@@ -122,24 +122,25 @@
 
 // Opt in/out services for power consumption measurement
 #undef  GOTO_SYSTEM_OFF
-#define USE_LOG_INIT
-#undef  USE_DCDCEN
+#define USE_PWR_MANAGEMENT_INIT
+#define  USE_LOG_INIT
+#define USE_DCDCEN
 #define USE_LFCLK_APP_TIMER
 #define USE_BSP
 #define USE_TWI
 #define USE_SENSOR
-#undef  USE_SENSORINIT_SHT3
+#define USE_SENSORINIT_SHT3
 #define USE_SENSORINIT_KX022
-#define USE_SHT3_TEST
+#undef  USE_SHT3_TEST
 #undef  USE_DISABLE_TWI_AFTER_SENSORINIT
 #define USE_RTC
-#undef  USE_RTC_COMPARE0
-#undef  USE_RTC_COMPARE1
+#define USE_RTC_COMPARE0
+#define USE_RTC_COMPARE1
 #undef  USE_DISABLE_TWI_BETWEEN_SENSOR_UPDATE
 #undef  OFFLINE_FUNCTION
-#undef  USE_GATT
+#undef USE_GATT
 #undef  USE_CTS
-#undef  USE_DIS
+#define USE_DIS
 
 
 // RTC defines
@@ -1806,7 +1807,9 @@ int main()
     log_init();                 // Initialize logging
 #endif // USE_LOG_INIT
 
+#ifdef USE_PWR_MANAGEMENT_INIT
     power_management_init();    // Initialize power management	
+#endif // USE_PWR_MANAGEMENT_INIT
 
 #ifdef USE_DCDCEN
     NRF_POWER->DCDCEN = 1;      // Enabling the DCDC converter for lower current consumption
@@ -1846,7 +1849,7 @@ int main()
 #endif // OFFLINE_FUNCTION
 
 	
-//    ble_stack_init();           // Initialize the BLE stack
+    ble_stack_init();           // Initialize the BLE stack
 #ifdef USE_GATT
     gap_params_init();
     gatt_init();
@@ -1854,8 +1857,8 @@ int main()
 #ifdef USE_CTS
     db_discovery_init();
 #endif // USE_CTS
-//    services_init();
-//    advertising_init();         // Initialize the advertising functionality
+    services_init();
+    advertising_init();         // Initialize the advertising functionality
 #ifdef USE_GATT
     conn_params_init();
     peer_manager_init();    
@@ -1863,7 +1866,7 @@ int main()
 		
     // Start execution.
     NRF_LOG_INFO("Beacon started.");
-//    advertising_start(erase_bonds);
+    advertising_start(erase_bonds);
 //sd_power_system_off();
     for (;;)
     {
