@@ -123,7 +123,7 @@
 // Opt in/out services for power consumption measurement
 #undef  GOTO_SYSTEM_OFF
 #define USE_PWR_MANAGEMENT_INIT
-#define  USE_LOG_INIT
+#define USE_LOG_INIT
 #define USE_DCDCEN
 #define USE_LFCLK_APP_TIMER
 #define USE_BSP
@@ -138,7 +138,11 @@
 #define USE_RTC_COMPARE1
 #undef  USE_DISABLE_TWI_BETWEEN_SENSOR_UPDATE
 #undef  OFFLINE_FUNCTION
-#undef USE_GATT
+#define USE_GATT
+#undef  USE_CONN_ADV_INIT
+#undef  USE_NONCONN_ADV_INIT
+#define USE_OUR_SERVICES
+#define USE_ADVERTISING
 #undef  USE_CTS
 #define USE_DIS
 
@@ -294,7 +298,7 @@ NRF_BLE_GATT_DEF(m_gatt);                                       /**< GATT module
 NRF_BLE_QWR_DEF(m_qwr);                                         /**< Context for the Queued Write module.*/
 #endif
 BLE_ADVERTISING_DEF(m_advertising);                             /**< Advertising module instance. */
-
+static ble_gap_adv_params_t     m_adv_params;                                       /**< Parameters to be passed to the stack when starting advertising. */
 
 static uint16_t m_conn_handle = BLE_CONN_HANDLE_INVALID;        /**< Handle of the current connection. */
 
@@ -1690,6 +1694,48 @@ static void peer_manager_init(void)
     APP_ERROR_CHECK(err_code);
 }
 
+
+/**@brief Function for initializing the connectable advertisement parameters.
+ *
+ * @details This function initializes the advertisement parameters to values that will put
+ *          the application in connectable mode.
+ *
+ */
+static void connectable_adv_init(void)
+{
+    // Initialize advertising parameters (used when starting advertising).
+    memset(&m_adv_params, 0, sizeof(m_adv_params));
+
+    m_adv_params.properties.type = BLE_GAP_ADV_TYPE_CONNECTABLE_SCANNABLE_UNDIRECTED;
+    m_adv_params.duration        = APP_ADV_SLOW_DURATION; // was: APP_ADV_DURATION;
+
+    m_adv_params.p_peer_addr   = NULL;
+    m_adv_params.filter_policy = BLE_GAP_ADV_FP_ANY;
+    m_adv_params.interval      = APP_SLOW_ADV_INTERVAL; // was: CONNECTABLE_ADV_INTERVAL;
+    m_adv_params.primary_phy   = BLE_GAP_PHY_1MBPS;
+}
+
+
+/**@brief Function for initializing the non-connectable advertisement parameters.
+ *
+ * @details This function initializes the advertisement parameters to values that will put
+ *          the application in non-connectable mode.
+ *
+ */
+static void non_connectable_adv_init(void)
+{
+    // Initialize advertising parameters (used when starting advertising).
+    memset(&m_adv_params, 0, sizeof(m_adv_params));
+
+    m_adv_params.properties.type = BLE_GAP_ADV_TYPE_CONNECTABLE_NONSCANNABLE_DIRECTED;
+    m_adv_params.duration        = APP_ADV_SLOW_DURATION; // was: APP_ADV_DURATION;
+    m_adv_params.p_peer_addr     = NULL;
+    m_adv_params.filter_policy   = BLE_GAP_ADV_FP_ANY;
+    m_adv_params.interval        = APP_SLOW_ADV_INTERVAL; // was: NON_CONNECTABLE_ADV_INTERVAL;
+    m_adv_params.primary_phy     = BLE_GAP_PHY_1MBPS;
+}
+
+
 /**@brief Function for initializing the Advertising functionality.
  *
  * @details Encodes the required advertising data and passes it to the stack.
@@ -1857,11 +1903,21 @@ int main()
 #ifdef USE_CTS
     db_discovery_init();
 #endif // USE_CTS
+#ifdef USE_OUR_SERVICES
     services_init();
+#endif
+#ifdef USE_CONN_ADV_INIT
+    connectable_adv_init();
+#endif 
+#ifdef USE_NONCONN_ADV_INIT
+    non_connectable_adv_init();
+#endif 
+#ifdef USE_ADVERTISING
     advertising_init();         // Initialize the advertising functionality
+#endif
 #ifdef USE_GATT
-    conn_params_init();
-    peer_manager_init();    
+//    peer_manager_init();    
+//    conn_params_init();
 #endif
 		
     // Start execution.
