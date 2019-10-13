@@ -138,13 +138,14 @@
 #define USE_RTC_COMPARE1
 #undef  USE_DISABLE_TWI_BETWEEN_SENSOR_UPDATE
 #undef  OFFLINE_FUNCTION
-#define USE_GATT
+#undef USE_GATT
 #undef  USE_CONN_ADV_INIT
 #undef  USE_NONCONN_ADV_INIT
 #define USE_OUR_SERVICES
 #define USE_ADVERTISING
 #undef  USE_CTS
 #define USE_DIS
+#define USE_OLD_ADVERTISING_FUNCTIONS
 
 
 // RTC defines
@@ -225,7 +226,7 @@ bool offline_buffer_update(uint32_t counter, uint8_t *buffer);
 #define APP_ADV_SLOW_DURATION           0                                   /**< The advertising duration (180 seconds) in units of 10 milliseconds. */
 #define APP_BLE_OBSERVER_PRIO           3                                   /**< Application's BLE observer priority. You shouldn't need to modify this value. */
 #define APP_BLE_CONN_CFG_TAG            1                                   /**< A tag identifying the SoftDevice BLE configuration. */
-
+#define NON_CONNECTABLE_ADV_INTERVAL    MSEC_TO_UNITS(1000, UNIT_0_625_MS)  /**< The advertising interval for non-connectable advertisement (100 ms). This value can vary between 100ms to 10.24s). */
 #define MIN_CONN_INTERVAL               MSEC_TO_UNITS(100, UNIT_1_25_MS)    /**< Minimum acceptable connection interval (0.1 seconds). */
 #define MAX_CONN_INTERVAL               MSEC_TO_UNITS(200, UNIT_1_25_MS)    /**< Maximum acceptable connection interval (0.2 second). */
 #define SLAVE_LATENCY                   0                                   /**< Slave latency. */
@@ -254,11 +255,13 @@ bool offline_buffer_update(uint32_t counter, uint8_t *buffer);
 #define APP_DAT_X               0xaa, 0xaa      /**< Acceleration X data. */
 #define APP_DAT_y               0xbb, 0xbb      /**< Acceleration Y data. */
 #define APP_DAT_Z               0xcc, 0xcc      /**< Acceleration Z Temperature data. */
-#define APP_DAT_BATTERY         0x0B, 0xB8      /**< Battery voltage data. */
+#define APP_DAT_BATTERY         0xFF, 0xFF      /**< Battery voltage data. */
 #define APP_BEACON_PAD          0xFF            /**< Padding data (maybe used, maybe not.) */
 
 #define PAYLOAD_OFFSET_IN_BEACON_INFO_ADV   18  /**< First position to write the payload to in enc advdata */
 #define PAYLOAD_OFFSET_BATTERY_INFO     (PAYLOAD_OFFSET_IN_BEACON_INFO_ADV + 10)  /**< Position to write the battery voltage payload to */									
+#define PAYLOAD_OFFSET_IN_BEACON_INFO_ADV_OLD   11  /**< First position to write the payload to in enc advdata */
+#define PAYLOAD_OFFSET_BATTERY_INFO_OLD     (PAYLOAD_OFFSET_IN_BEACON_INFO_ADV_OLD + 10)  /**< Position to write the battery voltage payload to */									
 
 #ifdef USE_CTS
 #define SCHED_MAX_EVENT_DATA_SIZE APP_TIMER_SCHED_EVENT_DATA_SIZE                   /**< Maximum size of scheduler events. Note that scheduler BLE stack events do not contain any data, as the events are being pulled from the stack in the event handler. */
@@ -299,8 +302,36 @@ NRF_BLE_QWR_DEF(m_qwr);                                         /**< Context for
 #endif
 BLE_ADVERTISING_DEF(m_advertising);                             /**< Advertising module instance. */
 static ble_gap_adv_params_t     m_adv_params;                                       /**< Parameters to be passed to the stack when starting advertising. */
-
+static uint8_t              m_adv_handle = BLE_GAP_ADV_SET_HANDLE_NOT_SET;  /**< Advertising handle used to identify an advertising set. */
+static uint8_t              m_enc_advdata[BLE_GAP_ADV_SET_DATA_SIZE_MAX];   /**< Buffer for storing an encoded advertising set. */
 static uint16_t m_conn_handle = BLE_CONN_HANDLE_INVALID;        /**< Handle of the current connection. */
+
+static uint8_t m_beacon_info[APP_BEACON_INFO_LENGTH] =      /**< Information advertised by the Beacon. */
+{
+        APP_MAJOR_VALUE,        // Device major value
+        APP_MINOR_VALUE,        // Device minor value
+        APP_DATA_TEMP,          // temperature
+        APP_DATA_HUM,           // humidity
+        APP_DAT_X,              // accel x pos
+        APP_DAT_y,              // accel y pos
+        APP_DAT_Z,              // accel z pos
+        APP_DAT_BATTERY         // battery voltage
+};
+
+/**@brief Struct that contains pointers to the encoded advertising data. */
+static ble_gap_adv_data_t m_adv_data =
+{
+    .adv_data =
+    {
+        .p_data = m_enc_advdata,
+        .len    = BLE_GAP_ADV_SET_DATA_SIZE_MAX
+    },
+    .scan_rsp_data =
+    {
+        .p_data = NULL,
+        .len    = 0
+    }
+};
 
 #ifdef USE_CTS
 static pm_peer_id_t m_peer_id;                                                      /**< Device reference handle to the current bonded central. */
@@ -359,10 +390,10 @@ void process_all_data()
 {
     NRF_LOG_DEBUG("process_all_data()");
 	
-    if(!m_advertising.initialized) {
-        NRF_LOG_DEBUG("m_advertising not initialized -> exiting process_all_data()");
-        return;
-    } 
+//    if(!m_advertising.initialized) {
+//        NRF_LOG_DEBUG("m_advertising not initialized -> exiting process_all_data()");
+//        return;
+//    } 
 
 #ifdef DEBUG
     static uint8_t counter_show_val = 0;
@@ -385,7 +416,34 @@ void process_all_data()
 #endif // DEBUG
 
     // update payload data in encoded advertising data
-    uint8_t payload_idx = PAYLOAD_OFFSET_IN_BEACON_INFO_ADV;
+    // TODO
+    uint8_t payload_idx;  // PAYLOAD_OFFSET_IN_BEACON_INFO_ADV;
+#ifdef USE_OLD_ADVERTISING_FUNCTIONS
+    payload_idx = PAYLOAD_OFFSET_IN_BEACON_INFO_ADV_OLD;
+//    m_enc_advdata[payload_idx++] = m_buffer[ 0];
+//    m_enc_advdata[payload_idx++] = m_buffer[ 1];
+//    m_enc_advdata[payload_idx++] = m_buffer[ 3];
+//    m_enc_advdata[payload_idx++] = m_buffer[ 4];
+//    m_enc_advdata[payload_idx++] = m_buffer[ 6];
+//    m_enc_advdata[payload_idx++] = m_buffer[ 7];
+//    m_enc_advdata[payload_idx++] = m_buffer[ 8];
+//    m_enc_advdata[payload_idx++] = m_buffer[ 9];
+//    m_enc_advdata[payload_idx++] = m_buffer[10];
+//    m_enc_advdata[payload_idx++] = m_buffer[11];
+    
+    m_adv_data.adv_data.p_data[payload_idx++] = m_buffer[ 0];
+    m_adv_data.adv_data.p_data[payload_idx++] = m_buffer[ 1];
+    m_adv_data.adv_data.p_data[payload_idx++] = m_buffer[ 3];
+    m_adv_data.adv_data.p_data[payload_idx++] = m_buffer[ 4];
+    m_adv_data.adv_data.p_data[payload_idx++] = m_buffer[ 6];
+    m_adv_data.adv_data.p_data[payload_idx++] = m_buffer[ 7];
+    m_adv_data.adv_data.p_data[payload_idx++] = m_buffer[ 8];
+    m_adv_data.adv_data.p_data[payload_idx++] = m_buffer[ 9];
+    m_adv_data.adv_data.p_data[payload_idx++] = m_buffer[10];
+    m_adv_data.adv_data.p_data[payload_idx++] = m_buffer[11];
+#else
+    payload_idx = PAYLOAD_OFFSET_IN_BEACON_INFO_ADV;
+
     m_advertising.enc_advdata[payload_idx++] = m_buffer[ 0];
     m_advertising.enc_advdata[payload_idx++] = m_buffer[ 1];
     m_advertising.enc_advdata[payload_idx++] = m_buffer[ 3];
@@ -396,6 +454,7 @@ void process_all_data()
     m_advertising.enc_advdata[payload_idx++] = m_buffer[ 9];
     m_advertising.enc_advdata[payload_idx++] = m_buffer[10];
     m_advertising.enc_advdata[payload_idx++] = m_buffer[11];
+#endif
 
 #ifdef OFFLINE_FUNCTION
     // update offline buffer
@@ -564,10 +623,14 @@ void saadc_event_handler(nrfx_saadc_evt_t const * p_event)
         NRF_LOG_DEBUG("saadc_event_handler, done, perc %d, volts %d", percentage_batt_lvl, m_battery_millivolts);
 
         // update payload data in encoded advertising data
-        uint8_t payload_idx = PAYLOAD_OFFSET_BATTERY_INFO;
+        uint8_t payload_idx = PAYLOAD_OFFSET_BATTERY_INFO_OLD;
+#ifdef USE_OLD_ADVERTISING_FUNCTIONS
+        m_adv_data.adv_data.p_data[payload_idx++] = MSB_16(m_battery_millivolts);
+        m_adv_data.adv_data.p_data[payload_idx++] = LSB_16(m_battery_millivolts);
+#else
         m_advertising.enc_advdata[payload_idx++] = MSB_16(m_battery_millivolts);
         m_advertising.enc_advdata[payload_idx++] = LSB_16(m_battery_millivolts);
-				
+#endif				
         nrfx_saadc_uninit();                                                                   //Unintialize SAADC to disable EasyDMA and save power
         NRF_SAADC->INTENCLR = (SAADC_INTENCLR_END_Clear << SAADC_INTENCLR_END_Pos);               //Disable the SAADC interrupt
         NVIC_ClearPendingIRQ(SAADC_IRQn);                                                         //Clear the SAADC interrupt if set
@@ -874,6 +937,17 @@ static void advertising_start(bool erase_bonds)
         err_code = ble_advertising_start(&m_advertising, BLE_ADV_MODE_SLOW);
         APP_ERROR_CHECK(err_code);
     }
+}
+
+static void advertising_start_old()
+{
+    ret_code_t err_code;
+
+    err_code = sd_ble_gap_adv_start(m_adv_handle, APP_BLE_CONN_CFG_TAG);
+    APP_ERROR_CHECK(err_code);
+
+//  err_code = bsp_indication_set(BSP_INDICATE_ADVERTISING);
+//  APP_ERROR_CHECK(err_code);
 }
 
 /**@brief Function for handling the idle state (main loop).
@@ -1826,6 +1900,80 @@ static void advertising_init()
     ble_advertising_conn_cfg_tag_set(&m_advertising, APP_BLE_CONN_CFG_TAG);
 }
 
+static void advertising_init_old()
+{
+    uint32_t        err_code;
+    ble_advdata_t   advdata;
+    uint8_t         flags = BLE_GAP_ADV_FLAG_BR_EDR_NOT_SUPPORTED;
+
+   //Set manufacturing data
+    uint8_t init_manuf_data[APP_BEACON_INFO_LENGTH] =      /**< Information advertised by the Beacon. */
+    {
+        APP_MAJOR_VALUE,        // Device major value
+        APP_MINOR_VALUE,        // Device minor value
+        APP_DATA_TEMP,          // temperature
+        APP_DATA_HUM,           // humidity
+        APP_DAT_X,              // accel x pos
+        APP_DAT_y,              // accel y pos
+        APP_DAT_Z,              // accel z pos
+        APP_DAT_BATTERY         // battery voltage
+    };
+    
+#if defined(USE_UICR_FOR_MAJ_MIN_VALUES)
+    // If USE_UICR_FOR_MAJ_MIN_VALUES is defined, the major and minor values will be read from the
+    // UICR instead of using the default values. The major and minor values obtained from the UICR
+    // are encoded into advertising data in big endian order (MSB First).
+    // To set the UICR used by this example to a desired value, write to the address 0x10001080
+    // using the nrfjprog tool. The command to be used is as follows.
+    // nrfjprog --snr <Segger-chip-Serial-Number> --memwr 0x10001080 --val <your major/minor value>
+    uint16_t major_value = ((*(uint32_t *)UICR_ADDRESS) & 0xFFFF0000) >> 16;
+    uint16_t minor_value = ((*(uint32_t *)UICR_ADDRESS) & 0x0000FFFF);
+
+    uint8_t index = MAJ_VAL_OFFSET_IN_MANUF_DATA;
+
+    init_manuf_data[index++] = MSB_16(major_value);
+    init_manuf_data[index++] = LSB_16(major_value);
+
+    init_manuf_data[index++] = MSB_16(minor_value);
+    init_manuf_data[index++] = LSB_16(minor_value);
+#endif
+
+
+
+    ble_advdata_manuf_data_t                manuf_specific_data;
+    manuf_specific_data.company_identifier  = APP_COMPANY_IDENTIFIER;
+    manuf_specific_data.data.p_data         = (uint8_t *) init_manuf_data;
+    manuf_specific_data.data.size           = APP_BEACON_INFO_LENGTH;
+//    manuf_specific_data.data.p_data = (uint8_t *) m_beacon_info;
+//    manuf_specific_data.data.size   = APP_BEACON_INFO_LENGTH;
+
+    // Build and set advertising data.
+    memset(&advdata, 0, sizeof(advdata));
+
+    advdata.name_type               = BLE_ADVDATA_NO_NAME;
+    advdata.flags                   = flags;
+    advdata.p_manuf_specific_data   = &manuf_specific_data;
+
+    // Initialize advertising parameters (used when starting advertising).
+    memset(&m_adv_params, 0, sizeof(m_adv_params));
+
+    m_adv_params.properties.type    = BLE_GAP_ADV_TYPE_NONCONNECTABLE_NONSCANNABLE_UNDIRECTED;
+    m_adv_params.p_peer_addr        = NULL;     // Undirected advertisement.
+    m_adv_params.filter_policy      = BLE_GAP_ADV_FP_ANY;
+    m_adv_params.interval           = NON_CONNECTABLE_ADV_INTERVAL;
+    m_adv_params.duration           = 0;        // Never time out.
+
+    err_code = ble_advdata_encode(&advdata, m_adv_data.adv_data.p_data, &m_adv_data.adv_data.len);
+    APP_ERROR_CHECK(err_code);
+
+    err_code = sd_ble_gap_adv_set_configure(&m_adv_handle, &m_adv_data, &m_adv_params);
+    APP_ERROR_CHECK(err_code);
+
+    // SET TX POWER FOR ADVERTISING
+    err_code = sd_ble_gap_tx_power_set(BLE_GAP_TX_POWER_ROLE_ADV, m_adv_handle, 0);
+    APP_ERROR_CHECK(err_code); 
+}
+
 #ifdef USE_CTS
 /**
  * @brief Database discovery collector initialization.
@@ -1913,7 +2061,11 @@ int main()
     non_connectable_adv_init();
 #endif 
 #ifdef USE_ADVERTISING
+#ifdef USE_OLD_ADVERTISING_FUNCTIONS
+    advertising_init_old();
+#else
     advertising_init();         // Initialize the advertising functionality
+#endif
 #endif
 #ifdef USE_GATT
 //    peer_manager_init();    
@@ -1922,7 +2074,14 @@ int main()
 		
     // Start execution.
     NRF_LOG_INFO("Beacon started.");
+
+#ifdef USE_ADVERTISING
+#ifdef USE_OLD_ADVERTISING_FUNCTIONS
+    advertising_start_old();
+#else
     advertising_start(erase_bonds);
+#endif
+#endif
 //sd_power_system_off();
     for (;;)
     {
@@ -1930,3 +2089,4 @@ int main()
         idle_state_handle();
     }
 }
+;
