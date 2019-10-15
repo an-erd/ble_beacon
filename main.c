@@ -58,7 +58,6 @@
 #include "nrf.h"
 #include "nrfx_saadc.h"
 #include "nrf_drv_ppi.h"
-#include "nordic_common.h"
 #include "bsp.h"
 #include "app_error.h"
 #include "nrf_soc.h"
@@ -107,9 +106,6 @@
 #include "nrf_ble_qwr.h"
 #include "nrf_pwr_mgmt.h"
 
-#include "nrf_log.h"
-#include "nrf_log_ctrl.h"
-#include "nrf_log_default_backends.h"
 
 
 
