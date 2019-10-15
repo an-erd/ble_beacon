@@ -138,12 +138,13 @@
 #define USE_RTC_COMPARE1
 #undef  USE_DISABLE_TWI_BETWEEN_SENSOR_UPDATE
 #undef  OFFLINE_FUNCTION
-#undef USE_GATT
+#define USE_GATT
+#define USE_PEERMGR
 #undef  USE_CONN_ADV_INIT
 #undef  USE_NONCONN_ADV_INIT
 #define USE_OUR_SERVICES
 #define USE_ADVERTISING
-#undef  USE_CTS
+#undef USE_CTS
 #define USE_DIS
 #define USE_OLD_ADVERTISING_FUNCTIONS
 
@@ -151,7 +152,7 @@
 // RTC defines
 #define RTC_CC_VALUE                8       // prescale 256 Hz, RTC_CC_VALUE=8 => 1/32 sec
 #define RTC_SADC_UPDATE             1875
-#define RTC_SENSOR_UPDATE           480
+#define RTC_SENSOR_UPDATE           480     // in 1/32 sec unit (480* 1/32 = 15 sec; 32 * 1/32 = 1 sec) 
 
 // SAADC defines
 #define SAADC_CALIBRATION_INTERVAL  5       // SAADC calibration interval relative to NRF_DRV_SAADC_EVT_DONE event
@@ -263,14 +264,14 @@ bool offline_buffer_update(uint32_t counter, uint8_t *buffer);
 #define PAYLOAD_OFFSET_IN_BEACON_INFO_ADV_OLD   11  /**< First position to write the payload to in enc advdata */
 #define PAYLOAD_OFFSET_BATTERY_INFO_OLD     (PAYLOAD_OFFSET_IN_BEACON_INFO_ADV_OLD + 10)  /**< Position to write the battery voltage payload to */									
 
-#ifdef USE_CTS
+#ifdef USE_PEERMGR
 #define SCHED_MAX_EVENT_DATA_SIZE APP_TIMER_SCHED_EVENT_DATA_SIZE                   /**< Maximum size of scheduler events. Note that scheduler BLE stack events do not contain any data, as the events are being pulled from the stack in the event handler. */
 #ifdef SVCALL_AS_NORMAL_FUNCTION
 #define SCHED_QUEUE_SIZE                20                                          /**< Maximum number of events in the scheduler queue. More is needed in case of Serialization. */
 #else
 #define SCHED_QUEUE_SIZE                10                                          /**< Maximum number of events in the scheduler queue. */
 #endif
-#endif // USE_CTS
+#endif // USE_PEERMGR
 
 #define DEAD_BEEF                       0xDEADBEEF  /**< Value used as error code on stack dump, can be used to identify stack location on stack unwind. */
 
@@ -333,11 +334,11 @@ static ble_gap_adv_data_t m_adv_data =
     }
 };
 
-#ifdef USE_CTS
+#ifdef USE_PEERMGR
 static pm_peer_id_t m_peer_id;                                                      /**< Device reference handle to the current bonded central. */
 static pm_peer_id_t m_whitelist_peers[BLE_GAP_WHITELIST_ADDR_MAX_COUNT];            /**< List of peers currently in the whitelist. */
 static uint32_t     m_whitelist_peer_cnt;                                           /**< Number of peers currently in the whitelist. */
-#endif
+#endif // USE_PEERMGR
 
 ble_os_t m_our_service;
 
@@ -864,7 +865,7 @@ void assert_nrf_callback(uint16_t line_num, const uint8_t * p_file_name)
     app_error_handler(DEAD_BEEF, line_num, p_file_name);
 }
 
-#ifdef USE_CTS
+#ifdef USE_PEERMGR
 
 /**@brief Fetch the list of peer manager peer IDs.
  *
@@ -889,7 +890,7 @@ static void peer_list_get(pm_peer_id_t * p_peers, uint32_t * p_size)
         peer_id = pm_next_peer_id_get(peer_id);
     }
 }
-#endif // USE_CTS
+#endif // USE_PEERMGR
 
 /**@brief Clear bond information from persistent storage.
  */
@@ -915,7 +916,7 @@ static void advertising_start(bool erase_bonds)
     else
     {
         ret_code_t err_code;
-#ifdef USE_CTS
+#ifdef USE_PEERMGR
         memset(m_whitelist_peers, PM_PEER_ID_INVALID, sizeof(m_whitelist_peers));
         m_whitelist_peer_cnt = (sizeof(m_whitelist_peers) / sizeof(pm_peer_id_t));
 
@@ -931,8 +932,7 @@ static void advertising_start(bool erase_bonds)
         {
             APP_ERROR_CHECK(err_code);
         }
-
-#endif // USE_CTS
+#endif // USE_PEERMGR
 
         err_code = ble_advertising_start(&m_advertising, BLE_ADV_MODE_SLOW);
         APP_ERROR_CHECK(err_code);
@@ -1135,7 +1135,7 @@ static void on_adv_evt(ble_adv_evt_t ble_adv_evt)
             NRF_LOG_INFO("Idle advertising.");
             break;
 
-#ifdef USE_CTS
+#ifdef USE_PEERMGR
         case BLE_ADV_EVT_FAST_WHITELIST:
             NRF_LOG_INFO("Fast advertising with WhiteList");
             break;
@@ -1169,7 +1169,7 @@ static void on_adv_evt(ble_adv_evt_t ble_adv_evt)
             APP_ERROR_CHECK(err_code);
         }
         break;
-#endif // USE_CTS
+#endif // USE_PEERMGR
         default:
             break;
     }
@@ -1185,9 +1185,9 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
 {
     ret_code_t err_code = NRF_SUCCESS;
 
-#ifdef USE_CTS
+#ifdef USE_PEERMGR
     pm_handler_secure_on_connection(p_ble_evt);
-#endif // USE_CTS
+#endif // USE_PEERMGR
     switch (p_ble_evt->header.evt_id)
     {
         case BLE_GAP_EVT_DISCONNECTED:
@@ -1272,7 +1272,7 @@ static void ble_stack_init()
     NRF_SDH_BLE_OBSERVER(m_our_service_observer, APP_BLE_OBSERVER_PRIO, ble_our_service_on_ble_evt, (void*) &m_our_service);
 }
 
-#ifdef USE_CTS
+#ifdef USE_PEERMGR
 /**@brief Function for the Event Scheduler initialization.
  */
 static void scheduler_init(void)
@@ -1289,10 +1289,10 @@ static void pm_evt_handler(pm_evt_t const * p_evt)
 {
     ret_code_t err_code;
 
-#ifdef USE_CTS
+#ifdef USE_PEERMGR
     pm_handler_on_pm_evt(p_evt);
     pm_handler_flash_clean(p_evt);
-#endif
+#endif // USE_PEERMGR
     switch (p_evt->evt_id)
     {
         case PM_EVT_BONDED_PEER_CONNECTED:
@@ -1306,9 +1306,9 @@ static void pm_evt_handler(pm_evt_t const * p_evt)
                          ble_conn_state_role(p_evt->conn_handle),
                          p_evt->conn_handle,
                          p_evt->params.conn_sec_succeeded.procedure);
-#ifdef USE_CTS
             m_peer_id = p_evt->peer_id;
 
+#ifdef USE_CTS
             // Discover peer's services.
             err_code  = ble_db_discovery_start(&m_ble_db_discovery, p_evt->conn_handle);
             APP_ERROR_CHECK(err_code);
@@ -1375,7 +1375,7 @@ static void pm_evt_handler(pm_evt_t const * p_evt)
             APP_ERROR_CHECK(p_evt->params.error_unexpected.error);
         } break;
 
-#ifdef USE_CTS
+#ifdef USE_PEERMGR
         case PM_EVT_PEER_DATA_UPDATE_SUCCEEDED:
         {
             // Note: You should check on what kind of white list policy your application should use.
@@ -1404,7 +1404,7 @@ static void pm_evt_handler(pm_evt_t const * p_evt)
                 }
             }
         } break;
-#endif
+#endif // USE_PEERMGR
         case PM_EVT_CONN_SEC_START:
         case PM_EVT_PEER_DELETE_SUCCEEDED:
         case PM_EVT_LOCAL_DB_CACHE_APPLIED:
@@ -1577,6 +1577,58 @@ static void gatt_init(void)
 }
 #endif
 
+
+/**@brief Function for handling Queued Write Module errors.
+ *
+ * @details A pointer to this function will be passed to each service which may need to inform the
+ *          application about an error.
+ *
+ * @param[in]   nrf_error   Error code containing information about what went wrong.
+ */
+static void nrf_qwr_error_handler(uint32_t nrf_error)
+{
+    APP_ERROR_HANDLER(nrf_error);
+}
+
+
+/**@brief Function for initializing the Queued Write Module.
+ */
+static void qwr_init(void)
+{
+    ret_code_t         err_code;
+    nrf_ble_qwr_init_t qwr_init_obj = {0};
+
+    qwr_init_obj.error_handler = nrf_qwr_error_handler;
+
+    err_code = nrf_ble_qwr_init(&m_qwr, &qwr_init_obj);
+    APP_ERROR_CHECK(err_code);
+}
+
+
+#ifdef USE_DIS
+/**@brief Function for initializing Device Information Service.
+ */
+static void dis_init(void)
+{
+    ret_code_t       err_code;
+    ble_dis_init_t     dis_init;
+            
+    memset(&dis_init, 0, sizeof(dis_init));
+
+    ble_srv_ascii_to_utf8(&dis_init.manufact_name_str,  (char *)DIS_MANUFACTURER_NAME);
+    ble_srv_ascii_to_utf8(&dis_init.serial_num_str,     (char *)DIS_SERIAL_NUMBER);
+    ble_srv_ascii_to_utf8(&dis_init.model_num_str,      (char *)DIS_MODEL_NUMBER);
+    ble_srv_ascii_to_utf8(&dis_init.hw_rev_str,         (char *)DIS_HW_REV);
+    ble_srv_ascii_to_utf8(&dis_init.sw_rev_str,         (char *)DIS_SW_REV);
+    ble_srv_ascii_to_utf8(&dis_init.fw_rev_str,         (char *)DIS_FW_REV);
+    dis_init.dis_char_rd_sec = SEC_OPEN;
+
+    err_code = ble_dis_init(&dis_init);
+    APP_ERROR_CHECK(err_code);
+}
+#endif
+
+
 /**@brief Function for handling the YYY Service events.
  * YOUR_JOB implement a service handler function depending on the event the service you are using can generate
  *
@@ -1603,58 +1655,17 @@ static void on_yys_evt(ble_yy_service_t     * p_yy_service,
 }
 */
 
-/**@brief Function for handling Queued Write Module errors.
- *
- * @details A pointer to this function will be passed to each service which may need to inform the
- *          application about an error.
- *
- * @param[in]   nrf_error   Error code containing information about what went wrong.
- */
-static void nrf_qwr_error_handler(uint32_t nrf_error)
-{
-    APP_ERROR_HANDLER(nrf_error);
-}
-
 /**@brief Function for initializing services that will be used by the application.
  */
 static void services_init(void)
 {
     ret_code_t         err_code;
-    nrf_ble_qwr_init_t qwr_init = {0};
 #ifdef USE_CTS
     ble_cts_c_init_t   cts_init = {0};
 #endif
 
-#ifdef USE_DIS
-    ble_dis_init_t     dis_init;
-#endif
-
-#ifdef USE_GATT
-    // Initialize Queued Write Module.
-    qwr_init.error_handler = nrf_qwr_error_handler;
-
-    err_code = nrf_ble_qwr_init(&m_qwr, &qwr_init);
-    APP_ERROR_CHECK(err_code);
-
-    // Initialize our own service 
-    our_service_init (&m_our_service);
-#endif
-
-    // Initialize Device Information Service.
-#ifdef USE_DIS
-    memset(&dis_init, 0, sizeof(dis_init));
-
-    ble_srv_ascii_to_utf8(&dis_init.manufact_name_str,  (char *)DIS_MANUFACTURER_NAME);
-    ble_srv_ascii_to_utf8(&dis_init.serial_num_str,     (char *)DIS_SERIAL_NUMBER);
-    ble_srv_ascii_to_utf8(&dis_init.model_num_str,      (char *)DIS_MODEL_NUMBER);
-    ble_srv_ascii_to_utf8(&dis_init.hw_rev_str,         (char *)DIS_HW_REV);
-    ble_srv_ascii_to_utf8(&dis_init.sw_rev_str,         (char *)DIS_SW_REV);
-    ble_srv_ascii_to_utf8(&dis_init.fw_rev_str,         (char *)DIS_FW_REV);
-    dis_init.dis_char_rd_sec = SEC_OPEN;
-
-    err_code = ble_dis_init(&dis_init);
-    APP_ERROR_CHECK(err_code);
-#endif // USE_DIS
+    qwr_init();
+    dis_init();
 
 #ifdef USE_CTS
     // Initialize CTS.
@@ -1663,6 +1674,9 @@ static void services_init(void)
     err_code               = ble_cts_c_init(&m_cts_c, &cts_init);
     APP_ERROR_CHECK(err_code);
 #endif // USE_CTS
+    
+    // Initialize our own service 
+    our_service_init(&m_our_service);
 }
 
 
@@ -1786,7 +1800,6 @@ static void connectable_adv_init(void)
     m_adv_params.p_peer_addr   = NULL;
     m_adv_params.filter_policy = BLE_GAP_ADV_FP_ANY;
     m_adv_params.interval      = APP_SLOW_ADV_INTERVAL; // was: CONNECTABLE_ADV_INTERVAL;
-    m_adv_params.primary_phy   = BLE_GAP_PHY_1MBPS;
 }
 
 
@@ -1806,7 +1819,6 @@ static void non_connectable_adv_init(void)
     m_adv_params.p_peer_addr     = NULL;
     m_adv_params.filter_policy   = BLE_GAP_ADV_FP_ANY;
     m_adv_params.interval        = APP_SLOW_ADV_INTERVAL; // was: NON_CONNECTABLE_ADV_INTERVAL;
-    m_adv_params.primary_phy     = BLE_GAP_PHY_1MBPS;
 }
 
 
@@ -1957,12 +1969,13 @@ static void advertising_init_old()
     // Initialize advertising parameters (used when starting advertising).
     memset(&m_adv_params, 0, sizeof(m_adv_params));
 
-    m_adv_params.properties.type    = BLE_GAP_ADV_TYPE_NONCONNECTABLE_NONSCANNABLE_UNDIRECTED;
+//    m_adv_params.properties.type    = BLE_GAP_ADV_TYPE_NONCONNECTABLE_NONSCANNABLE_UNDIRECTED;
+    m_adv_params.properties.type = BLE_GAP_ADV_TYPE_CONNECTABLE_SCANNABLE_UNDIRECTED;
     m_adv_params.p_peer_addr        = NULL;     // Undirected advertisement.
     m_adv_params.filter_policy      = BLE_GAP_ADV_FP_ANY;
     m_adv_params.interval           = NON_CONNECTABLE_ADV_INTERVAL;
     m_adv_params.duration           = 0;        // Never time out.
-
+   
     err_code = ble_advdata_encode(&advdata, m_adv_data.adv_data.p_data, &m_adv_data.adv_data.len);
     APP_ERROR_CHECK(err_code);
 
@@ -2008,6 +2021,7 @@ int main()
 #ifdef USE_DCDCEN
     NRF_POWER->DCDCEN = 1;      // Enabling the DCDC converter for lower current consumption
 #endif // USEDCDCEN
+
 #ifdef USE_LFCLK_APP_TIMER
     lfclk_config();             // Configure low frequency 32kHz clock
     app_timer_init();           // Initialize app timer
@@ -2041,9 +2055,10 @@ int main()
 #ifdef OFFLINE_FUNCTION
     offline_buffer_init();      // Initialize offline buffer
 #endif // OFFLINE_FUNCTION
-
 	
     ble_stack_init();           // Initialize the BLE stack
+    scheduler_init();
+
 #ifdef USE_GATT
     gap_params_init();
     gatt_init();
@@ -2067,10 +2082,10 @@ int main()
     advertising_init();         // Initialize the advertising functionality
 #endif
 #endif
-#ifdef USE_GATT
-//    peer_manager_init();    
-//    conn_params_init();
-#endif
+#ifdef USE_PEERMGR
+    conn_params_init();
+    peer_manager_init();    
+#endif // USE_PEERMGR
 		
     // Start execution.
     NRF_LOG_INFO("Beacon started.");
