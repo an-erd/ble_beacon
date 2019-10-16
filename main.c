@@ -141,7 +141,7 @@
 #define USE_ADVERTISING
 #undef  USE_CTS
 #define USE_DIS
-#define USE_OLD_ADVERTISING_FUNCTIONS
+#undef  USE_OLD_ADVERTISING_FUNCTIONS
 
 
 // RTC defines
@@ -626,18 +626,19 @@ void saadc_event_handler(nrfx_saadc_evt_t const * p_event)
         NRF_LOG_DEBUG("saadc_event_handler, done, perc %d, volts %d", percentage_batt_lvl, m_battery_millivolts);
 
         // update payload data in encoded advertising data
-        uint8_t payload_idx = PAYLOAD_OFFSET_BATTERY_INFO_OLD;
 #ifdef USE_OLD_ADVERTISING_FUNCTIONS
+        uint8_t payload_idx = PAYLOAD_OFFSET_BATTERY_INFO_OLD;
         m_adv_data.adv_data.p_data[payload_idx++] = MSB_16(m_battery_millivolts);
         m_adv_data.adv_data.p_data[payload_idx++] = LSB_16(m_battery_millivolts);
 #else
+        uint8_t payload_idx = PAYLOAD_OFFSET_BATTERY_INFO;
         m_advertising.enc_advdata[payload_idx++] = MSB_16(m_battery_millivolts);
         m_advertising.enc_advdata[payload_idx++] = LSB_16(m_battery_millivolts);
 #endif				
-        nrfx_saadc_uninit();                                                                   //Unintialize SAADC to disable EasyDMA and save power
-        NRF_SAADC->INTENCLR = (SAADC_INTENCLR_END_Clear << SAADC_INTENCLR_END_Pos);               //Disable the SAADC interrupt
-        NVIC_ClearPendingIRQ(SAADC_IRQn);                                                         //Clear the SAADC interrupt if set
-        m_saadc_initialized = false;                                                              //Set SAADC as uninitialized
+        nrfx_saadc_uninit();                                                        // Unintialize SAADC to disable EasyDMA and save power
+        NRF_SAADC->INTENCLR = (SAADC_INTENCLR_END_Clear << SAADC_INTENCLR_END_Pos); // Disable the SAADC interrupt
+        NVIC_ClearPendingIRQ(SAADC_IRQn);                                           // Clear the SAADC interrupt if set
+        m_saadc_initialized = false;                                                // Set SAADC as uninitialized
     }
 }
 
@@ -726,10 +727,8 @@ void process_all_data()
 #endif // DEBUG
 
     // update payload data in encoded advertising data
-    // TODO
-    uint8_t payload_idx;  // PAYLOAD_OFFSET_IN_BEACON_INFO_ADV;
 #ifdef USE_OLD_ADVERTISING_FUNCTIONS
-    payload_idx = PAYLOAD_OFFSET_IN_BEACON_INFO_ADV_OLD;
+    uint8_t payload payload_idx = PAYLOAD_OFFSET_IN_BEACON_INFO_ADV_OLD;
 //    m_enc_advdata[payload_idx++] = m_buffer[ 0];
 //    m_enc_advdata[payload_idx++] = m_buffer[ 1];
 //    m_enc_advdata[payload_idx++] = m_buffer[ 3];
@@ -752,7 +751,7 @@ void process_all_data()
     m_adv_data.adv_data.p_data[payload_idx++] = m_buffer[10];
     m_adv_data.adv_data.p_data[payload_idx++] = m_buffer[11];
 #else
-    payload_idx = PAYLOAD_OFFSET_IN_BEACON_INFO_ADV;
+    uint8_t payload_idx = PAYLOAD_OFFSET_IN_BEACON_INFO_ADV;
 
     m_advertising.enc_advdata[payload_idx++] = m_buffer[ 0];
     m_advertising.enc_advdata[payload_idx++] = m_buffer[ 1];
@@ -1512,14 +1511,14 @@ static void non_connectable_adv_init(void)
     // Initialize advertising parameters (used when starting advertising).
     memset(&m_adv_params, 0, sizeof(m_adv_params));
 
-    m_adv_params.properties.type = BLE_GAP_ADV_TYPE_CONNECTABLE_NONSCANNABLE_DIRECTED;
+    m_adv_params.properties.type = BLE_GAP_ADV_TYPE_NONCONNECTABLE_NONSCANNABLE_UNDIRECTED; // BLE_GAP_ADV_TYPE_CONNECTABLE_NONSCANNABLE_DIRECTED;
     m_adv_params.duration        = APP_ADV_SLOW_DURATION; // was: APP_ADV_DURATION;
     m_adv_params.p_peer_addr     = NULL;
     m_adv_params.filter_policy   = BLE_GAP_ADV_FP_ANY;
     m_adv_params.interval        = APP_SLOW_ADV_INTERVAL; // was: NON_CONNECTABLE_ADV_INTERVAL;
 }
 
-
+#ifndef USE_OLD_ADVERTISING_FUNCTIONS
 /**@brief Function for initializing the Advertising functionality.
  *
  * @details Encodes the required advertising data and passes it to the stack.
@@ -1607,8 +1606,51 @@ static void advertising_init()
     err_code = ble_advertising_init(&m_advertising, &init);
     APP_ERROR_CHECK(err_code);
 
+//    non_connectable_adv_init();
+//    err_code = sd_ble_gap_adv_set_configure(&m_advertising.adv_handle, NULL, &m_adv_params);
+//    VERIFY_SUCCESS(err_code);
+    // TODO does not work yet because mode not supported in ble_advertising.c, grmph
+    m_advertising.adv_params.properties.type = BLE_GAP_ADV_TYPE_NONCONNECTABLE_NONSCANNABLE_UNDIRECTED;
     ble_advertising_conn_cfg_tag_set(&m_advertising, APP_BLE_CONN_CFG_TAG);
 }
+
+
+/**@brief Function for starting advertising.
+ */
+static void advertising_start(bool erase_bonds)
+{
+    if (erase_bonds == true)
+    {
+        delete_bonds();
+        // Advertising is started by PM_EVT_PEERS_DELETED_SUCEEDED event
+    }
+    else
+    {
+        ret_code_t err_code;
+#ifdef USE_CONNPARAMS_PEERMGR
+        memset(m_whitelist_peers, PM_PEER_ID_INVALID, sizeof(m_whitelist_peers));
+        m_whitelist_peer_cnt = (sizeof(m_whitelist_peers) / sizeof(pm_peer_id_t));
+
+        peer_list_get(m_whitelist_peers, &m_whitelist_peer_cnt);
+
+        err_code = pm_whitelist_set(m_whitelist_peers, m_whitelist_peer_cnt);
+        APP_ERROR_CHECK(err_code);
+
+        // Setup the device identies list.
+        // Some SoftDevices do not support this feature.
+        err_code = pm_device_identities_list_set(m_whitelist_peers, m_whitelist_peer_cnt);
+        if (err_code != NRF_ERROR_NOT_SUPPORTED)
+        {
+            APP_ERROR_CHECK(err_code);
+        }
+#endif // USE_CONNPARAMS_PEERMGR
+
+        err_code = ble_advertising_start(&m_advertising, BLE_ADV_MODE_SLOW);
+        APP_ERROR_CHECK(err_code);
+    }
+}
+
+#else // not USE_OLD_ADVERTISING_FUNCTIONS
 
 static void advertising_init_old()
 {
@@ -1686,41 +1728,6 @@ static void advertising_init_old()
 }
 
 
-/**@brief Function for starting advertising.
- */
-static void advertising_start(bool erase_bonds)
-{
-    if (erase_bonds == true)
-    {
-        delete_bonds();
-        // Advertising is started by PM_EVT_PEERS_DELETED_SUCEEDED event
-    }
-    else
-    {
-        ret_code_t err_code;
-#ifdef USE_CONNPARAMS_PEERMGR
-        memset(m_whitelist_peers, PM_PEER_ID_INVALID, sizeof(m_whitelist_peers));
-        m_whitelist_peer_cnt = (sizeof(m_whitelist_peers) / sizeof(pm_peer_id_t));
-
-        peer_list_get(m_whitelist_peers, &m_whitelist_peer_cnt);
-
-        err_code = pm_whitelist_set(m_whitelist_peers, m_whitelist_peer_cnt);
-        APP_ERROR_CHECK(err_code);
-
-        // Setup the device identies list.
-        // Some SoftDevices do not support this feature.
-        err_code = pm_device_identities_list_set(m_whitelist_peers, m_whitelist_peer_cnt);
-        if (err_code != NRF_ERROR_NOT_SUPPORTED)
-        {
-            APP_ERROR_CHECK(err_code);
-        }
-#endif // USE_CONNPARAMS_PEERMGR
-
-        err_code = ble_advertising_start(&m_advertising, BLE_ADV_MODE_SLOW);
-        APP_ERROR_CHECK(err_code);
-    }
-}
-
 static void advertising_start_old()
 {
     ret_code_t err_code;
@@ -1731,7 +1738,7 @@ static void advertising_start_old()
 //  err_code = bsp_indication_set(BSP_INDICATE_ADVERTISING);
 //  APP_ERROR_CHECK(err_code);
 }
-
+#endif // not USE_OLD_ADVERTISING_FUNCTIONS
 
 /**@brief Function for handling the Connection Parameters Module.
  *
@@ -2096,6 +2103,7 @@ int main()
 #endif 
 #ifdef USE_OLD_ADVERTISING_FUNCTIONS
     advertising_init_old();
+//    advertising_init();
 #else
     advertising_init();         // Initialize the advertising functionality
 #endif
@@ -2114,6 +2122,7 @@ int main()
     advertising_start_old();
 //    advertising_start(erase_bonds);
 #else
+    non_connectable_adv_init();
     advertising_start(erase_bonds);
 #endif
 #endif
