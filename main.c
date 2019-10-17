@@ -136,11 +136,12 @@
 #define USE_CONNPARAMS_PEERMGR
 #undef  USE_CONN_ADV_INIT
 #undef  USE_NONCONN_ADV_INIT
-#define USE_OUR_SERVICES
-#define USE_ADVERTISING
-#undef  USE_CTS
-#define USE_DIS
 #undef  USE_OLD_ADVERTISING_FUNCTIONS
+#define USE_ADVERTISING
+#define USE_OUR_SERVICES
+#define USE_CTS
+#define USE_DIS
+
 
 
 // RTC defines
@@ -357,11 +358,6 @@ static ble_gap_adv_data_t m_adv_data =
     }
 };
 
-
-
-
-
-
 #ifdef USE_CTS
 static char const * day_of_week[] =
 {
@@ -392,8 +388,6 @@ static char const * month_of_year[] =
     "December"
 };
 #endif
-
-// TODO MAIN FUNCTIONS
 
 /**@brief Function for initializing logging. */
 static void log_init()
@@ -578,8 +572,6 @@ static void twi_config()
         .clear_bus_init     = false
     };
 
-    NRF_LOG_DEBUG("twi_config");
-
     APP_ERROR_CHECK(nrf_drv_twi_init(&m_twi, &config, NULL, NULL));	// blocking TWI
     nrf_drv_twi_enable(&m_twi);
 }
@@ -597,17 +589,17 @@ void saadc_event_handler(nrfx_saadc_evt_t const * p_event)
     uint8_t             percentage_batt_lvl;
     static uint16_t     m_battery_millivolts = 3333;    // default to some value, say 3333
 
-    NRF_LOG_DEBUG("saadc_event_handler");
+//    NRF_LOG_DEBUG("saadc_event_handler");
 
     // regular SAADC sensor calibration 
     if (p_event->type == NRFX_SAADC_EVT_DONE){
         if((m_adc_evt_counter % SAADC_CALIBRATION_INTERVAL) == 0){
-            NRF_LOG_DEBUG("SAADC calibration starting...");
+//            NRF_LOG_DEBUG("SAADC calibration starting...");
             NRF_SAADC->EVENTS_CALIBRATEDONE = 0; 
             nrf_saadc_task_trigger(NRF_SAADC_TASK_CALIBRATEOFFSET);
             while(!NRF_SAADC->EVENTS_CALIBRATEDONE);
             while(NRF_SAADC->STATUS == (SAADC_STATUS_STATUS_Busy << SAADC_STATUS_STATUS_Pos));
-            NRF_LOG_DEBUG("SAADC calibration complete ! \n");
+//            NRF_LOG_DEBUG("SAADC calibration complete ! \n");
         }
 
         m_adc_evt_counter++;
@@ -622,7 +614,7 @@ void saadc_event_handler(nrfx_saadc_evt_t const * p_event)
 			
         percentage_batt_lvl = battery_level_in_percent(m_battery_millivolts);
 
-        NRF_LOG_DEBUG("saadc_event_handler, done, perc %d, volts %d", percentage_batt_lvl, m_battery_millivolts);
+//        NRF_LOG_DEBUG("saadc_event_handler, done, perc %d, volts %d", percentage_batt_lvl, m_battery_millivolts);
 
         // update payload data in encoded advertising data
 #ifdef USE_OLD_ADVERTISING_FUNCTIONS
@@ -698,7 +690,7 @@ static void sensor_init()
  */
 void process_all_data()
 {
-    NRF_LOG_DEBUG("process_all_data()");
+//    NRF_LOG_DEBUG("process_all_data()");
 	
 //    if(!m_advertising.initialized) {
 //        NRF_LOG_DEBUG("m_advertising not initialized -> exiting process_all_data()");
@@ -811,14 +803,14 @@ static void read_all_sensors(bool restart)
     //   - call function to further process the read data
     switch(step){
     case 0:
-        NRF_LOG_DEBUG("read_all step0");
+//        NRF_LOG_DEBUG("read_all step0");
         // SHT3
         APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, SHT3_ADDR, config_SHT3_0, 2, false));
         counter_current = nrfx_rtc_counter_get(&rtc);
         counter_read_sht3 = counter_current + 
             NRFX_RTC_US_TO_TICKS(15000, NRFX_RTC_DEFAULT_CONFIG_FREQUENCY) + 1; // 4 = 4/256s = 0,015625 > max duration 15ms
-        NRF_LOG_DEBUG("read_all step0 counter current %d, counter read sht3 ready %d",
-            counter_current, counter_read_sht3);
+//        NRF_LOG_DEBUG("read_all step0 counter current %d, counter read sht3 ready %d",
+//            counter_current, counter_read_sht3);
     
         // KX022 
         APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, config_kx022_0, 2, false));
@@ -832,7 +824,7 @@ static void read_all_sensors(bool restart)
         break;
     
     case 1:
-        NRF_LOG_DEBUG("read_all step1");
+//        NRF_LOG_DEBUG("read_all step1");
     
         // KX022 
         APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, config_kx022_3, 2, false));
@@ -844,7 +836,7 @@ static void read_all_sensors(bool restart)
         break;
     
     case 2:
-        NRF_LOG_DEBUG("read_all step2");
+//        NRF_LOG_DEBUG("read_all step2");
     
         // KX022 
         reg[0] = KX022_1020_REG_XOUTL;
@@ -854,8 +846,8 @@ static void read_all_sensors(bool restart)
         APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, config_kx022_0, 2, false));
 
         counter_current = nrfx_rtc_counter_get(&rtc);
-        NRF_LOG_DEBUG("read_all step2 counter current %d, counter read sht3 ready %d",
-            counter_current, counter_read_sht3);
+//        NRF_LOG_DEBUG("read_all step2 counter current %d, counter read sht3 ready %d",
+//            counter_current, counter_read_sht3);
         if(counter_current < counter_read_sht3){
             APP_ERROR_CHECK(nrf_drv_rtc_cc_set(&rtc, 2, counter_read_sht3, true));
             step++;
@@ -863,11 +855,11 @@ static void read_all_sensors(bool restart)
         } else {
             step++;
             // just continue w/step3, SHT3 is ready
-            NRF_LOG_DEBUG("just continue w/step3");
+//            NRF_LOG_DEBUG("just continue w/step3");
         }
     
     case 3:
-        NRF_LOG_DEBUG("read_all step3");
+//        NRF_LOG_DEBUG("read_all step3");
 
         // read 6 bytes (temp (msb+lsb+crc) and hum (msb+lsb+crc)
         APP_ERROR_CHECK(nrf_drv_twi_rx(&m_twi, SHT3_ADDR, &m_buffer[0], 6));
@@ -895,11 +887,11 @@ static void rtc_handler(nrf_drv_rtc_int_type_t int_type)
 {
     uint32_t counter_current;
 
-    NRF_LOG_DEBUG("rtc_handler");
+//    NRF_LOG_DEBUG("rtc_handler");
 
     // SAADC (battery voltage)
     if (int_type == NRF_DRV_RTC_INT_COMPARE0){
-        NRF_LOG_DEBUG("rtc_handler COMPARE0");
+//        NRF_LOG_DEBUG("rtc_handler COMPARE0");
 
         if(!m_saadc_initialized) {
             saadc_init();
@@ -917,7 +909,7 @@ static void rtc_handler(nrf_drv_rtc_int_type_t int_type)
 		
     // read sensors
     if (int_type == NRF_DRV_RTC_INT_COMPARE1){
-        NRF_LOG_DEBUG("rtc_handler COMPARE1");
+//        NRF_LOG_DEBUG("rtc_handler COMPARE1");
 
         // Trigger the sensor retrieval task
         read_all_sensors(true);	// init w/step0
@@ -946,8 +938,8 @@ static void rtc_config()
     // Initialize RTC instance
     nrf_drv_rtc_config_t rtc_configuration = NRF_DRV_RTC_DEFAULT_CONFIG;		
 	
-    NRF_LOG_DEBUG("rtc_config: prescaler %d, freq %d, rtc input freq %d", 
-        rtc_configuration.prescaler, NRFX_RTC_DEFAULT_CONFIG_FREQUENCY, RTC_INPUT_FREQ);
+//    NRF_LOG_DEBUG("rtc_config: prescaler %d, freq %d, rtc input freq %d", 
+//        rtc_configuration.prescaler, NRFX_RTC_DEFAULT_CONFIG_FREQUENCY, RTC_INPUT_FREQ);
 	
     // Initialize RTC with callback handler
     APP_ERROR_CHECK(nrf_drv_rtc_init(&rtc, &rtc_configuration, rtc_handler));
@@ -1411,17 +1403,16 @@ static void on_cts_c_evt(ble_cts_c_t * p_cts, ble_cts_c_evt_t * p_evt)
     }
 }
 
-
-
-
-
 /**@brief Function for initializing CTS.
  */
 static void cts_init(void)
 {
     ret_code_t       err_code;    // Initialize CTS.
+    ble_cts_c_init_t   cts_init = {0};
+
     cts_init.evt_handler   = on_cts_c_evt;
     cts_init.error_handler = current_time_error_handler;
+
     err_code               = ble_cts_c_init(&m_cts_c, &cts_init);
     APP_ERROR_CHECK(err_code);
 }
@@ -1458,9 +1449,6 @@ static void on_yys_evt(ble_yy_service_t     * p_yy_service,
 static void services_init(void)
 {
     ret_code_t         err_code;
-#ifdef USE_CTS
-    ble_cts_c_init_t   cts_init = {0};
-#endif
 
     qwr_init();
     dis_init();
