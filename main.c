@@ -130,7 +130,6 @@
 #define USE_RTC
 #define USE_RTC_COMPARE0
 #define USE_RTC_COMPARE1
-#undef  USE_DISABLE_TWI_BETWEEN_SENSOR_UPDATE
 #undef  OFFLINE_FUNCTION
 #define USE_SCHEDULER
 #define USE_GAP_GATT
@@ -813,7 +812,6 @@ static void read_all_sensors(bool restart)
     switch(step){
     case 0:
         NRF_LOG_DEBUG("read_all step0");
-    
         // SHT3
         APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, SHT3_ADDR, config_SHT3_0, 2, false));
         counter_current = nrfx_rtc_counter_get(&rtc);
@@ -881,10 +879,6 @@ static void read_all_sensors(bool restart)
         //  KX022_READ_INT_REL(&m_buffer[12])   // read 5 byte interrupt source information
         
         step = 0;   // reset for next sensor retrieval cycle
-#ifdef USE_DISABLE_TWI_BETWEEN_SENSOR_UPDATE
-    nrf_drv_twi_disable(&m_twi);
-    nrf_drv_twi_uninit(&m_twi);
-#endif // USE_DISABLE_TWI_BETWEEN_SENSOR_UPDATE
         break;
     default:
         NRF_LOG_ERROR("read_all: default -> should not happen");
@@ -1606,11 +1600,6 @@ static void advertising_init()
     err_code = ble_advertising_init(&m_advertising, &init);
     APP_ERROR_CHECK(err_code);
 
-//    non_connectable_adv_init();
-//    err_code = sd_ble_gap_adv_set_configure(&m_advertising.adv_handle, NULL, &m_adv_params);
-//    VERIFY_SUCCESS(err_code);
-    // TODO does not work yet because mode not supported in ble_advertising.c, grmph
-    m_advertising.adv_params.properties.type = BLE_GAP_ADV_TYPE_NONCONNECTABLE_NONSCANNABLE_UNDIRECTED;
     ble_advertising_conn_cfg_tag_set(&m_advertising, APP_BLE_CONN_CFG_TAG);
 }
 
