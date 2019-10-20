@@ -35,3 +35,89 @@ SUM		16
 
 Old device
 59 00 02 15 01 12 23 34 00 07 00 02 c3 61 73 85 a2 22 3d 96 fe 7c 09 0b ca
+
+
+
+
+ 0> <info> app: Beacon started.
+ 0> <info> app: Slow advertising.
+ 0> <info> app: counter 260, /8 32, /8*32 1
+ 0> <info> app: counter 4100, /8 512, /8*32 16
+ 0> <info> app: counter 7940, /8 992, /8*32 31
+ 0> <info> app: counter 11780, /8 1472, /8*32 46
+ 0> <info> app: counter 15620, /8 1952, /8*32 61
+ 0> <info> app: counter 19460, /8 2432, /8*32 76
+ 0> <info> app: counter 23300, /8 2912, /8*32 91
+ 0> <info> app: counter 27140, /8 3392, /8*32 106
+ 0> <info> app: counter 30980, /8 3872, /8*32 121
+ 0> <info> app: counter 34820, /8 4352, /8*32 136
+ 0> <info> app: counter 38660, /8 4832, /8*32 151
+ 0> <info> app: counter 42500, /8 5312, /8*32 166
+ 0> <info> app: counter 46340, /8 5792, /8*32 181
+ 0> <info> app: counter 50180, /8 6272, /8*32 196
+ 0> <debug> app: bsp_event_handler, button 15
+ 0> <info> app: button BSP_EVENT_KEY_1
+ 0> <debug> app: bsp_event_handler, button 23
+ 0> <info> app: button BSP_EVENT_KEY_1_RELEASED
+ 0> <info> app: counter 54020, /8 6752, /8*32 211
+ 0> <info> app: counter 57860, /8 7232, /8*32 226
+ 0> <info> app: counter 61700, /8 7712, /8*32 241
+ 0> <info> app: counter 65540, /8 8192, /8*32 256
+ 0> <debug> ble_cts_c: BLE event handler called with event 0x10
+ 0> <info> app: Connected.
+ 0> <debug> nrf_ble_gatt: Peer on connection 0x0 requested an ATT MTU of 185 bytes.
+ 0> <debug> nrf_ble_gatt: Updating ATT MTU to 23 bytes (desired: 23) on connection 0x0.
+ 0> <debug> ble_cts_c: BLE event handler called with event 0x55
+ 0> <debug> ble_cts_c: BLE event handler called with event 0x50
+ 0> <debug> ble_cts_c: BLE event handler called with event 0x13
+ 0> <debug> ble_cts_c: BLE event handler called with event 0x1A
+ 0> <info> peer_manager_handler: Connection secured: role: Peripheral, conn_handle: 0, procedure: Bonding
+ 0> <info> app: Connection secured: role: 1, conn_handle: 0x0, procedure: 1.
+ 0> <debug> ble_db_disc: Starting discovery of service with UUID 0x1805 on connection handle 0x0.
+ 0> <debug> ble_cts_c: BLE event handler called with event 0x19
+ 0> <debug> app: New Bond, add the peer to the whitelist if possible
+ 0> <debug> app: 	m_whitelist_peer_cnt 1, MAX_PEERS_WLIST 8
+ 0> <debug> ble_db_disc: Found service UUID 0x1805.
+ 0> <debug> ble_cts_c: BLE event handler called with event 0x30
+ 0> <debug> ble_cts_c: BLE event handler called with event 0x32
+ 0> <debug> ble_db_disc: Discovery of service with UUID 0x1805 completed with success on connection handle 0x0.
+ 0> <debug> ble_cts_c: Database Discovery handler called with event 0x0
+ 0> <info> ble_cts_c: Current Time Service discovered at peer.
+ 0> <info> app: Current Time Service discovered on server.
+ 0> <debug> ble_cts_c: BLE event handler called with event 0x33
+ 0> <debug> ble_cts_c: BLE event handler called with event 0x12
+ 0> <debug> app: bsp_event_handler, button 15
+ 0> <info> app: button BSP_EVENT_KEY_1
+ 0> <debug> app: bsp_event_handler, button 23
+ 0> <info> app: button BSP_EVENT_KEY_1_RELEASED
+ 0> <debug> ble_cts_c: BLE event handler called with event 0x36
+ 0> <debug> ble_cts_c: Current Time read response data:
+ 0> <debug> ble_cts_c:  E3 07 0A 12 11 09 01 05|.....	..
+ 0> <debug> ble_cts_c:  EC 02                  |..      
+ 0> <info> app: Current Time received.
+ 0> <info> app: 
+ 0> Current Time:
+ 0> <info> app: 
+ 0> Date:
+ 0> <info> app: 	Day of week   Friday
+ 0> <info> app: 	Day of month  18
+ 0> <info> app: 	Month of year October
+ 0> <info> app: 	Year          2019
+ 0> <info> app: 
+ 0> Time:
+ 0> <info> app: 	Hours     17
+ 0> <info> app: 	Minutes   9
+ 0> <info> app: 	Seconds   1
+ 0> <info> app: 
+ 0> Adjust reason:
+ 0> <info> app: 	Daylight savings 0
+ 0> <info> app: 	Time zone        0
+ 0> <info> app: 	External update  1
+ 0> <info> app: 	Manual update    0
+ 0> <info> app: counter 69380, /8 8672, /8*32 271
+ 0> <info> app: counter 73220, /8 9152, /8*32 286
+ 0> <info> app: counter 77060, /8 9632, /8*32 301
+ 0> <info> app: Slow advertising.
+ 0> <debug> ble_cts_c: BLE event handler called with event 0x11
+ 0> <info> app: Disconnect Complete.
+ 0> <info> app: Disconnected.

@@ -90,6 +90,7 @@
 #include "sht3.h"
 #include "kx022.h"
 #include "our_service.h"
+#include "beacon_calendar.h"
 #include "compiler_abstraction.h"
 
 #include "nrf_log.h"
@@ -142,7 +143,8 @@
 #define USE_CTS
 #define USE_DIS
 
-
+// RTC variales
+const  nrf_drv_rtc_t        rtc = NRF_DRV_RTC_INSTANCE(2);
 
 // RTC defines
 #define RTC_CC_VALUE                8       // prescale 256 Hz, RTC_CC_VALUE=8 => 1/32 sec
@@ -158,7 +160,6 @@
 static void saadc_init(void);
 
 // SAADC variables
-const  nrf_drv_rtc_t        rtc = NRF_DRV_RTC_INSTANCE(2);
 static nrf_saadc_value_t    m_buffer_pool[2][SAADC_SAMPLES_IN_BUFFER];
 static uint32_t             m_adc_evt_counter = 0;
 static bool                 m_saadc_initialized = false;      
@@ -761,6 +762,8 @@ void process_all_data()
     // TODO
     offline_buffer_update(nrfx_rtc_counter_get(&rtc), &m_advertising.enc_advdata[PAYLOAD_OFFSET_IN_BEACON_INFO_ADV]);
 #endif // OFFLINE_FUNCTION
+    uint32_t counter = nrfx_rtc_counter_get(&rtc);
+    NRF_LOG_INFO("counter %d, /8 %d, /8*32 %d", counter, counter/8, counter/(8*32));
 }
 
 /**@brief Function for multi-step retrieval of sensor data
@@ -1444,6 +1447,12 @@ static void on_yys_evt(ble_yy_service_t     * p_yy_service,
 }
 */
 
+static void print_current_time()
+{
+    printf("Uncalibrated time:\t%s\r\n", nrf_cal_get_time_string(false));
+    printf("Calibrated time:\t%s\r\n", nrf_cal_get_time_string(true));
+}
+
 /**@brief Function for initializing services that will be used by the application.
  */
 static void services_init(void)
@@ -2066,6 +2075,8 @@ int main()
 #ifdef USE_CTS
     db_discovery_init();
 #endif // USE_CTS
+
+    nrf_cal_init();
 
 #ifdef USE_OUR_SERVICES
     services_init();
