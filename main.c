@@ -90,7 +90,7 @@
 #include "sht3.h"
 #include "kx022.h"
 #include "our_service.h"
-#include "beacon_calendar.h"
+#include "nrf_calendar.h"
 #include "compiler_abstraction.h"
 
 #include "nrf_log.h"
@@ -149,7 +149,14 @@ const  nrf_drv_rtc_t        rtc = NRF_DRV_RTC_INSTANCE(2);
 // RTC defines
 #define RTC_CC_VALUE                8       // prescale 256 Hz, RTC_CC_VALUE=8 => 1/32 sec
 #define RTC_SADC_UPDATE             1875
-#define RTC_SENSOR_UPDATE           480     // in 1/32 sec unit (480* 1/32 = 15 sec; 32 * 1/32 = 1 sec) 
+#define RTC_SENSOR_UPDATE           480     // in 1/32 sec unit (480* 1/32 = 15 sec; 32 * 1/32 = 1 sec)
+
+// App Timer defines
+APP_TIMER_DEF(m_repeated_timer_read_saadc);			/**< Handler for repeated timer used to read battery level by SAADC. */
+APP_TIMER_DEF(m_repeated_timer_read_sensor);     	/**< Handler for repeated timer used to read TWI sensors. */
+APP_TIMER_DEF(m_singleshot_timer_read_sensor_step);   /**< Handler for repeated timer for TWI sensor, steps. */
+#define APP_TIMER_TICKS_SAADC       APP_TIMER_TICKS(60000)
+#define APP_TIMER_TICKS_SENSOR      APP_TIMER_TICKS(15000)
 
 // SAADC defines
 #define SAADC_CALIBRATION_INTERVAL  5       // SAADC calibration interval relative to NRF_DRV_SAADC_EVT_DONE event
@@ -700,8 +707,9 @@ void process_all_data()
 
 #ifdef DEBUG
     static uint8_t counter_show_val = 0;
+counter_show_val++;
 
-    if(counter_show_val % 10){
+    if(counter_show_val){
         // calculate values from raw data, used only for debug. 
         // For adv package take already encoded data from sensor
         float   temp        = SHT3_GET_TEMPERATURE_VALUE(m_buffer[0], m_buffer[1]);
@@ -712,7 +720,7 @@ void process_all_data()
 
         // Log example: Temp: 220.00 | Hum:340.00 | X: -257, Y: -129, Z: 16204 
         NRF_LOG_RAW_INFO("Temp: " NRF_LOG_FLOAT_MARKER " | Hum:" NRF_LOG_FLOAT_MARKER " | ", temp, humidity);
-        NRF_LOG_RAW_INFO("X %6d, Y %6d, Z %6d |", x, y, z);
+        NRF_LOG_RAW_INFO("X %6d, Y %6d, Z %6d \n", x, y, z);
 //        NRF_LOG_RAW_INFO("INS1 %d, INS2 %d, INS3 %d, STAT %d\n",
 //            m_buffer[17], m_buffer[18], m_buffer[19], m_buffer[20]); 
     }
@@ -762,8 +770,8 @@ void process_all_data()
     // TODO
     offline_buffer_update(nrfx_rtc_counter_get(&rtc), &m_advertising.enc_advdata[PAYLOAD_OFFSET_IN_BEACON_INFO_ADV]);
 #endif // OFFLINE_FUNCTION
-    uint32_t counter = nrfx_rtc_counter_get(&rtc);
-    NRF_LOG_INFO("counter %d, /8 %d, /8*32 %d", counter, counter/8, counter/(8*32));
+//    uint32_t counter = nrfx_rtc_counter_get(&rtc);
+//    NRF_LOG_INFO("counter %d, /8 %d, /8*32 %d", counter, counter/8, counter/(8*32));
 }
 
 /**@brief Function for multi-step retrieval of sensor data
@@ -773,6 +781,8 @@ void process_all_data()
  */
 static void read_all_sensors(bool restart)
 {
+    ret_code_t err_code;
+
     // KX022 
     static uint8_t config_kx022_0[2] = {KX022_1020_REG_CNTL1,   0x00 }; // KX022_1020_STANDBY 
     static uint8_t config_kx022_1[2] = {KX022_1020_REG_CNTL1, 	0x40 };	// KX022_1020_STANDBY | KX022_1020_HIGH_RESOLUTION
@@ -806,40 +816,38 @@ static void read_all_sensors(bool restart)
     //   - call function to further process the read data
     switch(step){
     case 0:
-//        NRF_LOG_DEBUG("read_all step0");
+        NRF_LOG_DEBUG("read_all step0");
         // SHT3
         APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, SHT3_ADDR, config_SHT3_0, 2, false));
-        counter_current = nrfx_rtc_counter_get(&rtc);
-        counter_read_sht3 = counter_current + 
-            NRFX_RTC_US_TO_TICKS(15000, NRFX_RTC_DEFAULT_CONFIG_FREQUENCY) + 1; // 4 = 4/256s = 0,015625 > max duration 15ms
-//        NRF_LOG_DEBUG("read_all step0 counter current %d, counter read sht3 ready %d",
-//            counter_current, counter_read_sht3);
-    
+        
         // KX022 
         APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, config_kx022_0, 2, false));
         APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, config_kx022_1, 2, false));
         APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, config_kx022_2, 2, false));
+   
+        // timer for next step, 4 ms (1 = 1/256s = 0,0039 =~4ms >1.2/ODR)
+        err_code = app_timer_start(m_singleshot_timer_read_sensor_step, APP_TIMER_TICKS(5), NULL);
+        APP_ERROR_CHECK(err_code);
+        NRF_LOG_DEBUG("APP_TIMER_TICKS(5) %d, APP_TIMER_TICKS(4) %d", APP_TIMER_TICKS(5), APP_TIMER_TICKS(4));
     
-        counter_current = nrfx_rtc_counter_get(&rtc);
-        APP_ERROR_CHECK(nrf_drv_rtc_cc_set(&rtc, 2, counter_current+
-            NRFX_RTC_US_TO_TICKS(4000, NRFX_RTC_DEFAULT_CONFIG_FREQUENCY) + 1, true));	// 1 = 1/256s = 0,0039 =~4ms >1.2/ODR
         step++;
         break;
     
     case 1:
-//        NRF_LOG_DEBUG("read_all step1");
+        NRF_LOG_DEBUG("read_all step1");
     
         // KX022 
         APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, config_kx022_3, 2, false));
     
-        counter_current = nrfx_rtc_counter_get(&rtc);
-        APP_ERROR_CHECK(nrf_drv_rtc_cc_set(&rtc, 2, counter_current+
-            NRFX_RTC_US_TO_TICKS(4000, NRFX_RTC_DEFAULT_CONFIG_FREQUENCY) + 1, true));	// 1 = 1/256s = 0,0039 =~4ms >1.2/ODR
+        // timer for next step, 4 ms (1 = 1/256s = 0,0039 =~4ms >1.2/ODR)
+        err_code = app_timer_start(m_singleshot_timer_read_sensor_step, APP_TIMER_TICKS(5), NULL);
+        APP_ERROR_CHECK(err_code);
+
         step++;
         break;
     
     case 2:
-//        NRF_LOG_DEBUG("read_all step2");
+        NRF_LOG_DEBUG("read_all step2");
     
         // KX022 
         reg[0] = KX022_1020_REG_XOUTL;
@@ -848,21 +856,15 @@ static void read_all_sensors(bool restart)
         APP_ERROR_CHECK(nrf_drv_twi_rx(&m_twi, KX022_ADDR, &m_buffer[6], 6));
         APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, config_kx022_0, 2, false));
 
-        counter_current = nrfx_rtc_counter_get(&rtc);
-//        NRF_LOG_DEBUG("read_all step2 counter current %d, counter read sht3 ready %d",
-//            counter_current, counter_read_sht3);
-        if(counter_current < counter_read_sht3){
-            APP_ERROR_CHECK(nrf_drv_rtc_cc_set(&rtc, 2, counter_read_sht3, true));
-            step++;
-            break;  // time to go until SHT3 is ready
-        } else {
-            step++;
-            // just continue w/step3, SHT3 is ready
-//            NRF_LOG_DEBUG("just continue w/step3");
-        }
+        // timer fillup for SHT3 15 ms (15-4-4 = 7 ms)
+        err_code = app_timer_start(m_singleshot_timer_read_sensor_step, APP_TIMER_TICKS(8), NULL);
+        APP_ERROR_CHECK(err_code);
+
+        step++;
+        break;  // time to go until SHT3 is ready
     
     case 3:
-//        NRF_LOG_DEBUG("read_all step3");
+        NRF_LOG_DEBUG("read_all step3");
 
         // read 6 bytes (temp (msb+lsb+crc) and hum (msb+lsb+crc)
         APP_ERROR_CHECK(nrf_drv_twi_rx(&m_twi, SHT3_ADDR, &m_buffer[0], 6));
@@ -881,89 +883,64 @@ static void read_all_sensors(bool restart)
     }
 }
 
-/**@brief Function for handling the RTC interrupt.
- *
- * @details  This function will handle the RTC interrupt and trigger subsequent
- *           actions.
- */
-static void rtc_handler(nrf_drv_rtc_int_type_t int_type)
+static void repeated_timer_handler_read_saadc()
 {
-    uint32_t counter_current;
-
-//    NRF_LOG_DEBUG("rtc_handler");
-
-    // SAADC (battery voltage)
-    if (int_type == NRF_DRV_RTC_INT_COMPARE0){
-//        NRF_LOG_DEBUG("rtc_handler COMPARE0");
-
-        if(!m_saadc_initialized) {
-            saadc_init();
-        }
-        m_saadc_initialized = true;
-
-        // Trigger the SAADC SAMPLE task
-        nrfx_saadc_sample();
-		
-        // Set counter for next sample
-        counter_current = nrfx_rtc_counter_get(&rtc);
-        APP_ERROR_CHECK(nrf_drv_rtc_cc_set(&rtc, 0, 
-            counter_current + RTC_CC_VALUE * RTC_SADC_UPDATE, true));
+    NRF_LOG_INFO("repeated_timer_handler_read_saadc");
+    if(!m_saadc_initialized) {
+        saadc_init();
     }
-		
-    // read sensors
-    if (int_type == NRF_DRV_RTC_INT_COMPARE1){
-//        NRF_LOG_DEBUG("rtc_handler COMPARE1");
+    m_saadc_initialized = true;
 
-        // Trigger the sensor retrieval task
-        read_all_sensors(true);	// init w/step0
-			
-        // Set counter for next sample
-        counter_current = nrfx_rtc_counter_get(&rtc);
-        APP_ERROR_CHECK(nrf_drv_rtc_cc_set(&rtc, 1, 
-            counter_current + RTC_CC_VALUE * RTC_SENSOR_UPDATE, true));
-    }
-		
-    // delay timeout during sensor retrieval function
-    if (int_type == NRF_DRV_RTC_INT_COMPARE2){
-        // Trigger the sensor retrieval task for subsequent steps
-        read_all_sensors(false);
-    }
-
-    // help function for power consumption optimization
-    if (int_type == NRF_DRV_RTC_INT_COMPARE3){
-        NRF_LOG_DEBUG("rtc_handler COMPARE3");
-        // UNUSED
-    }
+    // Trigger the SAADC SAMPLE task
+    nrfx_saadc_sample();
 }
 
-static void rtc_config()
+static void repeated_timer_handler_read_sensors()
 {
-    // Initialize RTC instance
-    nrf_drv_rtc_config_t rtc_configuration = NRF_DRV_RTC_DEFAULT_CONFIG;		
-	
-//    NRF_LOG_DEBUG("rtc_config: prescaler %d, freq %d, rtc input freq %d", 
-//        rtc_configuration.prescaler, NRFX_RTC_DEFAULT_CONFIG_FREQUENCY, RTC_INPUT_FREQ);
-	
-    // Initialize RTC with callback handler
-    APP_ERROR_CHECK(nrf_drv_rtc_init(&rtc, &rtc_configuration, rtc_handler));
+NRF_LOG_INFO("repeated_timer_handler_read_sensors");
+    // Trigger the sensor retrieval task from the beginning
+    read_all_sensors(true);	// init w/step0
+}
 
-#ifdef USE_RTC_COMPARE0
-    //Set RTC compare0 value to trigger first interrupt 
-    APP_ERROR_CHECK(nrf_drv_rtc_cc_set(&rtc, 0, RTC_CC_VALUE*16, true));
-#endif // USE_RTC_COMPARE0
+static void singleshot_timer_handler_read_sensor_step()
+{
+NRF_LOG_INFO("singleshot_timer_handler_read_sensor_step");
+    // Trigger the sensor retrieval task for subsequent steps
+    read_all_sensors(false);	// subsequent steps
+}
 
-#ifdef USE_RTC_COMPARE1
-    //Set RTC compare1 value to trigger first interrupt 
-    APP_ERROR_CHECK(nrf_drv_rtc_cc_set(&rtc, 1, RTC_CC_VALUE*32, true));
-#endif // USE_RTC_COMPARE1
+static void timers_create()
+{
+    ret_code_t err_code;
 
-#ifdef USE_SHT3_TEST
-    // complete a break command to see the power consumption values
-    APP_ERROR_CHECK(nrf_drv_rtc_cc_set(&rtc, 3, RTC_CC_VALUE*32, true));
-#endif
+    // Create timers
+    err_code = app_timer_create(&m_repeated_timer_read_saadc,
+                                APP_TIMER_MODE_REPEATED,
+                                repeated_timer_handler_read_saadc);
+    APP_ERROR_CHECK(err_code);
+    
+    err_code = app_timer_create(&m_repeated_timer_read_sensor,
+                                APP_TIMER_MODE_REPEATED,
+                                repeated_timer_handler_read_sensors);
+    APP_ERROR_CHECK(err_code);
+    
+    err_code = app_timer_create(&m_singleshot_timer_read_sensor_step,
+                                APP_TIMER_MODE_SINGLE_SHOT,
+                                singleshot_timer_handler_read_sensor_step);
+    APP_ERROR_CHECK(err_code);
+}
 
-    //Enable RTC instance
-    nrf_drv_rtc_enable(&rtc);
+static void timers_start()
+{
+    ret_code_t err_code;
+
+    err_code = app_timer_start(m_repeated_timer_read_saadc, APP_TIMER_TICKS_SAADC, NULL);
+    APP_ERROR_CHECK(err_code);
+
+    err_code = app_timer_start(m_repeated_timer_read_sensor, APP_TIMER_TICKS_SENSOR, NULL);
+    APP_ERROR_CHECK(err_code);
+    
+
 }
 
 #ifdef OFFLINE_FUNCTION
@@ -2053,8 +2030,12 @@ int main()
     sensor_init();              // Initialize sensors
 #endif // USE_SENSOR
 
+    nrf_cal_init();             // Initialize calender, but needs nrf_cal_time_set()
+
 #ifdef USE_RTC
-    rtc_config();               // Configure RTC
+//    rtc_config();               // Configure RTC
+	timers_create();
+    timers_start();
 #endif // USE_RTC
 
 #ifdef OFFLINE_FUNCTION
@@ -2076,7 +2057,6 @@ int main()
     db_discovery_init();
 #endif // USE_CTS
 
-    nrf_cal_init();
 
 #ifdef USE_OUR_SERVICES
     services_init();

@@ -8,6 +8,8 @@
  * WARRANTY of ANY KIND is provided. This heading must NOT be removed from
  * the file.
  *
+ * Changed and added functionality by Andreas Erdmann, 2019.
+ *
  */
 
 #ifndef __NRF_CALENDAR_H__
@@ -17,17 +19,14 @@
 #include <stdbool.h>
 #include "time.h"
 
-// Change the following defines to change the RTC timer used or the interrupt priority
-#define CAL_RTC                 NRF_RTC0
-#define CAL_RTC_IRQn            RTC0_IRQn
-#define CAL_RTC_IRQHandler      RTC0_IRQHandler
-#define CAL_RTC_IRQ_Priority    3
-
 // Initializes the calendar library. Run this before calling any other functions. 
 void nrf_cal_init(void);
 
-// Enables a callback feature in the calendar library that can call a function automatically at the specified interval (seconds).
-void nrf_cal_set_callback(void (*callback)(void), uint32_t interval);
+// Update the internal time by calling this function regularly every "calendar_increment" seconds.
+void nrf_cal_increment(void);
+
+// Returns true if internal nrf_calendar time structures had been initialized with nrf_cal_set_time()
+bool nrf_cal_get_initialized(void);
 
 // Sets the date and time stored in the calendar library. 
 // When this function is called a second time calibration data will be automatically generated based on the error in time since the
