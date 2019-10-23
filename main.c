@@ -137,7 +137,6 @@
 #define USE_CONNPARAMS_PEERMGR
 #undef  USE_CONN_ADV_INIT
 #undef  USE_NONCONN_ADV_INIT
-#undef  USE_OLD_ADVERTISING_FUNCTIONS
 #define USE_ADVERTISING
 #define USE_OUR_SERVICES
 #define USE_CTS
@@ -146,15 +145,10 @@
 // RTC variales
 const  nrf_drv_rtc_t        rtc = NRF_DRV_RTC_INSTANCE(2);
 
-// RTC defines
-#define RTC_CC_VALUE                8       // prescale 256 Hz, RTC_CC_VALUE=8 => 1/32 sec
-#define RTC_SADC_UPDATE             1875
-#define RTC_SENSOR_UPDATE           480     // in 1/32 sec unit (480* 1/32 = 15 sec; 32 * 1/32 = 1 sec)
-
 // App Timer defines
-APP_TIMER_DEF(m_repeated_timer_read_saadc);			/**< Handler for repeated timer used to read battery level by SAADC. */
-APP_TIMER_DEF(m_repeated_timer_read_sensor);     	/**< Handler for repeated timer used to read TWI sensors. */
-APP_TIMER_DEF(m_singleshot_timer_read_sensor_step);   /**< Handler for repeated timer for TWI sensor, steps. */
+APP_TIMER_DEF(m_repeated_timer_read_saadc);                 /**< Handler for repeated timer used to read battery level by SAADC. */
+APP_TIMER_DEF(m_repeated_timer_read_sensor);                /**< Handler for repeated timer used to read TWI sensors. */
+APP_TIMER_DEF(m_singleshot_timer_read_sensor_step);         /**< Handler for repeated timer for TWI sensor, steps. */
 #define APP_TIMER_TICKS_SAADC       APP_TIMER_TICKS(60000)
 #define APP_TIMER_TICKS_SENSOR      APP_TIMER_TICKS(15000)
 
@@ -625,15 +619,10 @@ void saadc_event_handler(nrfx_saadc_evt_t const * p_event)
 //        NRF_LOG_DEBUG("saadc_event_handler, done, perc %d, volts %d", percentage_batt_lvl, m_battery_millivolts);
 
         // update payload data in encoded advertising data
-#ifdef USE_OLD_ADVERTISING_FUNCTIONS
-        uint8_t payload_idx = PAYLOAD_OFFSET_BATTERY_INFO_OLD;
-        m_adv_data.adv_data.p_data[payload_idx++] = MSB_16(m_battery_millivolts);
-        m_adv_data.adv_data.p_data[payload_idx++] = LSB_16(m_battery_millivolts);
-#else
         uint8_t payload_idx = PAYLOAD_OFFSET_BATTERY_INFO;
         m_advertising.enc_advdata[payload_idx++] = MSB_16(m_battery_millivolts);
         m_advertising.enc_advdata[payload_idx++] = LSB_16(m_battery_millivolts);
-#endif				
+
         nrfx_saadc_uninit();                                                        // Unintialize SAADC to disable EasyDMA and save power
         NRF_SAADC->INTENCLR = (SAADC_INTENCLR_END_Clear << SAADC_INTENCLR_END_Pos); // Disable the SAADC interrupt
         NVIC_ClearPendingIRQ(SAADC_IRQn);                                           // Clear the SAADC interrupt if set
@@ -706,10 +695,6 @@ void process_all_data()
 //    } 
 
 #ifdef DEBUG
-    static uint8_t counter_show_val = 0;
-counter_show_val++;
-
-    if(counter_show_val){
         // calculate values from raw data, used only for debug. 
         // For adv package take already encoded data from sensor
         float   temp        = SHT3_GET_TEMPERATURE_VALUE(m_buffer[0], m_buffer[1]);
@@ -719,38 +704,15 @@ counter_show_val++;
         int16_t z           = KX022_GET_ACC(m_buffer[10], m_buffer[11]);
 
         // Log example: Temp: 220.00 | Hum:340.00 | X: -257, Y: -129, Z: 16204 
-        NRF_LOG_RAW_INFO("Temp: " NRF_LOG_FLOAT_MARKER " | Hum:" NRF_LOG_FLOAT_MARKER " | ", temp, humidity);
+        NRF_LOG_RAW_INFO("Temp: " NRF_LOG_FLOAT_MARKER " | Hum:" NRF_LOG_FLOAT_MARKER " | ", NRF_LOG_FLOAT(temp), NRF_LOG_FLOAT(humidity));
         NRF_LOG_RAW_INFO("X %6d, Y %6d, Z %6d \n", x, y, z);
+        NRF_LOG_INFO("m_buffer[0..11]:");
+        NRF_LOG_RAW_HEXDUMP_INFO(m_buffer, 12);
 //        NRF_LOG_RAW_INFO("INS1 %d, INS2 %d, INS3 %d, STAT %d\n",
 //            m_buffer[17], m_buffer[18], m_buffer[19], m_buffer[20]); 
-    }
 #endif // DEBUG
 
     // update payload data in encoded advertising data
-#ifdef USE_OLD_ADVERTISING_FUNCTIONS
-    uint8_t payload payload_idx = PAYLOAD_OFFSET_IN_BEACON_INFO_ADV_OLD;
-//    m_enc_advdata[payload_idx++] = m_buffer[ 0];
-//    m_enc_advdata[payload_idx++] = m_buffer[ 1];
-//    m_enc_advdata[payload_idx++] = m_buffer[ 3];
-//    m_enc_advdata[payload_idx++] = m_buffer[ 4];
-//    m_enc_advdata[payload_idx++] = m_buffer[ 6];
-//    m_enc_advdata[payload_idx++] = m_buffer[ 7];
-//    m_enc_advdata[payload_idx++] = m_buffer[ 8];
-//    m_enc_advdata[payload_idx++] = m_buffer[ 9];
-//    m_enc_advdata[payload_idx++] = m_buffer[10];
-//    m_enc_advdata[payload_idx++] = m_buffer[11];
-    
-    m_adv_data.adv_data.p_data[payload_idx++] = m_buffer[ 0];
-    m_adv_data.adv_data.p_data[payload_idx++] = m_buffer[ 1];
-    m_adv_data.adv_data.p_data[payload_idx++] = m_buffer[ 3];
-    m_adv_data.adv_data.p_data[payload_idx++] = m_buffer[ 4];
-    m_adv_data.adv_data.p_data[payload_idx++] = m_buffer[ 6];
-    m_adv_data.adv_data.p_data[payload_idx++] = m_buffer[ 7];
-    m_adv_data.adv_data.p_data[payload_idx++] = m_buffer[ 8];
-    m_adv_data.adv_data.p_data[payload_idx++] = m_buffer[ 9];
-    m_adv_data.adv_data.p_data[payload_idx++] = m_buffer[10];
-    m_adv_data.adv_data.p_data[payload_idx++] = m_buffer[11];
-#else
     uint8_t payload_idx = PAYLOAD_OFFSET_IN_BEACON_INFO_ADV;
 
     m_advertising.enc_advdata[payload_idx++] = m_buffer[ 0];
@@ -763,15 +725,17 @@ counter_show_val++;
     m_advertising.enc_advdata[payload_idx++] = m_buffer[ 9];
     m_advertising.enc_advdata[payload_idx++] = m_buffer[10];
     m_advertising.enc_advdata[payload_idx++] = m_buffer[11];
-#endif
+
+#ifdef DEBUG
+    NRF_LOG_INFO("m_advertising.enc_advdata[0..30]:");
+    NRF_LOG_RAW_HEXDUMP_INFO(m_advertising.enc_advdata, 31);
+#endif // DEBUG
 
 #ifdef OFFLINE_FUNCTION
     // update offline buffer
     // TODO
     offline_buffer_update(nrfx_rtc_counter_get(&rtc), &m_advertising.enc_advdata[PAYLOAD_OFFSET_IN_BEACON_INFO_ADV]);
 #endif // OFFLINE_FUNCTION
-//    uint32_t counter = nrfx_rtc_counter_get(&rtc);
-//    NRF_LOG_INFO("counter %d, /8 %d, /8*32 %d", counter, counter/8, counter/(8*32));
 }
 
 /**@brief Function for multi-step retrieval of sensor data
@@ -816,7 +780,6 @@ static void read_all_sensors(bool restart)
     //   - call function to further process the read data
     switch(step){
     case 0:
-        NRF_LOG_DEBUG("read_all step0");
         // SHT3
         APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, SHT3_ADDR, config_SHT3_0, 2, false));
         
@@ -825,30 +788,25 @@ static void read_all_sensors(bool restart)
         APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, config_kx022_1, 2, false));
         APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, config_kx022_2, 2, false));
    
-        // timer for next step, 4 ms (1 = 1/256s = 0,0039 =~4ms >1.2/ODR)
-        err_code = app_timer_start(m_singleshot_timer_read_sensor_step, APP_TIMER_TICKS(5), NULL);
+        // timer for next step, 6 ms (>1.2/ODR)
+        err_code = app_timer_start(m_singleshot_timer_read_sensor_step, APP_TIMER_TICKS(6), NULL);
         APP_ERROR_CHECK(err_code);
-        NRF_LOG_DEBUG("APP_TIMER_TICKS(5) %d, APP_TIMER_TICKS(4) %d", APP_TIMER_TICKS(5), APP_TIMER_TICKS(4));
     
         step++;
         break;
     
     case 1:
-        NRF_LOG_DEBUG("read_all step1");
-    
         // KX022 
         APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, config_kx022_3, 2, false));
     
-        // timer for next step, 4 ms (1 = 1/256s = 0,0039 =~4ms >1.2/ODR)
-        err_code = app_timer_start(m_singleshot_timer_read_sensor_step, APP_TIMER_TICKS(5), NULL);
+        // timer for next step,6 ms (>1.2/ODR)
+        err_code = app_timer_start(m_singleshot_timer_read_sensor_step, APP_TIMER_TICKS(6), NULL);
         APP_ERROR_CHECK(err_code);
 
         step++;
         break;
     
     case 2:
-        NRF_LOG_DEBUG("read_all step2");
-    
         // KX022 
         reg[0] = KX022_1020_REG_XOUTL;
         APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, reg, 1, true));
@@ -857,15 +815,13 @@ static void read_all_sensors(bool restart)
         APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, config_kx022_0, 2, false));
 
         // timer fillup for SHT3 15 ms (15-4-4 = 7 ms)
-        err_code = app_timer_start(m_singleshot_timer_read_sensor_step, APP_TIMER_TICKS(8), NULL);
+        err_code = app_timer_start(m_singleshot_timer_read_sensor_step, APP_TIMER_TICKS(1), NULL);
         APP_ERROR_CHECK(err_code);
 
         step++;
         break;  // time to go until SHT3 is ready
     
     case 3:
-        NRF_LOG_DEBUG("read_all step3");
-
         // read 6 bytes (temp (msb+lsb+crc) and hum (msb+lsb+crc)
         APP_ERROR_CHECK(nrf_drv_twi_rx(&m_twi, SHT3_ADDR, &m_buffer[0], 6));
             
@@ -885,7 +841,6 @@ static void read_all_sensors(bool restart)
 
 static void repeated_timer_handler_read_saadc()
 {
-    NRF_LOG_INFO("repeated_timer_handler_read_saadc");
     if(!m_saadc_initialized) {
         saadc_init();
     }
@@ -897,14 +852,12 @@ static void repeated_timer_handler_read_saadc()
 
 static void repeated_timer_handler_read_sensors()
 {
-NRF_LOG_INFO("repeated_timer_handler_read_sensors");
     // Trigger the sensor retrieval task from the beginning
     read_all_sensors(true);	// init w/step0
 }
 
 static void singleshot_timer_handler_read_sensor_step()
 {
-NRF_LOG_INFO("singleshot_timer_handler_read_sensor_step");
     // Trigger the sensor retrieval task for subsequent steps
     read_all_sensors(false);	// subsequent steps
 }
@@ -1486,7 +1439,7 @@ static void non_connectable_adv_init(void)
     m_adv_params.interval        = APP_SLOW_ADV_INTERVAL; // was: NON_CONNECTABLE_ADV_INTERVAL;
 }
 
-#ifndef USE_OLD_ADVERTISING_FUNCTIONS
+
 /**@brief Function for initializing the Advertising functionality.
  *
  * @details Encodes the required advertising data and passes it to the stack.
@@ -1613,95 +1566,6 @@ static void advertising_start(bool erase_bonds)
     }
 }
 
-#else // not USE_OLD_ADVERTISING_FUNCTIONS
-
-static void advertising_init_old()
-{
-    uint32_t        err_code;
-    ble_advdata_t   advdata;
-    uint8_t         flags = BLE_GAP_ADV_FLAG_BR_EDR_NOT_SUPPORTED;
-
-   //Set manufacturing data
-    uint8_t init_manuf_data[APP_BEACON_INFO_LENGTH] =      /**< Information advertised by the Beacon. */
-    {
-        APP_MAJOR_VALUE,        // Device major value
-        APP_MINOR_VALUE,        // Device minor value
-        APP_DATA_TEMP,          // temperature
-        APP_DATA_HUM,           // humidity
-        APP_DAT_X,              // accel x pos
-        APP_DAT_y,              // accel y pos
-        APP_DAT_Z,              // accel z pos
-        APP_DAT_BATTERY         // battery voltage
-    };
-    
-#if defined(USE_UICR_FOR_MAJ_MIN_VALUES)
-    // If USE_UICR_FOR_MAJ_MIN_VALUES is defined, the major and minor values will be read from the
-    // UICR instead of using the default values. The major and minor values obtained from the UICR
-    // are encoded into advertising data in big endian order (MSB First).
-    // To set the UICR used by this example to a desired value, write to the address 0x10001080
-    // using the nrfjprog tool. The command to be used is as follows.
-    // nrfjprog --snr <Segger-chip-Serial-Number> --memwr 0x10001080 --val <your major/minor value>
-    uint16_t major_value = ((*(uint32_t *)UICR_ADDRESS) & 0xFFFF0000) >> 16;
-    uint16_t minor_value = ((*(uint32_t *)UICR_ADDRESS) & 0x0000FFFF);
-
-    uint8_t index = MAJ_VAL_OFFSET_IN_MANUF_DATA;
-
-    init_manuf_data[index++] = MSB_16(major_value);
-    init_manuf_data[index++] = LSB_16(major_value);
-
-    init_manuf_data[index++] = MSB_16(minor_value);
-    init_manuf_data[index++] = LSB_16(minor_value);
-#endif
-
-
-
-    ble_advdata_manuf_data_t                manuf_specific_data;
-    manuf_specific_data.company_identifier  = APP_COMPANY_IDENTIFIER;
-    manuf_specific_data.data.p_data         = (uint8_t *) init_manuf_data;
-    manuf_specific_data.data.size           = APP_BEACON_INFO_LENGTH;
-//    manuf_specific_data.data.p_data = (uint8_t *) m_beacon_info;
-//    manuf_specific_data.data.size   = APP_BEACON_INFO_LENGTH;
-
-    // Build and set advertising data.
-    memset(&advdata, 0, sizeof(advdata));
-
-    advdata.name_type               = BLE_ADVDATA_NO_NAME;
-    advdata.flags                   = flags;
-    advdata.p_manuf_specific_data   = &manuf_specific_data;
-
-    // Initialize advertising parameters (used when starting advertising).
-    memset(&m_adv_params, 0, sizeof(m_adv_params));
-
-//    m_adv_params.properties.type    = BLE_GAP_ADV_TYPE_NONCONNECTABLE_NONSCANNABLE_UNDIRECTED;
-    m_adv_params.properties.type = BLE_GAP_ADV_TYPE_CONNECTABLE_SCANNABLE_UNDIRECTED;
-    m_adv_params.p_peer_addr        = NULL;     // Undirected advertisement.
-    m_adv_params.filter_policy      = BLE_GAP_ADV_FP_ANY;
-    m_adv_params.interval           = NON_CONNECTABLE_ADV_INTERVAL;
-    m_adv_params.duration           = 0;        // Never time out.
-   
-    err_code = ble_advdata_encode(&advdata, m_adv_data.adv_data.p_data, &m_adv_data.adv_data.len);
-    APP_ERROR_CHECK(err_code);
-
-    err_code = sd_ble_gap_adv_set_configure(&m_adv_handle, &m_adv_data, &m_adv_params);
-    APP_ERROR_CHECK(err_code);
-
-    // SET TX POWER FOR ADVERTISING
-    err_code = sd_ble_gap_tx_power_set(BLE_GAP_TX_POWER_ROLE_ADV, m_adv_handle, 0);
-    APP_ERROR_CHECK(err_code); 
-}
-
-
-static void advertising_start_old()
-{
-    ret_code_t err_code;
-
-    err_code = sd_ble_gap_adv_start(m_adv_handle, APP_BLE_CONN_CFG_TAG);
-    APP_ERROR_CHECK(err_code);
-
-//  err_code = bsp_indication_set(BSP_INDICATE_ADVERTISING);
-//  APP_ERROR_CHECK(err_code);
-}
-#endif // not USE_OLD_ADVERTISING_FUNCTIONS
 
 /**@brief Function for handling the Connection Parameters Module.
  *
@@ -2069,12 +1933,7 @@ int main()
 #ifdef USE_NONCONN_ADV_INIT
     non_connectable_adv_init();
 #endif 
-#ifdef USE_OLD_ADVERTISING_FUNCTIONS
-    advertising_init_old();
-//    advertising_init();
-#else
     advertising_init();         // Initialize the advertising functionality
-#endif
 #endif
 
 #ifdef USE_CONNPARAMS_PEERMGR
@@ -2086,13 +1945,8 @@ int main()
     NRF_LOG_INFO("Beacon started.");
 
 #ifdef USE_ADVERTISING
-#ifdef USE_OLD_ADVERTISING_FUNCTIONS
-    advertising_start_old();
-//    advertising_start(erase_bonds);
-#else
     non_connectable_adv_init();
     advertising_start(erase_bonds);
-#endif
 #endif
 //sd_power_system_off();
     for (;;)
