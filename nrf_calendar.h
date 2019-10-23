@@ -17,8 +17,17 @@
 #include <stdbool.h>
 #include "time.h"
 
+// Change the following defines to change the RTC timer used or the interrupt priority
+#define CAL_RTC                 NRF_RTC0
+#define CAL_RTC_IRQn            RTC0_IRQn
+#define CAL_RTC_IRQHandler      RTC0_IRQHandler
+#define CAL_RTC_IRQ_Priority    3
+
 // Initializes the calendar library. Run this before calling any other functions. 
-void nrf_cal_init();
+void nrf_cal_init(void);
+
+// Enables a callback feature in the calendar library that can call a function automatically at the specified interval (seconds).
+void nrf_cal_set_callback(void (*callback)(void), uint32_t interval);
 
 // Sets the date and time stored in the calendar library. 
 // When this function is called a second time calibration data will be automatically generated based on the error in time since the
