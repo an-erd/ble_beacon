@@ -154,6 +154,9 @@
       <file file_name="../../../../../../components/ble/ble_services/ble_dis/ble_dis.c" />
       <file file_name="../../../../../../components/ble/ble_services/ble_cts_c/ble_cts_c.c" />
     </folder>
+    <folder Name="nRF_SVC">
+      <file file_name="../../../../../../components/libraries/bootloader/dfu/nrf_dfu_svci.c" />
+    </folder>
   </project>
   <configuration
     Name="Release"
