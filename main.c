@@ -138,6 +138,7 @@
 #define USE_OUR_SERVICES
 #define USE_CTS
 #define USE_DIS
+#undef  USE_BUTTONLESS_DFU
 
 // App Timer defines
 APP_TIMER_DEF(m_repeated_timer_read_saadc);                 /**< Handler for repeated timer used to read battery level by SAADC. */
@@ -195,9 +196,6 @@ static uint8_t m_buffer[BUFFER_SIZE];
 #if (BUFFER_SIZE < 21)
     #error Buffer too small.
 #endif
-
-// DFU defines
-#define INITIATE_DFU_TIMEOUT    15  // secs in which the code (long-long-long button press must be completed)
 
 // Offline Buffer
 // Time (4 byte), Temerature (2 byte), Humidity (2 byte) -> 8 x uint8_t byte/entry
@@ -428,8 +426,6 @@ static void lfclk_config()
 static void bsp_event_handler(bsp_event_t event)
 {
     ret_code_t err_code;
-    static uint32_t counter_dfu     = 0;
-    static uint8_t  countdown_dfu   = 3;
     static bool current_leds        = false;
 
     NRF_LOG_DEBUG("bsp_event_handler, button %d", event);
@@ -454,27 +450,6 @@ static void bsp_event_handler(bsp_event_t event)
     
     case BSP_EVENT_KEY_0_LONG: // button on beacon long pressed
         NRF_LOG_INFO("button BSP_EVENT_KEY_0_LONG");
-        if(app_timer_cnt_diff_compute(app_timer_cnt_get(), counter_dfu) > APP_TIMER_TICKS(INITIATE_DFU_TIMEOUT*1000)){
-            // reset time and countdown to initiate DFU
-            NRF_LOG_INFO("reset time and countdown to initiate DFU");
-            counter_dfu = app_timer_cnt_get();
-            countdown_dfu = 3;
-        }
-
-        switch(countdown_dfu){
-        case 3:
-        case 2:
-            countdown_dfu--;
-            break;
-        case 1:
-            NRF_LOG_INFO("Initiated DFU now");
-            NRF_LOG_FLUSH();
-            APP_ERROR_CHECK(sd_power_gpregret_set(0, BOOTLOADER_DFU_START));
-            sd_nvic_SystemReset();   
-            break;
-        default:
-            break;
-        }
         break;
 
     case BSP_EVENT_KEY_1: // button on jig pressed
@@ -497,39 +472,11 @@ static void bsp_event_handler(bsp_event_t event)
     
     case BSP_EVENT_KEY_1_LONG: // button on jig long pressed
         NRF_LOG_INFO("button BSP_EVENT_KEY_1_LONG"); 
-//        NRF_LOG_INFO("   app_timer_cnt_get() %d, counter_dfu %d, APP_TIMER_TICKS() %d, app_timer_cnt_diff_compute %d, countdown_dfu %d",
-//            app_timer_cnt_get(), counter_dfu, APP_TIMER_TICKS(INITIATE_DFU_TIMEOUT*1000),
-//            app_timer_cnt_diff_compute(app_timer_cnt_get(), counter_dfu) > APP_TIMER_TICKS(INITIATE_DFU_TIMEOUT*1000),
-//            countdown_dfu);
-        if(app_timer_cnt_diff_compute(app_timer_cnt_get(), counter_dfu) > APP_TIMER_TICKS(INITIATE_DFU_TIMEOUT*1000)){
-            // reset time and countdown to initiate DFU
-            NRF_LOG_INFO("reset time and countdown to initiate DFU");
-            counter_dfu = app_timer_cnt_get();
-            countdown_dfu = 3;
-//            NRF_LOG_INFO("   counter_dfu %d, countdown_dfu %d", counter_dfu, countdown_dfu);
-        }
-
-        switch(countdown_dfu){
-        case 3:
-        case 2:
-            countdown_dfu--;
-//            NRF_LOG_INFO("   countdown_dfu %d", countdown_dfu);
-            break;
-        case 1:
-            NRF_LOG_INFO("Initiated DFU now");
-            NRF_LOG_FLUSH();
-            APP_ERROR_CHECK(sd_power_gpregret_set(0, BOOTLOADER_DFU_START));
-            sd_nvic_SystemReset();   
-            break;
-        default:
-            break;
-        }
         break;
 
     case BSP_EVENT_WHITELIST_OFF:
         NRF_LOG_INFO("BSP_EVENT_WHITELIST_OFF");    
 #ifdef USE_CTS
-
         if (m_cts_c.conn_handle == BLE_CONN_HANDLE_INVALID)
         {
             err_code = ble_advertising_restart_without_whitelist(&m_advertising);
@@ -2037,9 +1984,11 @@ int main()
     NRF_LOG_INFO("Main started.");
 #endif // USE_LOG_INIT
 
+#ifdef USE_BUTTONLESS_DFU
     // Initialize the async SVCI interface to bootloader before any interrupts are enabled.
     err_code = ble_dfu_buttonless_async_svci_init();
     APP_ERROR_CHECK(err_code);
+#endif // USE_BUTTONLESS_DFU
 
 #ifdef USE_PWR_MANAGEMENT_INIT
     power_management_init();    // Initialize power management	
