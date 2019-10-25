@@ -81,11 +81,7 @@
 #include "app_gpiote.h"
 #include "nrf_pwr_mgmt.h"
 #include "nrf_drv_power.h"
-#include "nrf_drv_rtc.h"
 #include "nrf_drv_clock.h"
-#include "nrf_drv_timer.h"
-#include "nrfx_rtc.h"
-#include "nrf_drv_rtc.h"
 #include "uicr_config.h"
 #include "sht3.h"
 #include "kx022.h"
@@ -105,10 +101,6 @@
 #include "ble_conn_state.h"
 #include "nrf_ble_gatt.h"
 #include "nrf_ble_qwr.h"
-#include "nrf_pwr_mgmt.h"
-
-
-
 
 #if defined( __GNUC__ ) && (__LINT__ == 0)
     // This is required if one wants to use floating-point values in 'printf'
@@ -128,9 +120,7 @@
 #define USE_SENSOR
 #define USE_SENSORINIT_SHT3
 #define USE_SENSORINIT_KX022
-#define USE_RTC
-#define USE_RTC_COMPARE0
-#define USE_RTC_COMPARE1
+#define USE_APPTIMER
 #undef  OFFLINE_FUNCTION
 #define USE_SCHEDULER
 #define USE_GAP_GATT
@@ -141,9 +131,6 @@
 #define USE_OUR_SERVICES
 #define USE_CTS
 #define USE_DIS
-
-// RTC variales
-const  nrf_drv_rtc_t        rtc = NRF_DRV_RTC_INSTANCE(2);
 
 // App Timer defines
 APP_TIMER_DEF(m_repeated_timer_read_saadc);                 /**< Handler for repeated timer used to read battery level by SAADC. */
@@ -462,11 +449,10 @@ static void bsp_event_handler(bsp_event_t event)
     
     case BSP_EVENT_KEY_0_LONG: // button on beacon long pressed
         NRF_LOG_INFO("button BSP_EVENT_KEY_0_LONG");
-        if(nrfx_rtc_counter_get(&rtc) > counter_dfu){
+        if(app_timer_cnt_diff_compute(app_timer_cnt_get(), counter_dfu) > APP_TIMER_TICKS(INITIATE_DFU_TIMEOUT*1000)){
             // reset time and countdown to initiate DFU
             NRF_LOG_INFO("reset time and countdown to initiate DFU");
-            counter_dfu = nrfx_rtc_counter_get(&rtc) +
-                INITIATE_DFU_TIMEOUT * NRFX_RTC_DEFAULT_CONFIG_FREQUENCY;
+            counter_dfu = app_timer_cnt_get();
             countdown_dfu = 3;
         }
 
@@ -505,20 +491,24 @@ static void bsp_event_handler(bsp_event_t event)
         break;
     
     case BSP_EVENT_KEY_1_LONG: // button on jig long pressed
-        NRF_LOG_INFO("button BSP_EVENT_KEY_1_LONG");    
-
-        if(nrfx_rtc_counter_get(&rtc) > counter_dfu){
+        NRF_LOG_INFO("button BSP_EVENT_KEY_1_LONG"); 
+//        NRF_LOG_INFO("   app_timer_cnt_get() %d, counter_dfu %d, APP_TIMER_TICKS() %d, app_timer_cnt_diff_compute %d, countdown_dfu %d",
+//            app_timer_cnt_get(), counter_dfu, APP_TIMER_TICKS(INITIATE_DFU_TIMEOUT*1000),
+//            app_timer_cnt_diff_compute(app_timer_cnt_get(), counter_dfu) > APP_TIMER_TICKS(INITIATE_DFU_TIMEOUT*1000),
+//            countdown_dfu);
+        if(app_timer_cnt_diff_compute(app_timer_cnt_get(), counter_dfu) > APP_TIMER_TICKS(INITIATE_DFU_TIMEOUT*1000)){
             // reset time and countdown to initiate DFU
             NRF_LOG_INFO("reset time and countdown to initiate DFU");
-            counter_dfu = nrfx_rtc_counter_get(&rtc) +
-                INITIATE_DFU_TIMEOUT * NRFX_RTC_DEFAULT_CONFIG_FREQUENCY;
+            counter_dfu = app_timer_cnt_get();
             countdown_dfu = 3;
+//            NRF_LOG_INFO("   counter_dfu %d, countdown_dfu %d", counter_dfu, countdown_dfu);
         }
 
         switch(countdown_dfu){
         case 3:
         case 2:
             countdown_dfu--;
+//            NRF_LOG_INFO("   countdown_dfu %d", countdown_dfu);
             break;
         case 1:
             NRF_LOG_INFO("Initiated DFU now");
@@ -734,14 +724,14 @@ void process_all_data()
 #ifdef OFFLINE_FUNCTION
     // update offline buffer
     // TODO
-    offline_buffer_update(nrfx_rtc_counter_get(&rtc), &m_advertising.enc_advdata[PAYLOAD_OFFSET_IN_BEACON_INFO_ADV]);
+    offline_buffer_update(...);
 #endif // OFFLINE_FUNCTION
 }
 
 /**@brief Function for multi-step retrieval of sensor data
  *
  * @details  This function will request and fetch the results from the sonsors
- *           in an multi-step approach to implement low-power with RTC
+ *           in an multi-step approach implemented with app_timer
  */
 static void read_all_sensors(bool restart)
 {
@@ -814,7 +804,7 @@ static void read_all_sensors(bool restart)
         APP_ERROR_CHECK(nrf_drv_twi_rx(&m_twi, KX022_ADDR, &m_buffer[6], 6));
         APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, config_kx022_0, 2, false));
 
-        // timer fillup for SHT3 15 ms (15-4-4 = 7 ms)
+        // timer fillup for SHT3 15 ms (15 -6 -6 -running time of functions = ~1 ms)
         err_code = app_timer_start(m_singleshot_timer_read_sensor_step, APP_TIMER_TICKS(1), NULL);
         APP_ERROR_CHECK(err_code);
 
@@ -1896,11 +1886,10 @@ int main()
 
     nrf_cal_init();             // Initialize calender, but needs nrf_cal_time_set()
 
-#ifdef USE_RTC
-//    rtc_config();               // Configure RTC
-	timers_create();
+#ifdef USE_APPTIMER
+    timers_create();
     timers_start();
-#endif // USE_RTC
+#endif // USE_APPTIMER
 
 #ifdef OFFLINE_FUNCTION
     offline_buffer_init();      // Initialize offline buffer
@@ -1954,5 +1943,4 @@ int main()
         NRF_LOG_FLUSH();
         idle_state_handle();
     }
-}
-;
+};
