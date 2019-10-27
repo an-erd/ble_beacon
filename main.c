@@ -128,7 +128,7 @@
 #define USE_SENSORINIT_SHT3
 #define USE_SENSORINIT_KX022
 #define USE_APPTIMER
-#undef  OFFLINE_FUNCTION
+#define OFFLINE_FUNCTION
 #define USE_SCHEDULER
 #define USE_GAP_GATT
 #define USE_CONNPARAMS_PEERMGR
@@ -433,7 +433,7 @@ static void bsp_event_handler(bsp_event_t event)
     switch (event)
     {
     case BSP_EVENT_KEY_0: // button on beacon pressed
-        NRF_LOG_INFO("button BSP_EVENT_KEY_0");
+        NRF_LOG_DEBUG("button BSP_EVENT_KEY_0");
         if(current_leds){
             current_leds = false;
             bsp_board_leds_off();
@@ -445,46 +445,47 @@ static void bsp_event_handler(bsp_event_t event)
         break;
 
     case BSP_EVENT_KEY_0_RELEASED: // button on beacon released
-        NRF_LOG_INFO("button BSP_EVENT_KEY_0_RELEASED");
+        NRF_LOG_DEBUG("button BSP_EVENT_KEY_0_RELEASED");
         break;
     
     case BSP_EVENT_KEY_0_LONG: // button on beacon long pressed
-        NRF_LOG_INFO("button BSP_EVENT_KEY_0_LONG");
+        NRF_LOG_DEBUG("button BSP_EVENT_KEY_0_LONG");
         break;
 
     case BSP_EVENT_KEY_1: // button on jig pressed
-        NRF_LOG_INFO("button BSP_EVENT_KEY_1");
+        NRF_LOG_DEBUG("button BSP_EVENT_KEY_1");
 #ifdef USE_CTS
         if (m_cts_c.conn_handle != BLE_CONN_HANDLE_INVALID)
         {
             err_code = ble_cts_c_current_time_read(&m_cts_c);
             if (err_code == NRF_ERROR_NOT_FOUND)
             {
-                NRF_LOG_INFO("Current Time Service is not discovered.");
+                NRF_LOG_DEBUG("Current Time Service is not discovered.");
             }
         }
 #endif
         break;
     
     case BSP_EVENT_KEY_1_RELEASED: // button on jig released
-        NRF_LOG_INFO("button BSP_EVENT_KEY_1_RELEASED");
+        NRF_LOG_DEBUG("button BSP_EVENT_KEY_1_RELEASED");
         break;
     
     case BSP_EVENT_KEY_1_LONG: // button on jig long pressed
-        NRF_LOG_INFO("button BSP_EVENT_KEY_1_LONG"); 
+        NRF_LOG_DEBUG("button BSP_EVENT_KEY_1_LONG"); 
         break;
 
     case BSP_EVENT_WHITELIST_OFF:
-        NRF_LOG_INFO("BSP_EVENT_WHITELIST_OFF");    
+        NRF_LOG_DEBUG("BSP_EVENT_WHITELIST_OFF");    
 #ifdef USE_CTS
-        if (m_cts_c.conn_handle == BLE_CONN_HANDLE_INVALID)
-        {
-            err_code = ble_advertising_restart_without_whitelist(&m_advertising);
-            if (err_code != NRF_ERROR_INVALID_STATE)
-            {
-                APP_ERROR_CHECK(err_code);
-            }
-        }
+// TODO
+//        if (m_cts_c.conn_handle == BLE_CONN_HANDLE_INVALID)
+//        {
+//            err_code = ble_advertising_restart_without_whitelist(&m_advertising);
+//            if (err_code != NRF_ERROR_INVALID_STATE)
+//            {
+//                APP_ERROR_CHECK(err_code);
+//            }
+//        }
 #endif
         break;
 
@@ -636,7 +637,7 @@ void process_all_data()
 //        return;
 //    } 
 
-#ifdef DEBUG
+/*#ifdef DEBUG
         // calculate values from raw data, used only for debug. 
         // For adv package take already encoded data from sensor
         float   temp        = SHT3_GET_TEMPERATURE_VALUE(m_buffer[0], m_buffer[1]);
@@ -653,7 +654,7 @@ void process_all_data()
 //        NRF_LOG_RAW_INFO("INS1 %d, INS2 %d, INS3 %d, STAT %d\n",
 //            m_buffer[17], m_buffer[18], m_buffer[19], m_buffer[20]); 
 #endif // DEBUG
-
+*/
     // update payload data in encoded advertising data
     uint8_t payload_idx = PAYLOAD_OFFSET_IN_BEACON_INFO_ADV;
 
@@ -669,15 +670,17 @@ void process_all_data()
     m_advertising.enc_advdata[payload_idx++] = m_buffer[11];
 
 #ifdef DEBUG
-    NRF_LOG_INFO("m_advertising.enc_advdata[0..30]:");
-    NRF_LOG_RAW_HEXDUMP_INFO(m_advertising.enc_advdata, 31);
+//    NRF_LOG_INFO("m_advertising.enc_advdata[0..30]:");
+//    NRF_LOG_RAW_HEXDUMP_INFO(m_advertising.enc_advdata, 31);
 #endif // DEBUG
 
 #ifdef OFFLINE_FUNCTION
     // update offline buffer
     // TODO
-    offline_buffer_update(...);
+//    offline_buffer_update(...);
 #endif // OFFLINE_FUNCTION
+    
+//    nrf_cal_print_current_time();
 }
 
 /**@brief Function for multi-step retrieval of sensor data
@@ -1175,56 +1178,39 @@ static void current_time_error_handler(uint32_t nrf_error)
  */
 static void current_time_print(ble_cts_c_evt_t * p_evt)
 {
-    NRF_LOG_INFO("\r\nCurrent Time:");
-    NRF_LOG_INFO("\r\nDate:");
+    NRF_LOG_DEBUG("Current Time:");
+    NRF_LOG_DEBUG("Date: %d.%d.%d", 
+        p_evt->params.current_time.exact_time_256.day_date_time.date_time.day,
+        p_evt->params.current_time.exact_time_256.day_date_time.date_time.month,
+        p_evt->params.current_time.exact_time_256.day_date_time.date_time.year);
+    NRF_LOG_DEBUG("Time: %d:%d:%d (%d/256)", 
+        p_evt->params.current_time.exact_time_256.day_date_time.date_time.hours, 
+        p_evt->params.current_time.exact_time_256.day_date_time.date_time.minutes, 
+        p_evt->params.current_time.exact_time_256.day_date_time.date_time.seconds, 
+        p_evt->params.current_time.exact_time_256.fractions256);
+    NRF_LOG_FLUSH();
+//    NRF_LOG_INFO("Adjust reason:");
+//    NRF_LOG_INFO("Daylight savings %x", p_evt->params.current_time.adjust_reason.change_of_daylight_savings_time);
+//    NRF_LOG_INFO("Time zone        %x", p_evt->params.current_time.adjust_reason.change_of_time_zone);
+//    NRF_LOG_INFO("External update  %x", p_evt->params.current_time.adjust_reason.external_reference_time_update);
+//    NRF_LOG_INFO("Manual update    %x", p_evt->params.current_time.adjust_reason.manual_time_update);
+}
 
-    NRF_LOG_INFO("\tDay of week   %s", (uint32_t)day_of_week[p_evt->
-                                                         params.
-                                                         current_time.
-                                                         exact_time_256.
-                                                         day_date_time.
-                                                         day_of_week]);
 
-    if (p_evt->params.current_time.exact_time_256.day_date_time.date_time.day == 0)
-    {
-        NRF_LOG_INFO("\tDay of month  Unknown");
-    }
-    else
-    {
-        NRF_LOG_INFO("\tDay of month  %i",
-                       p_evt->params.current_time.exact_time_256.day_date_time.date_time.day);
-    }
+/**@brief Function for handling the Current Time Service event to update the nrf_calendar.
+ *
+ * @param[in] p_evt  Event received from the Current Time Service client.
+ */
+static void current_time_update_calendar(ble_cts_c_evt_t * p_evt)
+{
+    nrf_cal_set_time(
+        p_evt->params.current_time.exact_time_256.day_date_time.date_time.year,
+        p_evt->params.current_time.exact_time_256.day_date_time.date_time.month,
+        p_evt->params.current_time.exact_time_256.day_date_time.date_time.day,
+        p_evt->params.current_time.exact_time_256.day_date_time.date_time.hours,
+        p_evt->params.current_time.exact_time_256.day_date_time.date_time.minutes,
+        p_evt->params.current_time.exact_time_256.day_date_time.date_time.seconds);
 
-    NRF_LOG_INFO("\tMonth of year %s",
-    (uint32_t)month_of_year[p_evt->params.current_time.exact_time_256.day_date_time.date_time.month]);
-    if (p_evt->params.current_time.exact_time_256.day_date_time.date_time.year == 0)
-    {
-        NRF_LOG_INFO("\tYear          Unknown");
-    }
-    else
-    {
-        NRF_LOG_INFO("\tYear          %i",
-                       p_evt->params.current_time.exact_time_256.day_date_time.date_time.year);
-    }
-    NRF_LOG_INFO("\r\nTime:");
-    NRF_LOG_INFO("\tHours     %i",
-                   p_evt->params.current_time.exact_time_256.day_date_time.date_time.hours);
-    NRF_LOG_INFO("\tMinutes   %i",
-                   p_evt->params.current_time.exact_time_256.day_date_time.date_time.minutes);
-    NRF_LOG_INFO("\tSeconds   %i",
-                   p_evt->params.current_time.exact_time_256.day_date_time.date_time.seconds);
-    NRF_LOG_INFO("\tFractions %i/256 of a second",
-                   p_evt->params.current_time.exact_time_256.fractions256);
-
-    NRF_LOG_INFO("\r\nAdjust reason:\r");
-    NRF_LOG_INFO("\tDaylight savings %x",
-                   p_evt->params.current_time.adjust_reason.change_of_daylight_savings_time);
-    NRF_LOG_INFO("\tTime zone        %x",
-                   p_evt->params.current_time.adjust_reason.change_of_time_zone);
-    NRF_LOG_INFO("\tExternal update  %x",
-                   p_evt->params.current_time.adjust_reason.external_reference_time_update);
-    NRF_LOG_INFO("\tManual update    %x",
-                   p_evt->params.current_time.adjust_reason.manual_time_update);
 }
 
 /**@brief Function for handling the Current Time Service client events.
@@ -1241,7 +1227,7 @@ static void on_cts_c_evt(ble_cts_c_t * p_cts, ble_cts_c_evt_t * p_evt)
     switch (p_evt->evt_type)
     {
         case BLE_CTS_C_EVT_DISCOVERY_COMPLETE:
-            NRF_LOG_INFO("Current Time Service discovered on server.");
+            NRF_LOG_DEBUG("Current Time Service discovered on server.");
             err_code = ble_cts_c_handles_assign(&m_cts_c,
                                                 p_evt->conn_handle,
                                                 &p_evt->params.char_handles);
@@ -1249,28 +1235,30 @@ static void on_cts_c_evt(ble_cts_c_t * p_cts, ble_cts_c_evt_t * p_evt)
             break;
 
         case BLE_CTS_C_EVT_DISCOVERY_FAILED:
-            NRF_LOG_INFO("Current Time Service not found on server. ");
+            NRF_LOG_WARNING("Current Time Service not found on server. ");
+            // TODO
             // CTS not found in this case we just disconnect. There is no reason to stay
             // in the connection for this simple app since it all wants is to interact with CT
-            if (p_evt->conn_handle != BLE_CONN_HANDLE_INVALID)
-            {
-                err_code = sd_ble_gap_disconnect(p_evt->conn_handle,
-                                                 BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
-                APP_ERROR_CHECK(err_code);
-            }
+//            if (p_evt->conn_handle != BLE_CONN_HANDLE_INVALID)
+//            {
+//                err_code = sd_ble_gap_disconnect(p_evt->conn_handle,
+//                                                 BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
+//                APP_ERROR_CHECK(err_code);
+//            }
             break;
 
         case BLE_CTS_C_EVT_DISCONN_COMPLETE:
-            NRF_LOG_INFO("Disconnect Complete.");
+            NRF_LOG_DEBUG("Disconnect Complete.");
             break;
 
         case BLE_CTS_C_EVT_CURRENT_TIME:
-            NRF_LOG_INFO("Current Time received.");
+            NRF_LOG_DEBUG("Current Time received.");
             current_time_print(p_evt);
+            current_time_update_calendar(p_evt);
             break;
 
         case BLE_CTS_C_EVT_INVALID_TIME:
-            NRF_LOG_INFO("Invalid Time received.");
+            NRF_LOG_WARNING("Invalid Time received.");
             break;
 
         default:
@@ -1494,12 +1482,6 @@ static void on_yys_evt(ble_yy_service_t     * p_yy_service,
     }
 }
 */
-
-static void print_current_time()
-{
-    printf("Uncalibrated time:\t%s\r\n", nrf_cal_get_time_string(false));
-    printf("Calibrated time:\t%s\r\n", nrf_cal_get_time_string(true));
-}
 
 /**@brief Function for initializing services that will be used by the application.
  */
@@ -1969,7 +1951,7 @@ void assert_nrf_callback(uint16_t line_num, const uint8_t * p_file_name)
 /**
  * @brief Function for application main entry.
  */
-int main()
+    int main()
 {
     ret_code_t       err_code;
     bool erase_bonds = false;

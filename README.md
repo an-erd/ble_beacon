@@ -92,4 +92,30 @@ DB:AE:BA:AB:67:2E	DB:AE:BA:AB:67:2F	beac6
 
 F1:A0:51:21:A0:12
 
+Sketch
+	- advertising w/o connecting -> broadcast temperature/humidity/accel to everyone
+	- BLE connection -> successful
+		CTS Update
+		1) if on_cts_c_evt = BLE_CTS_C_EVT_DISCOVERY_COMPLETE 
+			initiate time update
+		1a) if on_cts_c_evt = BLE_CTS_C_EVT_CURRENT_TIME
+			update buffer entries w/o time? TODO
+		1b) if BLE_CTS_C_EVT_DISCOVERY_FAILED or BLE_CTS_C_EVT_INVALID_TIME
+		
+		
+
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+
 
