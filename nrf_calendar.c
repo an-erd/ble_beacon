@@ -139,6 +139,18 @@ struct tm *nrf_cal_get_time_calibrated(void)
     else return nrf_cal_get_time();
 }
 
+time_t nrf_cat_get_time_long(void)
+{
+    time_t uncalibrated_time, calibrated_time;
+    uncalibrated_time = m_time + APP_TIMER_SEC(app_timer_cnt_diff_compute(app_timer_cnt_get(), m_app_timer_cnt_last_increment));
+    if(m_calibrate_factor != 0.0f){
+        calibrated_time = m_last_calibrate_time + (time_t)((float)(uncalibrated_time - m_last_calibrate_time) * m_calibrate_factor + 0.5f);
+        return calibrated_time;
+    } else {
+        return uncalibrated_time;
+    }
+}
+
 char *nrf_cal_get_time_string(bool calibrated)
 {
     static char cal_string[80];

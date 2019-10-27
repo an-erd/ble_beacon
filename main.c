@@ -144,8 +144,10 @@
 APP_TIMER_DEF(m_repeated_timer_read_saadc);                 /**< Handler for repeated timer used to read battery level by SAADC. */
 APP_TIMER_DEF(m_repeated_timer_read_sensor);                /**< Handler for repeated timer used to read TWI sensors. */
 APP_TIMER_DEF(m_singleshot_timer_read_sensor_step);         /**< Handler for repeated timer for TWI sensor, steps. */
-#define APP_TIMER_TICKS_SAADC       APP_TIMER_TICKS(60000)
-#define APP_TIMER_TICKS_SENSOR      APP_TIMER_TICKS(15000)
+APP_TIMER_DEF(m_repeated_timer_update_offlinebuffer);       /**< Handler for repeated timer to update offline buffer. */
+#define APP_TIMER_TICKS_SAADC                   APP_TIMER_TICKS(60000)
+#define APP_TIMER_TICKS_SENSOR                  APP_TIMER_TICKS(15000)
+#define APP_TIMER_TICKS_UPDATE_OFFLINEBUFFER    APP_TIMER_TICKS(5000)
 
 // SAADC defines
 #define SAADC_CALIBRATION_INTERVAL  5       // SAADC calibration interval relative to NRF_DRV_SAADC_EVT_DONE event
@@ -207,7 +209,7 @@ static uint8_t m_buffer[BUFFER_SIZE];
 static int m_offlinebuffer_counter = 0;         // next entry in buffer
 static uint8_t m_offlinebuffer[OFFLINE_BUFFER_SIZE][OFFLINE_BUFFER_SIZE_PER_ENTRY] = { 0xFF };
 void offline_buffer_init();
-bool offline_buffer_update(uint32_t counter, uint8_t *buffer);
+bool offline_buffer_update(uint8_t *buffer);
 //void test_data_send_array(int num_to_send, bool restart);
 #endif // OFFLINE_FUCTION
 
@@ -679,8 +681,6 @@ void process_all_data()
     // TODO
 //    offline_buffer_update(...);
 #endif // OFFLINE_FUNCTION
-    
-//    nrf_cal_print_current_time();
 }
 
 /**@brief Function for multi-step retrieval of sensor data
@@ -807,6 +807,13 @@ static void singleshot_timer_handler_read_sensor_step()
     read_all_sensors(false);	// subsequent steps
 }
 
+static void repeated_timer_handler_update_offlinebuffer()
+{
+    // Update offline buffer regularly
+    // TODO
+    offline_buffer_update(m_buffer);
+}
+
 static void timers_create()
 {
     ret_code_t err_code;
@@ -826,6 +833,11 @@ static void timers_create()
                                 APP_TIMER_MODE_SINGLE_SHOT,
                                 singleshot_timer_handler_read_sensor_step);
     APP_ERROR_CHECK(err_code);
+
+    err_code = app_timer_create(&m_repeated_timer_update_offlinebuffer,
+                                APP_TIMER_MODE_REPEATED,
+                                repeated_timer_handler_update_offlinebuffer);
+    APP_ERROR_CHECK(err_code);
 }
 
 static void timers_start()
@@ -837,8 +849,10 @@ static void timers_start()
 
     err_code = app_timer_start(m_repeated_timer_read_sensor, APP_TIMER_TICKS_SENSOR, NULL);
     APP_ERROR_CHECK(err_code);
-    
 
+
+    err_code = app_timer_start(m_repeated_timer_update_offlinebuffer, APP_TIMER_TICKS_UPDATE_OFFLINEBUFFER, NULL);
+    APP_ERROR_CHECK(err_code);
 }
 
 #ifdef OFFLINE_FUNCTION
@@ -856,17 +870,19 @@ void offline_buffer_init()
  *
  * @details  This functions stores the next entry in the offline buffer, returns true on succes or false if buffer full.
  */
-bool offline_buffer_update(uint32_t counter, uint8_t *buffer)
+bool offline_buffer_update(uint8_t *buffer)
 {
+    NRF_LOG_DEBUG("offline_buffer_update: %d/%d", m_offlinebuffer_counter, OFFLINE_BUFFER_SIZE);
+
     if (m_offlinebuffer_counter == OFFLINE_BUFFER_SIZE)
         return false;
 
-    m_offlinebuffer[m_offlinebuffer_counter][0];
-    memcpy(&m_offlinebuffer[m_offlinebuffer_counter][0], (uint8_t *)&counter, 4);
-    memcpy(&m_offlinebuffer[m_offlinebuffer_counter][4], buffer, 4);
-    NRF_LOG_INFO("counter %d", counter);
-    NRF_LOG_HEXDUMP_INFO((uint8_t *)&counter, 4);
-    NRF_LOG_HEXDUMP_INFO(&m_offlinebuffer[m_offlinebuffer_counter][0], 8);
+    *(uint32_t *)(&m_offlinebuffer[m_offlinebuffer_counter][0]) = nrf_cat_get_time_long();
+    memcpy(&m_offlinebuffer[m_offlinebuffer_counter][4], buffer,   2);
+    memcpy(&m_offlinebuffer[m_offlinebuffer_counter][6], buffer+3, 2);  // skip CRC in temperature
+    
+    NRF_LOG_HEXDUMP_DEBUG(&m_offlinebuffer[m_offlinebuffer_counter][0], 8);
+    NRF_LOG_DEBUG("  time: %d", *(uint32_t*)(&m_offlinebuffer[m_offlinebuffer_counter][0]));
     m_offlinebuffer_counter++;
 
     return true;
