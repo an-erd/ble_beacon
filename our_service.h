@@ -91,8 +91,10 @@ void our_service_init(ble_os_t * p_our_service);
  * @param[in]   p_our_service                     Our Service structure.
  * @param[in]   characteristic_value     New characteristic value.
  */
-void our_service_characteristic_update(ble_os_t *p_our_service, int32_t *temperature_value);
+uint32_t our_service_characteristic_update(ble_os_t *p_our_service, uint8_t *p_data, uint8_t data_len);
+//void our_service_characteristic_update(ble_os_t *p_our_service, int32_t *temperature_value);
 //void our_service_characteristic_update(ble_os_t *p_our_service, int8_t *p_transfer_dataset);
 
+void our_service_send_data_control(ble_os_t *p_our_service, uint8_t *p_data, uint8_t num_entries, uint8_t data_len_entry);
 
 #endif  /* _ OUR_SERVICE_H__ */

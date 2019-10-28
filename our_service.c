@@ -40,11 +40,15 @@
 
 #include <stdint.h>
 #include <string.h>
+#include "ble.h"
 #include "nrf_log.h"
 #include "our_service.h"
 #include "ble_srv_common.h"
 #include "app_error.h"
 #include "SEGGER_RTT.h"
+
+// https://devzone.nordicsemi.com/f/nordic-q-a/45679/loss-of-notifications-when-sending-them-from-peripheral-to-central-as-bulk-transfer
+// https://devzone.nordicsemi.com/f/nordic-q-a/25637/can-you-not-call-sd_ble_gatts_hvx-in-a-loop
 
 /**@brief Declaration of a function that will take care of some housekeeping of ble connections related to our service and characteristic 
  *
@@ -65,9 +69,11 @@ void ble_our_service_on_ble_evt(ble_evt_t const * p_ble_evt, void * p_context)
         case BLE_GAP_EVT_DISCONNECTED:
             p_our_service->conn_handle = BLE_CONN_HANDLE_INVALID;
             break;
+        case BLE_GATTS_EVT_HVN_TX_COMPLETE:
+            NRF_LOG_INFO("ble_our_service_on_ble_evt: BLE_GATTS_EVT_HVN_TX_COMPLETE");
+            break;
         default:
             // No implementation needed.
-
             break;
     }		
 }
@@ -150,7 +156,6 @@ void our_service_init(ble_os_t * p_our_service)
 	
     // Set our service connection handle to default value. I.e. an invalid handle since we are not yet in a connection.
     p_our_service->conn_handle = BLE_CONN_HANDLE_INVALID;
-	
 
     // Add our service
     err_code = sd_ble_gatts_service_add(BLE_GATTS_SRVC_TYPE_PRIMARY,
@@ -167,19 +172,22 @@ void our_service_init(ble_os_t * p_our_service)
 // 
 /**@brief Function to be called when updating characteristic value
  *
- * @param[in]   p_our_service        Our Service structure.
- * @param[in]   temperature_value    Example data to use to update characteristic
+ * @param[in]   p_our_service       Our Service structure.
+ * @param[in]   p_data              Data to use to update characteristic
+ * @param[in]   data_len            Length of p_data to be send.
+ * @param[out]  
  *
  */
-void our_service_characteristic_update(ble_os_t *p_our_service, int32_t *temperature_value)
+uint32_t our_service_characteristic_update(ble_os_t *p_our_service, uint8_t *p_data, uint8_t data_len)
 {
     uint32_t        err_code;
 
     NRF_LOG_INFO("our_service_characteristic_update");
+    
     // Update characteristic value
     if (p_our_service->conn_handle != BLE_CONN_HANDLE_INVALID)
     {
-        uint16_t               len = 4;    // TODO was 4
+        uint16_t len = data_len;
         ble_gatts_hvx_params_t hvx_params;
         memset(&hvx_params, 0, sizeof(hvx_params));
 
@@ -187,10 +195,51 @@ void our_service_characteristic_update(ble_os_t *p_our_service, int32_t *tempera
         hvx_params.type   = BLE_GATT_HVX_NOTIFICATION;
         hvx_params.offset = 0;
         hvx_params.p_len  = &len;
-        //hvx_params.p_data = (uint8_t*)p_transfer_dataset;  
-        hvx_params.p_data = (uint8_t*)temperature_value;  
+        hvx_params.p_data = (uint8_t *)p_data;  
         
         NRF_LOG_INFO("sd_ble_gatts_hvx");
-        sd_ble_gatts_hvx(p_our_service->conn_handle, &hvx_params);
+        err_code = sd_ble_gatts_hvx(p_our_service->conn_handle, &hvx_params);
+        
+        return err_code;
+    } else {
+        return 0;
+//        return BLE_ERROR_INVALID_CONN_HANDLE;
     }
+}
+
+/**@brief Function to be called to send the offline buffer as notifications
+ *
+ * @param[out]  Returns true if all data send, otherwise false;
+ *
+ */
+void our_service_send_data_control(ble_os_t *p_our_service,
+                                    uint8_t *p_data, uint8_t num_entries, uint8_t data_len_entry)
+{
+	ret_code_t err_code;
+	
+    static uint8_t data_counter = 0;
+    
+    NRF_LOG_INFO("our_service_send_data_control()");
+
+//    while(true) {
+//        err_code = our_service_characteristic_update(p_our_service, 
+//                        &p_data[data_counter * data_len_entry], data_len_entry);
+        err_code = our_service_characteristic_update(p_our_service, 
+                        &p_data[0], 8);
+        if (err_code == NRF_ERROR_INVALID_STATE 
+            || err_code == BLE_ERROR_GATTS_SYS_ATTR_MISSING)
+        { 
+//            break;
+        } else if (err_code == NRF_ERROR_RESOURCES)
+        { 
+            // We will try to maximize throughput, so we don't stop sending (quit the while loop) before we reach BLE_ERROR_NO_TX_BUFFERS state
+//            break; 
+        } else if (err_code != NRF_SUCCESS) 
+        { 
+            APP_ERROR_HANDLER(err_code);
+        }
+        
+        // At this point the data entry is considered send, prepare the next 
+//        data_counter++;
+//    }
 }

@@ -140,14 +140,19 @@
 #define USE_DIS
 #undef  USE_BUTTONLESS_DFU
 
+// TODO
+static uint8_t m_send_notification = false;
+
 // App Timer defines
+APP_TIMER_DEF(m_repeated_timer_init);                       /**< Handler for repeated timer for init process (sensor, offline buffer, ...). */
 APP_TIMER_DEF(m_repeated_timer_read_saadc);                 /**< Handler for repeated timer used to read battery level by SAADC. */
 APP_TIMER_DEF(m_repeated_timer_read_sensor);                /**< Handler for repeated timer used to read TWI sensors. */
 APP_TIMER_DEF(m_singleshot_timer_read_sensor_step);         /**< Handler for repeated timer for TWI sensor, steps. */
 APP_TIMER_DEF(m_repeated_timer_update_offlinebuffer);       /**< Handler for repeated timer to update offline buffer. */
-#define APP_TIMER_TICKS_SAADC                   APP_TIMER_TICKS(60000)
-#define APP_TIMER_TICKS_SENSOR                  APP_TIMER_TICKS(15000)
-#define APP_TIMER_TICKS_UPDATE_OFFLINEBUFFER    APP_TIMER_TICKS(5000)
+#define APP_TIMER_TICKS_INIT                    APP_TIMER_TICKS(200)
+#define APP_TIMER_TICKS_SAADC                   APP_TIMER_TICKS(1000)   // ( 60000)
+#define APP_TIMER_TICKS_SENSOR                  APP_TIMER_TICKS(1000)   // ( 15000)
+#define APP_TIMER_TICKS_UPDATE_OFFLINEBUFFER    APP_TIMER_TICKS(1000)   // (300000)
 
 // SAADC defines
 #define SAADC_CALIBRATION_INTERVAL  5       // SAADC calibration interval relative to NRF_DRV_SAADC_EVT_DONE event
@@ -206,8 +211,9 @@ static uint8_t m_buffer[BUFFER_SIZE];
 #define OFFLINE_BUFFER_RESERVED_BYTE    20000   // 20 KB RAM reserved
 #define OFFLINE_BUFFER_SIZE_PER_ENTRY   8       // uint8_t
 #define OFFLINE_BUFFER_SIZE             (OFFLINE_BUFFER_RESERVED_BYTE / OFFLINE_BUFFER_SIZE_PER_ENTRY)
+#define OFFLINE_BUFFER_SAMPLE_INTERVAL  5       // in multiples of APP_TIMER_TICKS_UPDATE_OFFLINEBUFFER
 static int m_offlinebuffer_counter = 0;         // next entry in buffer
-static uint8_t m_offlinebuffer[OFFLINE_BUFFER_SIZE][OFFLINE_BUFFER_SIZE_PER_ENTRY] = { 0xFF };
+static uint8_t m_offlinebuffer[OFFLINE_BUFFER_SIZE][OFFLINE_BUFFER_SIZE_PER_ENTRY];
 void offline_buffer_init();
 bool offline_buffer_update(uint8_t *buffer);
 //void test_data_send_array(int num_to_send, bool restart);
@@ -278,7 +284,7 @@ static pm_peer_id_t m_peer_id;                                                  
 static pm_peer_id_t m_whitelist_peers[BLE_GAP_WHITELIST_ADDR_MAX_COUNT];            /**< List of peers currently in the whitelist. */
 static uint32_t     m_whitelist_peer_cnt;                                           /**< Number of peers currently in the whitelist. */
 #endif // USE_CONNPARAMS_PEERMGR
-
+static bool m_erase_bonds = false;
 // Peer Manager forward declaration
 static void peer_list_get(pm_peer_id_t * p_peers, uint32_t * p_size);
 static void delete_bonds(void);
@@ -336,6 +342,9 @@ static uint8_t m_beacon_info[APP_BEACON_INFO_LENGTH] =      /**< Information adv
         APP_DAT_Z,              // accel z pos
         APP_DAT_BATTERY         // battery voltage
 };
+
+// BLE Advertising forward declaration
+static void advertising_start(bool erase_bonds);
 
 /**@brief Struct that contains pointers to the encoded advertising data. */
 static ble_gap_adv_data_t m_adv_data =
@@ -456,16 +465,22 @@ static void bsp_event_handler(bsp_event_t event)
 
     case BSP_EVENT_KEY_1: // button on jig pressed
         NRF_LOG_DEBUG("button BSP_EVENT_KEY_1");
-#ifdef USE_CTS
-        if (m_cts_c.conn_handle != BLE_CONN_HANDLE_INVALID)
-        {
-            err_code = ble_cts_c_current_time_read(&m_cts_c);
-            if (err_code == NRF_ERROR_NOT_FOUND)
-            {
-                NRF_LOG_DEBUG("Current Time Service is not discovered.");
-            }
-        }
-#endif
+//#ifdef USE_CTS
+//        if (m_cts_c.conn_handle != BLE_CONN_HANDLE_INVALID)
+//        {
+//            err_code = ble_cts_c_current_time_read(&m_cts_c);
+//            if (err_code == NRF_ERROR_NOT_FOUND)
+//            {
+//                NRF_LOG_DEBUG("Current Time Service is not discovered.");
+//            }
+//        }
+//#endif
+//        our_service_send_data_control(&m_our_service, (uint8_t *)m_offlinebuffer, 1, 8);
+        if(m_send_notification)
+            m_send_notification = 0;
+        else 
+            m_send_notification = 1;
+
         break;
     
     case BSP_EVENT_KEY_1_RELEASED: // button on jig released
@@ -681,6 +696,13 @@ void process_all_data()
     // TODO
 //    offline_buffer_update(...);
 #endif // OFFLINE_FUNCTION
+
+ret_code_t err_code;
+if(m_send_notification){
+    err_code = our_service_characteristic_update(&m_our_service, m_buffer, 1);
+    APP_ERROR_CHECK(err_code);
+}
+
 }
 
 /**@brief Function for multi-step retrieval of sensor data
@@ -734,7 +756,7 @@ static void read_all_sensors(bool restart)
         APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, config_kx022_2, 2, false));
    
         // timer for next step, 6 ms (>1.2/ODR)
-        err_code = app_timer_start(m_singleshot_timer_read_sensor_step, APP_TIMER_TICKS(6), NULL);
+        err_code = app_timer_start(m_singleshot_timer_read_sensor_step, APP_TIMER_TICKS(6), NULL); // (6)
         APP_ERROR_CHECK(err_code);
     
         step++;
@@ -745,7 +767,7 @@ static void read_all_sensors(bool restart)
         APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, config_kx022_3, 2, false));
     
         // timer for next step,6 ms (>1.2/ODR)
-        err_code = app_timer_start(m_singleshot_timer_read_sensor_step, APP_TIMER_TICKS(6), NULL);
+        err_code = app_timer_start(m_singleshot_timer_read_sensor_step, APP_TIMER_TICKS(6), NULL); // (6)
         APP_ERROR_CHECK(err_code);
 
         step++;
@@ -760,7 +782,7 @@ static void read_all_sensors(bool restart)
         APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, config_kx022_0, 2, false));
 
         // timer fillup for SHT3 15 ms (15 -6 -6 -running time of functions = ~1 ms)
-        err_code = app_timer_start(m_singleshot_timer_read_sensor_step, APP_TIMER_TICKS(1), NULL);
+        err_code = app_timer_start(m_singleshot_timer_read_sensor_step, APP_TIMER_TICKS(1), NULL); // (1)
         APP_ERROR_CHECK(err_code);
 
         step++;
@@ -812,6 +834,76 @@ static void repeated_timer_handler_update_offlinebuffer()
     // Update offline buffer regularly
     // TODO
     offline_buffer_update(m_buffer);
+    
+    static uint16_t counter = 0;
+    
+    counter++;
+    counter %= OFFLINE_BUFFER_SAMPLE_INTERVAL;
+    if (!counter){
+        offline_buffer_update(m_buffer);
+    }
+}
+
+static void repeated_timer_handler_init()
+{
+    ret_code_t err_code;
+    static uint8_t step = 0;
+     
+    switch (step)
+    {
+    case 0:
+        // SAADC
+        NRF_LOG_DEBUG("repeated_timer_handler_init: step 0, SAADC");
+        
+        err_code = app_timer_start(m_repeated_timer_read_saadc, APP_TIMER_TICKS_SAADC, NULL);
+        APP_ERROR_CHECK(err_code);
+        
+        repeated_timer_handler_read_saadc();
+        step++;
+
+        break;
+        
+    case 1:
+        // Sensor
+        NRF_LOG_DEBUG("repeated_timer_handler_init: step 1, Sensor");
+        
+        err_code = app_timer_start(m_repeated_timer_read_sensor, APP_TIMER_TICKS_SENSOR, NULL);
+        APP_ERROR_CHECK(err_code);
+
+        repeated_timer_handler_read_sensors();
+        step++;
+
+        break;
+        
+    case 2:
+        // Offline buffer update
+        NRF_LOG_DEBUG("repeated_timer_handler_init: step 2, Offline buffer update");
+        
+        err_code = app_timer_start(m_repeated_timer_update_offlinebuffer, APP_TIMER_TICKS_UPDATE_OFFLINEBUFFER, NULL);
+        APP_ERROR_CHECK(err_code);
+        
+        repeated_timer_handler_update_offlinebuffer();
+        step++;
+
+        break;
+        
+    case 3:
+        // Start advertising
+        NRF_LOG_DEBUG("repeated_timer_handler_init: step 3, stop init timer, start advertising");
+
+        err_code = app_timer_stop(m_repeated_timer_init);
+        APP_ERROR_CHECK(err_code);
+
+        advertising_start(m_erase_bonds);
+
+        step++;
+
+        break;
+        
+    default:
+        NRF_LOG_ERROR("repeated_timer_handler_init: unknown step");
+        break;
+    }
 }
 
 static void timers_create()
@@ -819,6 +911,11 @@ static void timers_create()
     ret_code_t err_code;
 
     // Create timers
+    err_code = app_timer_create(&m_repeated_timer_init,
+                                APP_TIMER_MODE_REPEATED,
+                                repeated_timer_handler_init);
+    APP_ERROR_CHECK(err_code);
+    
     err_code = app_timer_create(&m_repeated_timer_read_saadc,
                                 APP_TIMER_MODE_REPEATED,
                                 repeated_timer_handler_read_saadc);
@@ -844,15 +941,22 @@ static void timers_start()
 {
     ret_code_t err_code;
 
+
+    err_code = app_timer_start(m_repeated_timer_init, APP_TIMER_TICKS_INIT, NULL);
+    APP_ERROR_CHECK(err_code);
+    
+    /*
+    // timer will now be started in a stepwise process in repeated_timer_handler_init, 
+    // and also advertising will be startet there.
     err_code = app_timer_start(m_repeated_timer_read_saadc, APP_TIMER_TICKS_SAADC, NULL);
     APP_ERROR_CHECK(err_code);
 
     err_code = app_timer_start(m_repeated_timer_read_sensor, APP_TIMER_TICKS_SENSOR, NULL);
     APP_ERROR_CHECK(err_code);
 
-
     err_code = app_timer_start(m_repeated_timer_update_offlinebuffer, APP_TIMER_TICKS_UPDATE_OFFLINEBUFFER, NULL);
     APP_ERROR_CHECK(err_code);
+    */
 }
 
 #ifdef OFFLINE_FUNCTION
@@ -1970,7 +2074,6 @@ void assert_nrf_callback(uint16_t line_num, const uint8_t * p_file_name)
     int main()
 {
     ret_code_t       err_code;
-    bool erase_bonds = false;
 
 #ifdef GOTO_SYSTEM_OFF
     NRF_POWER->SYSTEMOFF = 1;
@@ -2022,7 +2125,6 @@ void assert_nrf_callback(uint16_t line_num, const uint8_t * p_file_name)
 
 #ifdef USE_APPTIMER
     timers_create();
-    timers_start();
 #endif // USE_APPTIMER
 
 #ifdef OFFLINE_FUNCTION
@@ -2069,8 +2171,15 @@ void assert_nrf_callback(uint16_t line_num, const uint8_t * p_file_name)
 
 #ifdef USE_ADVERTISING
     non_connectable_adv_init();
-    advertising_start(erase_bonds);
+    // advertising_start(erase_bonds); // now last step in init timer
 #endif
+
+#ifdef USE_APPTIMER
+    // start (repeated) init timer (SAADC, sensor, offline buffer) 
+    // and then stops init timer and starts advertising.
+    timers_start();  
+#endif // USE_APPTIMER
+
 //sd_power_system_off();
     for (;;)
     {
