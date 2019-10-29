@@ -95,6 +95,6 @@ uint32_t our_service_characteristic_update(ble_os_t *p_our_service, uint8_t *p_d
 //void our_service_characteristic_update(ble_os_t *p_our_service, int32_t *temperature_value);
 //void our_service_characteristic_update(ble_os_t *p_our_service, int8_t *p_transfer_dataset);
 
-void our_service_send_data_control(ble_os_t *p_our_service, uint8_t *p_data, uint8_t num_entries, uint8_t data_len_entry);
+void our_service_send_data_control(ble_os_t *p_our_service, uint8_t *p_data, uint8_t num_entries, uint8_t data_len_entry, bool restart);
 
 #endif  /* _ OUR_SERVICE_H__ */

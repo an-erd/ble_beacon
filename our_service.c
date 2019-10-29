@@ -124,9 +124,9 @@ static uint32_t our_char_add(ble_os_t * p_our_service)
     attr_char_value.p_attr_md   = &attr_md;
    
     // Set characteristic length in number of bytes
-    attr_char_value.max_len     = 4;
-    attr_char_value.init_len    = 4;
-    uint8_t value[4]            = {0x12,0x34,0x56,0x78};
+    attr_char_value.max_len     = 8;
+    attr_char_value.init_len    = 8;
+    uint8_t value[8]            = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
     attr_char_value.p_value     = value;
 
     // Add our new characteristic to the service
@@ -202,8 +202,7 @@ uint32_t our_service_characteristic_update(ble_os_t *p_our_service, uint8_t *p_d
         
         return err_code;
     } else {
-        return 0;
-//        return BLE_ERROR_INVALID_CONN_HANDLE;
+        return BLE_ERROR_INVALID_CONN_HANDLE;
     }
 }
 
@@ -213,33 +212,34 @@ uint32_t our_service_characteristic_update(ble_os_t *p_our_service, uint8_t *p_d
  *
  */
 void our_service_send_data_control(ble_os_t *p_our_service,
-                                    uint8_t *p_data, uint8_t num_entries, uint8_t data_len_entry)
+                                    uint8_t *p_data, uint8_t num_entries, uint8_t data_len_entry,
+                                    bool restart)
 {
-	ret_code_t err_code;
+    ret_code_t err_code;
 	
     static uint8_t data_counter = 0;
+    if(restart)
+        data_counter = 0;
     
     NRF_LOG_INFO("our_service_send_data_control()");
 
-//    while(true) {
-//        err_code = our_service_characteristic_update(p_our_service, 
-//                        &p_data[data_counter * data_len_entry], data_len_entry);
+    while(data_counter < num_entries) {
         err_code = our_service_characteristic_update(p_our_service, 
-                        &p_data[0], 8);
+                        &p_data[data_counter * data_len_entry], data_len_entry);
         if (err_code == NRF_ERROR_INVALID_STATE 
             || err_code == BLE_ERROR_GATTS_SYS_ATTR_MISSING)
         { 
-//            break;
+            break;
         } else if (err_code == NRF_ERROR_RESOURCES)
         { 
             // We will try to maximize throughput, so we don't stop sending (quit the while loop) before we reach BLE_ERROR_NO_TX_BUFFERS state
-//            break; 
+            break; 
         } else if (err_code != NRF_SUCCESS) 
         { 
             APP_ERROR_HANDLER(err_code);
         }
         
         // At this point the data entry is considered send, prepare the next 
-//        data_counter++;
-//    }
+        data_counter++;
+    }
 }

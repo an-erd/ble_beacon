@@ -475,11 +475,12 @@ static void bsp_event_handler(bsp_event_t event)
 //            }
 //        }
 //#endif
-//        our_service_send_data_control(&m_our_service, (uint8_t *)m_offlinebuffer, 1, 8);
-        if(m_send_notification)
-            m_send_notification = 0;
-        else 
-            m_send_notification = 1;
+    NRF_LOG_DEBUG("our_service_send_data_control, counter = %d", m_offlinebuffer_counter);
+        our_service_send_data_control(&m_our_service, (uint8_t *) m_offlinebuffer, m_offlinebuffer_counter, OFFLINE_BUFFER_SIZE_PER_ENTRY, true);
+//        if(m_send_notification)
+//            m_send_notification = 0;
+//        else 
+//            m_send_notification = 1;
 
         break;
     
@@ -976,7 +977,7 @@ void offline_buffer_init()
  */
 bool offline_buffer_update(uint8_t *buffer)
 {
-    NRF_LOG_DEBUG("offline_buffer_update: %d/%d", m_offlinebuffer_counter, OFFLINE_BUFFER_SIZE);
+//    NRF_LOG_DEBUG("offline_buffer_update: %d/%d", m_offlinebuffer_counter, OFFLINE_BUFFER_SIZE);
 
     if (m_offlinebuffer_counter == OFFLINE_BUFFER_SIZE)
         return false;
@@ -985,8 +986,8 @@ bool offline_buffer_update(uint8_t *buffer)
     memcpy(&m_offlinebuffer[m_offlinebuffer_counter][4], buffer,   2);
     memcpy(&m_offlinebuffer[m_offlinebuffer_counter][6], buffer+3, 2);  // skip CRC in temperature
     
-    NRF_LOG_HEXDUMP_DEBUG(&m_offlinebuffer[m_offlinebuffer_counter][0], 8);
-    NRF_LOG_DEBUG("  time: %d", *(uint32_t*)(&m_offlinebuffer[m_offlinebuffer_counter][0]));
+//    NRF_LOG_HEXDUMP_DEBUG(&m_offlinebuffer[m_offlinebuffer_counter][0], 8);
+//    NRF_LOG_DEBUG("  time: %d", *(uint32_t*)(&m_offlinebuffer[m_offlinebuffer_counter][0]));
     m_offlinebuffer_counter++;
 
     return true;
