@@ -611,7 +611,8 @@ void saadc_event_handler(nrfx_saadc_evt_t const * p_event)
         NVIC_ClearPendingIRQ(SAADC_IRQn);                                           // Clear the SAADC interrupt if set
         m_saadc_initialized = false;                                                // Set SAADC as uninitialized
 
-        battery_level_update(88);
+        NRF_LOG_DEBUG("saadc_event_handler, m_battery_millivolts %d, percentage_batt_lvl %d", m_battery_millivolts,percentage_batt_lvl);
+        battery_level_update(percentage_batt_lvl);
     }
 }
 
