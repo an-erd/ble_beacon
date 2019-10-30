@@ -81,6 +81,7 @@
 #include "ble_cts_c.h"
 #include "ble_db_discovery.h"
 #include "ble_dis.h"
+#include "ble_bas.h"
 #include "nrf_delay.h"
 #include "app_util_platform.h"
 #include "app_timer.h"
@@ -315,8 +316,11 @@ ble_os_t m_our_service;
 // CTS - Current Time Service defiens
 #ifdef USE_CTS
 BLE_CTS_C_DEF(m_cts_c);                                         /**< Current Time service instance. */
-BLE_DB_DISCOVERY_DEF(m_ble_db_discovery);                                           /**< DB discovery module instance. */
+BLE_DB_DISCOVERY_DEF(m_ble_db_discovery);                       /**< DB discovery module instance. */
 #endif
+
+// Battery Service 
+BLE_BAS_DEF(m_bas);                                                 /**< Structure used to identify the battery service. */
 
 #ifdef USE_GAP_GATT
 NRF_BLE_GATT_DEF(m_gatt);                                       /**< GATT module instance. */
@@ -539,6 +543,24 @@ static void twi_config()
     nrf_drv_twi_enable(&m_twi);
 }
 
+/**@brief Function for performing battery measurement and updating the Battery Level characteristic
+ *        in Battery Service.
+ */
+static void battery_level_update(uint8_t battery_level)
+{
+    ret_code_t err_code;
+
+    err_code = ble_bas_battery_level_update(&m_bas, battery_level, BLE_CONN_HANDLE_ALL);
+    if ((err_code != NRF_SUCCESS) &&
+        (err_code != NRF_ERROR_INVALID_STATE) &&
+        (err_code != NRF_ERROR_RESOURCES) &&
+        (err_code != NRF_ERROR_BUSY) &&
+        (err_code != BLE_ERROR_GATTS_SYS_ATTR_MISSING)
+       )
+    {
+        APP_ERROR_HANDLER(err_code);
+    }
+}
 
 /**@brief Function for handling the ADC interrupt.
  *
@@ -588,6 +610,8 @@ void saadc_event_handler(nrfx_saadc_evt_t const * p_event)
         NRF_SAADC->INTENCLR = (SAADC_INTENCLR_END_Clear << SAADC_INTENCLR_END_Pos); // Disable the SAADC interrupt
         NVIC_ClearPendingIRQ(SAADC_IRQn);                                           // Clear the SAADC interrupt if set
         m_saadc_initialized = false;                                                // Set SAADC as uninitialized
+
+        battery_level_update(88);
     }
 }
 
@@ -1578,6 +1602,32 @@ static void cts_init(void)
 }
 #endif
 
+/**@brief Function for initializing CTS.
+ */
+ static void bas_init(void)
+{
+    ret_code_t       err_code;
+
+    ble_bas_init_t     bas_init;
+
+    // Initialize Battery Service.
+    memset(&bas_init, 0, sizeof(bas_init));
+
+    bas_init.evt_handler          = NULL;
+    bas_init.support_notification = true;
+    bas_init.p_report_ref         = NULL;
+    bas_init.initial_batt_level   = 100;
+
+    // Here the sec level for the Battery Service can be changed/increased.
+    bas_init.bl_rd_sec        = SEC_OPEN;
+    bas_init.bl_cccd_wr_sec   = SEC_OPEN;
+    bas_init.bl_report_rd_sec = SEC_OPEN;
+
+    err_code = ble_bas_init(&m_bas, &bas_init);
+    APP_ERROR_CHECK(err_code);
+}
+
+
 /**@brief Function for handling the YYY Service events.
  * YOUR_JOB implement a service handler function depending on the event the service you are using can generate
  *
@@ -1613,6 +1663,7 @@ static void services_init(void)
     qwr_init();
     dis_init();
     dfu_init();
+    bas_init();
 
 #ifdef USE_CTS
     cts_init();
