@@ -301,7 +301,7 @@ static void delete_bonds(void);
 #endif // USE_SCHEDULER
 
 // Our Service defines
-ble_os_t m_our_service;
+BLE_OS_DEF(m_our_service);
 
 // DIS - Device Information Service defines
 #ifdef USE_DIS
@@ -611,7 +611,7 @@ void saadc_event_handler(nrfx_saadc_evt_t const * p_event)
         NVIC_ClearPendingIRQ(SAADC_IRQn);                                           // Clear the SAADC interrupt if set
         m_saadc_initialized = false;                                                // Set SAADC as uninitialized
 
-        NRF_LOG_DEBUG("saadc_event_handler, m_battery_millivolts %d, percentage_batt_lvl %d", m_battery_millivolts,percentage_batt_lvl);
+//        NRF_LOG_DEBUG("saadc_event_handler, m_battery_millivolts %d, percentage_batt_lvl %d", m_battery_millivolts,percentage_batt_lvl);
         battery_level_update(percentage_batt_lvl);
     }
 }
@@ -1178,7 +1178,7 @@ static void ble_stack_init()
     NRF_SDH_BLE_OBSERVER(m_ble_observer, APP_BLE_OBSERVER_PRIO, ble_evt_handler, NULL);
 
     // Call ble_our_service_on_ble_evt() to do housekeeping of ble connections related to our service and characteristics
-    NRF_SDH_BLE_OBSERVER(m_our_service_observer, APP_BLE_OBSERVER_PRIO, ble_our_service_on_ble_evt, (void*) &m_our_service);
+//    NRF_SDH_BLE_OBSERVER(m_our_service_observer, APP_BLE_OBSERVER_PRIO, ble_our_service_on_ble_evt, (void*) &m_our_service);
 }
 
 
@@ -1222,11 +1222,27 @@ static void gap_params_init(void)
 }
 
 #ifdef USE_GAP_GATT
+/**@brief GATT module event handler.
+ */
+static void gatt_evt_handler(nrf_ble_gatt_t * p_gatt, nrf_ble_gatt_evt_t const * p_evt)
+{
+    if (p_evt->evt_id == NRF_BLE_GATT_EVT_ATT_MTU_UPDATED)
+    {
+        NRF_LOG_INFO("GATT ATT MTU on connection 0x%x changed to %d.",
+                     p_evt->conn_handle,
+                     p_evt->params.att_mtu_effective);
+    }
+
+//    ble_os_on_gatt_evt(&m_our_service, p_evt);
+}
+
+
+
 /**@brief Function for initializing the GATT module.
  */
 static void gatt_init(void)
 {
-    ret_code_t err_code = nrf_ble_gatt_init(&m_gatt, NULL);
+    ret_code_t err_code = nrf_ble_gatt_init(&m_gatt, gatt_evt_handler);
     APP_ERROR_CHECK(err_code);
 }
 #endif // USE_GAP_GATT

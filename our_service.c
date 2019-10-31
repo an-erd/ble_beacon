@@ -50,6 +50,79 @@
 // https://devzone.nordicsemi.com/f/nordic-q-a/45679/loss-of-notifications-when-sending-them-from-peripheral-to-central-as-bulk-transfer
 // https://devzone.nordicsemi.com/f/nordic-q-a/25637/can-you-not-call-sd_ble_gatts_hvx-in-a-loop
 
+
+/**@brief Function for handling our service event.
+ *
+ * @param[in]   p_our_service   Our Service structure.
+ * @param[in]   p_ble_evt       Event received from the BLE stack.
+ */
+static void on_our_service_evt_handler(ble_os_t * p_our_service, ble_os_evt_t * p_ble_evt)
+{
+    NRF_LOG_DEBUG("our service event handler called with event 0x%X", p_ble_evt->evt_type);
+
+    // Implement switch case handling BLE events related to our service. 
+    switch (p_ble_evt->evt_type)
+    {
+        case BLE_OS_EVT_NOTIFICATION_ENABLED:
+            NRF_LOG_DEBUG("on_our_service_evt_handler: BLE_OS_EVT_NOTIFICATION_ENABLED");
+            break;
+
+        case BLE_OS_EVT_NOTIFICATION_DISABLED:
+            NRF_LOG_DEBUG("on_our_service_evt_handler: BLE_OS_EVT_NOTIFICATION_DISABLED");
+            break;
+
+        default:
+            // No implementation needed.
+            break;
+    }		
+}
+
+
+/**@brief Function for handling write events to the Our Service characteristic.
+ *
+ * @param[in]   p_our_service   Our Service structure.
+ * @param[in]   p_evt_write     Write event received from the BLE stack.
+ */
+static void on_our_service_cccd_write(ble_os_t * p_our_service, ble_gatts_evt_write_t const * p_evt_write)
+{
+    if (p_evt_write->len == 2)
+    {
+        // CCCD written, update notification state
+        if (p_our_service->evt_handler != NULL)
+        {
+            ble_os_evt_t evt;
+
+            if (ble_srv_is_notification_enabled(p_evt_write->data))
+            {
+                evt.evt_type = BLE_OS_EVT_NOTIFICATION_ENABLED;
+            }
+            else
+            {
+                evt.evt_type = BLE_OS_EVT_NOTIFICATION_DISABLED;
+            }
+                NRF_LOG_DEBUG("on_hrm_cccd_write");
+            p_our_service->evt_handler(p_our_service, &evt);
+        }
+    }
+}
+
+
+/**@brief Function for handling the Write event.
+ *
+ * @param[in]   p_our_service   Our Service structure.
+ * @param[in]   p_ble_evt       Event received from the BLE stack.
+ */
+static void on_write(ble_os_t * p_our_service, ble_evt_t const * p_ble_evt)
+{
+    ble_gatts_evt_write_t const * p_evt_write = &p_ble_evt->evt.gatts_evt.params.write;
+
+    if (p_evt_write->handle == p_our_service->os_handles.cccd_handle)
+    {
+        on_our_service_cccd_write(p_our_service, p_evt_write);
+    }
+}
+
+
 /**@brief Declaration of a function that will take care of some housekeeping of ble connections related to our service and characteristic 
  *
  * @param[in]   p_ble_evt       ble event.
@@ -58,19 +131,27 @@
  */
 void ble_our_service_on_ble_evt(ble_evt_t const * p_ble_evt, void * p_context)
 {
-    ble_os_t * p_our_service =(ble_os_t *) p_context;  
+    ble_os_t * p_our_service = (ble_os_t *) p_context;  
+
+    NRF_LOG_DEBUG("BLE our service event handler called with event 0x%X", p_ble_evt->header.evt_id);
 
     // Implement switch case handling BLE events related to our service. 
     switch (p_ble_evt->header.evt_id)
     {
         case BLE_GAP_EVT_CONNECTED:
+            NRF_LOG_DEBUG("ble_our_service_on_ble_evt: BLE_GAP_EVT_CONNECTED");
             p_our_service->conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
             break;
         case BLE_GAP_EVT_DISCONNECTED:
+            NRF_LOG_DEBUG("ble_our_service_on_ble_evt: BLE_GAP_EVT_DISCONNECTED");
             p_our_service->conn_handle = BLE_CONN_HANDLE_INVALID;
             break;
+        case BLE_GATTS_EVT_WRITE:
+            NRF_LOG_DEBUG("ble_our_service_on_ble_evt: BLE_GATTS_EVT_WRITE");
+            on_write(p_our_service, p_ble_evt);
+            break;
         case BLE_GATTS_EVT_HVN_TX_COMPLETE:
-            NRF_LOG_INFO("ble_our_service_on_ble_evt: BLE_GATTS_EVT_HVN_TX_COMPLETE");
+            NRF_LOG_DEBUG("ble_our_service_on_ble_evt: BLE_GATTS_EVT_HVN_TX_COMPLETE");
             break;
         default:
             // No implementation needed.
@@ -133,7 +214,7 @@ static uint32_t our_char_add(ble_os_t * p_our_service)
     err_code = sd_ble_gatts_characteristic_add(p_our_service->service_handle,
                                    &char_md,
                                    &attr_char_value,
-                                   &p_our_service->char_handles);
+                                   &p_our_service->os_handles);
     APP_ERROR_CHECK(err_code);
 
     return NRF_SUCCESS;
@@ -156,6 +237,8 @@ void our_service_init(ble_os_t * p_our_service)
 	
     // Set our service connection handle to default value. I.e. an invalid handle since we are not yet in a connection.
     p_our_service->conn_handle = BLE_CONN_HANDLE_INVALID;
+
+    p_our_service->evt_handler = on_our_service_evt_handler;
 
     // Add our service
     err_code = sd_ble_gatts_service_add(BLE_GATTS_SRVC_TYPE_PRIMARY,
@@ -191,7 +274,7 @@ uint32_t our_service_characteristic_update(ble_os_t *p_our_service, uint8_t *p_d
         ble_gatts_hvx_params_t hvx_params;
         memset(&hvx_params, 0, sizeof(hvx_params));
 
-        hvx_params.handle = p_our_service->char_handles.value_handle;
+        hvx_params.handle = p_our_service->os_handles.value_handle;
         hvx_params.type   = BLE_GATT_HVX_NOTIFICATION;
         hvx_params.offset = 0;
         hvx_params.p_len  = &len;
