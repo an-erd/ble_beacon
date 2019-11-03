@@ -103,6 +103,7 @@
       <file file_name="../config/sdk_config.h" />
       <file file_name="../../../our_service.c" />
       <file file_name="../../../nrf_calendar.c" />
+      <file file_name="../../../our_service_db.c" />
     </folder>
     <folder Name="nRF_Segger_RTT">
       <file file_name="../../../../../../external/segger_rtt/SEGGER_RTT.c" />
@@ -132,6 +133,7 @@
       <file file_name="../../../../../../components/ble/peer_manager/nrf_ble_lesc.c" />
       <file file_name="../../../../../../components/ble/nrf_ble_scan/nrf_ble_scan.c" />
       <file file_name="../../../../../../components/ble/ble_db_discovery/ble_db_discovery.c" />
+      <file file_name="../../../../../../components/ble/ble_racp/ble_racp.c" />
     </folder>
     <folder Name="UTF8/UTF16 converter">
       <file file_name="../../../../../../external/utf_converter/utf.c" />

@@ -80,7 +80,7 @@
  
 
 #ifndef BLE_RACP_ENABLED
-#define BLE_RACP_ENABLED 0
+#define BLE_RACP_ENABLED 1
 #endif
 
 

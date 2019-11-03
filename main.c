@@ -82,6 +82,7 @@
 #include "ble_db_discovery.h"
 #include "ble_dis.h"
 #include "ble_bas.h"
+#include "ble_racp.h"
 #include "nrf_delay.h"
 #include "app_util_platform.h"
 #include "app_timer.h"
@@ -479,8 +480,8 @@ static void bsp_event_handler(bsp_event_t event)
 //            }
 //        }
 //#endif
-    NRF_LOG_DEBUG("our_service_send_data_control, counter = %d", m_offlinebuffer_counter);
-        our_service_send_data_control(&m_our_service, (uint8_t *) m_offlinebuffer, m_offlinebuffer_counter, OFFLINE_BUFFER_SIZE_PER_ENTRY, true);
+//    NRF_LOG_DEBUG("our_service_send_data_control, counter = %d", m_offlinebuffer_counter);
+//        our_service_send_data_control(&m_our_service, (uint8_t *) m_offlinebuffer, m_offlinebuffer_counter, OFFLINE_BUFFER_SIZE_PER_ENTRY, true);
 //        if(m_send_notification)
 //            m_send_notification = 0;
 //        else 
@@ -723,11 +724,11 @@ void process_all_data()
 //    offline_buffer_update(...);
 #endif // OFFLINE_FUNCTION
 
-ret_code_t err_code;
-if(m_send_notification){
-    err_code = our_service_characteristic_update(&m_our_service, m_buffer, 1);
-    APP_ERROR_CHECK(err_code);
-}
+//ret_code_t err_code;
+//if(m_send_notification){
+//    err_code = our_service_characteristic_update(&m_our_service, m_buffer, 1);
+//    APP_ERROR_CHECK(err_code);
+//}
 
 }
 
@@ -1645,6 +1646,45 @@ static void cts_init(void)
 }
 
 
+/**@brief Function for handling Service errors.
+ *
+ * @details A pointer to this function will be passed to each service which may need to inform the
+ *          application about an error.
+ *
+ * @param[in] nrf_error  Error code containing information about what went wrong.
+ */
+static void service_error_handler(uint32_t nrf_error)
+{
+    APP_ERROR_HANDLER(nrf_error);
+}
+
+static void os_init(void)
+{
+    ret_code_t      err_code;
+
+    ble_os_init_t   os_init;
+
+    // Initialize Our Service
+    memset(&os_init, 0, sizeof(os_init));
+
+    os_init.evt_handler          = NULL;
+    os_init.error_handler        = service_error_handler;
+    os_init.feature              = 0;
+    os_init.feature             |= BLE_OS_FEATURE_LOW_BATT;
+    os_init.feature             |= BLE_OS_FEATURE_TEMPERATURE;
+    os_init.feature             |= BLE_OS_FEATURE_HUMIDITY;
+
+    // Here the sec level for the Our Service can be changed/increased.
+    os_init.os_meas_cccd_wr_sec = SEC_JUST_WORKS;
+    os_init.os_feature_rd_sec   = SEC_JUST_WORKS;
+    os_init.racp_cccd_wr_sec    = SEC_JUST_WORKS;
+    os_init.racp_wr_sec         = SEC_JUST_WORKS;
+
+    err_code = ble_os_init(&m_our_service, &os_init);
+    APP_ERROR_CHECK(err_code);
+}
+
+
 /**@brief Function for handling the YYY Service events.
  * YOUR_JOB implement a service handler function depending on the event the service you are using can generate
  *
@@ -1687,7 +1727,7 @@ static void services_init(void)
 #endif // USE_CTS
     
     // Initialize our own service 
-    our_service_init(&m_our_service);
+    os_init();
 }
 
 
