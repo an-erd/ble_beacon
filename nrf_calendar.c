@@ -139,7 +139,7 @@ struct tm *nrf_cal_get_time_calibrated(void)
     else return nrf_cal_get_time();
 }
 
-time_t nrf_cat_get_time_long(void)
+time_t nrf_cal_get_time_long(void)
 {
     time_t uncalibrated_time, calibrated_time;
     uncalibrated_time = m_time + APP_TIMER_SEC(app_timer_cnt_diff_compute(app_timer_cnt_get(), m_app_timer_cnt_last_increment));

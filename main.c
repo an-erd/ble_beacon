@@ -210,14 +210,14 @@ static uint8_t m_buffer[BUFFER_SIZE];
 // Time (4 byte), Temerature (2 byte), Humidity (2 byte) -> 8 x uint8_t byte/entry
 // 20 KB = 20.000 Byte -> 2.500 entries a 8 byte
 #ifdef OFFLINE_FUNCTION
-#define OFFLINE_BUFFER_RESERVED_BYTE    20000   // 20 KB RAM reserved
-#define OFFLINE_BUFFER_SIZE_PER_ENTRY   8       // uint8_t
-#define OFFLINE_BUFFER_SIZE             (OFFLINE_BUFFER_RESERVED_BYTE / OFFLINE_BUFFER_SIZE_PER_ENTRY)
+//#define OFFLINE_BUFFER_RESERVED_BYTE    20000   // 20 KB RAM reserved
+//#define OFFLINE_BUFFER_SIZE_PER_ENTRY   8       // uint8_t
+//#define OFFLINE_BUFFER_SIZE             (OFFLINE_BUFFER_RESERVED_BYTE / OFFLINE_BUFFER_SIZE_PER_ENTRY)
 #define OFFLINE_BUFFER_SAMPLE_INTERVAL  5       // in multiples of APP_TIMER_TICKS_UPDATE_OFFLINEBUFFER
-static int m_offlinebuffer_counter = 0;         // next entry in buffer
-static uint8_t m_offlinebuffer[OFFLINE_BUFFER_SIZE][OFFLINE_BUFFER_SIZE_PER_ENTRY];
-void offline_buffer_init();
-bool offline_buffer_update(uint8_t *buffer);
+//static int m_offlinebuffer_counter = 0;         // next entry in buffer
+//static uint8_t m_offlinebuffer[OFFLINE_BUFFER_SIZE][OFFLINE_BUFFER_SIZE_PER_ENTRY];
+//void offline_buffer_init();
+ret_code_t offline_buffer_update(uint8_t *buffer);
 //void test_data_send_array(int num_to_send, bool restart);
 #endif // OFFLINE_FUCTION
 
@@ -674,14 +674,8 @@ static void sensor_init()
  */
 void process_all_data()
 {
-//    NRF_LOG_DEBUG("process_all_data()");
-	
-//    if(!m_advertising.initialized) {
-//        NRF_LOG_DEBUG("m_advertising not initialized -> exiting process_all_data()");
-//        return;
-//    } 
-
-/*#ifdef DEBUG
+#ifdef DEBUG
+/*
         // calculate values from raw data, used only for debug. 
         // For adv package take already encoded data from sensor
         float   temp        = SHT3_GET_TEMPERATURE_VALUE(m_buffer[0], m_buffer[1]);
@@ -697,8 +691,9 @@ void process_all_data()
         NRF_LOG_RAW_HEXDUMP_INFO(m_buffer, 12);
 //        NRF_LOG_RAW_INFO("INS1 %d, INS2 %d, INS3 %d, STAT %d\n",
 //            m_buffer[17], m_buffer[18], m_buffer[19], m_buffer[20]); 
-#endif // DEBUG
 */
+#endif // DEBUG
+
     // update payload data in encoded advertising data
     uint8_t payload_idx = PAYLOAD_OFFSET_IN_BEACON_INFO_ADV;
 
@@ -717,19 +712,6 @@ void process_all_data()
 //    NRF_LOG_INFO("m_advertising.enc_advdata[0..30]:");
 //    NRF_LOG_RAW_HEXDUMP_INFO(m_advertising.enc_advdata, 31);
 #endif // DEBUG
-
-#ifdef OFFLINE_FUNCTION
-    // update offline buffer
-    // TODO
-//    offline_buffer_update(...);
-#endif // OFFLINE_FUNCTION
-
-//ret_code_t err_code;
-//if(m_send_notification){
-//    err_code = our_service_characteristic_update(&m_our_service, m_buffer, 1);
-//    APP_ERROR_CHECK(err_code);
-//}
-
 }
 
 /**@brief Function for multi-step retrieval of sensor data
@@ -858,17 +840,28 @@ static void singleshot_timer_handler_read_sensor_step()
 
 static void repeated_timer_handler_update_offlinebuffer()
 {
+    ret_code_t err_code;
+    static uint8_t counter = 0;
+    if (counter == 10)
+        return;
+    counter++;
+
     // Update offline buffer regularly
     // TODO
-    offline_buffer_update(m_buffer);
-    
-    static uint16_t counter = 0;
-    
-    counter++;
-    counter %= OFFLINE_BUFFER_SAMPLE_INTERVAL;
-    if (!counter){
-        offline_buffer_update(m_buffer);
+    err_code = offline_buffer_update(m_buffer);
+    if(err_code == NRF_ERROR_NO_MEM)
+    {
+//        NRF_LOG_DEBUG("Offline Buffer full");
+    } else {
+        APP_ERROR_CHECK(err_code);
     }
+    
+//    static uint16_t counter = 0;
+//    counter++;
+//    counter %= OFFLINE_BUFFER_SAMPLE_INTERVAL;
+//    if (!counter){
+//        offline_buffer_update(m_buffer);
+//    }
 }
 
 static void repeated_timer_handler_init()
@@ -987,36 +980,30 @@ static void timers_start()
 }
 
 #ifdef OFFLINE_FUNCTION
-/**@brief Function to initialize the offline buffer.
- *
- * @details  This function initializes the counter for current entry and the buffer array.
- */
-void offline_buffer_init()
-{
-    m_offlinebuffer_counter = 0;
-    memset(m_offlinebuffer, 0xFF, sizeof(m_offlinebuffer));
-}
 
 /**@brief Function to update next entry in offline buffer.
  *
  * @details  This functions stores the next entry in the offline buffer, returns true on succes or false if buffer full.
  */
-bool offline_buffer_update(uint8_t *buffer)
-{
-//    NRF_LOG_DEBUG("offline_buffer_update: %d/%d", m_offlinebuffer_counter, OFFLINE_BUFFER_SIZE);
+ret_code_t offline_buffer_update(uint8_t *buffer)
+{   
+    ret_code_t err_code;
+    ble_os_rec_t rec;
 
-    if (m_offlinebuffer_counter == OFFLINE_BUFFER_SIZE)
-        return false;
 
-    *(uint32_t *)(&m_offlinebuffer[m_offlinebuffer_counter][0]) = nrf_cat_get_time_long();
-    memcpy(&m_offlinebuffer[m_offlinebuffer_counter][4], buffer,   2);
-    memcpy(&m_offlinebuffer[m_offlinebuffer_counter][6], buffer+3, 2);  // skip CRC in temperature
-    
-//    NRF_LOG_HEXDUMP_DEBUG(&m_offlinebuffer[m_offlinebuffer_counter][0], 8);
-//    NRF_LOG_DEBUG("  time: %d", *(uint32_t*)(&m_offlinebuffer[m_offlinebuffer_counter][0]));
-    m_offlinebuffer_counter++;
+    rec.meas.time_stamp = nrf_cal_get_time_long();
+    memcpy(&rec.meas.temperature,   buffer,   2);
+    memcpy(&rec.meas.humidity,      buffer+3, 2);   // skip CRC in temperature, thus +3
 
-    return true;
+    err_code = ble_os_sensor_new_meas(&m_our_service, &rec);
+
+    NRF_LOG_DEBUG("offline_buffer_update: seq %d, time %d, temp 0x%4X, humidity 0x%4X",
+                    rec.meas.sequence_number, 
+                    rec.meas.time_stamp, 
+                    rec.meas.temperature, 
+                    rec.meas.humidity);
+
+    return err_code;
 }
 #endif // OFFLINE_FUNCTION
 
@@ -1670,7 +1657,7 @@ static void os_init(void)
     os_init.evt_handler          = NULL;
     os_init.error_handler        = service_error_handler;
     os_init.feature              = 0;
-    os_init.feature             |= BLE_OS_FEATURE_LOW_BATT;
+//    os_init.feature             |= BLE_OS_FEATURE_LOW_BATT;
     os_init.feature             |= BLE_OS_FEATURE_TEMPERATURE;
     os_init.feature             |= BLE_OS_FEATURE_HUMIDITY;
 
@@ -2237,7 +2224,7 @@ void assert_nrf_callback(uint16_t line_num, const uint8_t * p_file_name)
 #endif // USE_APPTIMER
 
 #ifdef OFFLINE_FUNCTION
-    offline_buffer_init();      // Initialize offline buffer
+//    offline_buffer_init();      // Initialize offline buffer
 #endif // OFFLINE_FUNCTION
 	
     ble_stack_init();           // Initialize the BLE stack

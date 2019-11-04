@@ -101,7 +101,7 @@ static void state_set(os_state_t new_state)
  *
  * @return NRF_SUCCESS on successful initialization of service, otherwise an error code.
  */
-static uint32_t next_sequence_number_set(void)
+static ret_code_t next_sequence_number_set(void)
 {
     uint16_t      num_records;
     ble_os_rec_t rec;
@@ -110,7 +110,7 @@ static uint32_t next_sequence_number_set(void)
     if (num_records > 0)
     {
         // Get last record
-        uint32_t err_code = ble_os_db_record_get(num_records - 1, &rec);
+        ret_code_t err_code = ble_os_db_record_get(num_records - 1, &rec);
         if (err_code != NRF_SUCCESS)
         {
             return err_code;
@@ -136,42 +136,42 @@ static uint32_t next_sequence_number_set(void)
 static uint8_t os_meas_encode(const ble_os_meas_t * p_meas, uint8_t * p_encoded_buffer)
 {
     uint8_t len = 0;
-// TODO
-/*
-    p_encoded_buffer[len++] = p_meas->flags;
 
     len += uint16_encode(p_meas->sequence_number, &p_encoded_buffer[len]);
-    len += ble_date_time_encode(&p_meas->base_time, &p_encoded_buffer[len]);
+    len += uint32_encode(p_meas->time_stamp, &p_encoded_buffer[len]);
+    len += uint16_encode(p_meas->temperature, &p_encoded_buffer[len]);
+    len += uint16_encode(p_meas->humidity, &p_encoded_buffer[len]);
+//    if (p_meas->flags & BLE_GLS_MEAS_FLAG_SENSOR_STATUS)
+//    {
+//        len += uint16_encode(p_meas->sensor_status_annunciation, &p_encoded_buffer[len]);
+//    }
 
-    if (p_meas->flags & BLE_GLS_MEAS_FLAG_TIME_OFFSET)
-    {
-        len += uint16_encode(p_meas->time_offset, &p_encoded_buffer[len]);
-    }
-
-    if (p_meas->flags & BLE_GLS_MEAS_FLAG_CONC_TYPE_LOC)
-    {
-        uint16_t encoded_concentration;
-
-        encoded_concentration = ((p_meas->glucose_concentration.exponent << 12) & 0xF000) |
-                                ((p_meas->glucose_concentration.mantissa <<  0) & 0x0FFF);
-
-        p_encoded_buffer[len++] = (uint8_t)(encoded_concentration);
-        p_encoded_buffer[len++] = (uint8_t)(encoded_concentration >> 8);
-        p_encoded_buffer[len++] = (p_meas->sample_location << 4) | (p_meas->type & 0x0F);
-    }
-
-    if (p_meas->flags & BLE_GLS_MEAS_FLAG_SENSOR_STATUS)
-    {
-        len += uint16_encode(p_meas->sensor_status_annunciation, &p_encoded_buffer[len]);
-    }
-*/
     return len;
+}
+
+
+/**@brief Function for decoding a Our Service measurement.
+ *
+ * @param[in]   p_encoded_buffer  Pointer to buffer where the encoded measurement is stored.
+ * @param[out]  p_meas            Pointer to the struct whetere the decoded measurement is to be stored.
+
+ *
+ * @return      none
+ */
+static void os_meas_decode(const uint8_t * p_encoded_buffer, ble_os_meas_t * p_meas)
+{
+    uint8_t len = 0;
+
+    p_meas->sequence_number = uint16_decode(&p_encoded_buffer[len]); len += 2;
+    p_meas->time_stamp      = uint32_decode(&p_encoded_buffer[len]); len += 4;
+    p_meas->temperature     = uint16_decode(&p_encoded_buffer[len]); len += 2;
+    p_meas->humidity        = uint16_decode(&p_encoded_buffer[len]); len += 2;
 }
 
 
 uint32_t ble_os_init(ble_os_t * p_os, const ble_os_init_t * p_os_init)
 {
-    uint32_t                err_code;
+    ret_code_t              err_code;
     uint8_t                 num_recs;
     uint8_t                 init_value_encoded[MAX_OSM_LEN];
     ble_uuid128_t           base_uuid = BLE_UUID_OUR_BASE_UUID; // *
@@ -290,7 +290,7 @@ uint32_t ble_os_init(ble_os_t * p_os, const ble_os_init_t * p_os_init)
  */
 static void racp_send(ble_os_t * p_os, ble_racp_value_t * p_racp_val)
 {
-    uint32_t               err_code;
+    ret_code_t             err_code;
     uint8_t                encoded_resp[25];
     uint8_t                len;
     uint16_t               hvx_len;
@@ -384,9 +384,9 @@ static void racp_response_code_send(ble_os_t * p_os, uint8_t opcode, uint8_t val
  *
  * @return NRF_SUCCESS on success, otherwise an error code.
  */
-static uint32_t our_service_meas_send(ble_os_t * p_os, ble_os_rec_t * p_rec)
+static ret_code_t our_service_meas_send(ble_os_t * p_os, ble_os_rec_t * p_rec)
 {
-    uint32_t               err_code;
+    ret_code_t             err_code;
     uint8_t                encoded_osm[MAX_OSM_LEN];
     uint16_t               len;
     uint16_t               hvx_len;
@@ -428,7 +428,7 @@ static uint32_t our_service_meas_send(ble_os_t * p_os, ble_os_rec_t * p_rec)
  *
  * @return NRF_SUCCESS on success, otherwise an error code.
  */
-static uint32_t racp_report_records_all(ble_os_t * p_os)
+static ret_code_t racp_report_records_all(ble_os_t * p_os)
 {
     uint16_t total_records = ble_os_db_num_records_get();
 
@@ -438,7 +438,7 @@ static uint32_t racp_report_records_all(ble_os_t * p_os)
     }
     else
     {
-        uint32_t      err_code;
+        ret_code_t   err_code;
         ble_os_rec_t rec;
 
         err_code = ble_os_db_record_get(m_racp_proc_record_ndx, &rec);
@@ -464,10 +464,10 @@ static uint32_t racp_report_records_all(ble_os_t * p_os)
  *
  * @return  NRF_SUCCESS on success, otherwise an error code.
  */
-static uint32_t racp_report_records_first_last(ble_os_t * p_os)
+static ret_code_t racp_report_records_first_last(ble_os_t * p_os)
 {
-    uint32_t      err_code;
-    ble_os_rec_t rec;
+    ret_code_t    err_code;
+    ble_os_rec_t  rec;
     uint16_t      total_records;
 
     total_records = ble_os_db_num_records_get();
@@ -512,13 +512,13 @@ static uint32_t racp_report_records_first_last(ble_os_t * p_os)
  *
  * @return NRF_SUCCESS on success, otherwise an error code.
  */
-static uint32_t racp_report_records_greater_or_equal(ble_os_t * p_os)
+static ret_code_t racp_report_records_greater_or_equal(ble_os_t * p_os)
 {
     uint16_t total_records = ble_os_db_num_records_get();
 
     while (m_racp_proc_record_ndx < total_records)
     {
-        uint32_t      err_code;
+        ret_code_t   err_code;
         ble_os_rec_t rec;
 
         err_code = ble_os_db_record_get(m_racp_proc_record_ndx, &rec);
@@ -808,7 +808,7 @@ static void report_num_records_request_execute(ble_os_t * p_os, ble_racp_value_t
 
         for (i = 0; i < total_records; i++)
         {
-            uint32_t      err_code;
+            ret_code_t   err_code;
             ble_os_rec_t rec;
 
             err_code = ble_os_db_record_get(i, &rec);
@@ -853,9 +853,9 @@ static void report_num_records_request_execute(ble_os_t * p_os, ble_racp_value_t
  * @param[in] p_os                  Service instance.
  * @param[in] p_are_cccd_configured  boolean indicating if both cccds are configured
  */
-uint32_t ble_os_are_cccd_configured(ble_os_t * p_os, bool * p_are_cccd_configured)
+ret_code_t ble_os_are_cccd_configured(ble_os_t * p_os, bool * p_are_cccd_configured)
 {
-    uint32_t err_code;
+    ret_code_t err_code;
     uint8_t  cccd_value_buf[BLE_CCCD_VALUE_LEN];
     bool     is_osm_notif_enabled  = false;
     bool     is_racp_indic_enabled = false;
@@ -908,7 +908,7 @@ static void on_racp_value_write(ble_os_t * p_os, ble_gatts_evt_write_t const * p
     uint8_t                               response_code;
     ble_gatts_rw_authorize_reply_params_t auth_reply;
     bool                                  are_cccd_configured;
-    uint32_t                              err_code;
+    ret_code_t                            err_code;
 
     auth_reply.type                = BLE_GATTS_AUTHORIZE_TYPE_WRITE;
     auth_reply.params.write.offset = 0;
@@ -1178,11 +1178,14 @@ void ble_os_on_ble_evt(ble_evt_t const * p_ble_evt, void * p_context)
     }
 }
 
-
-uint32_t ble_os_new_meas(ble_os_t * p_os, ble_os_rec_t * p_rec)
+ret_code_t ble_os_sensor_new_meas(ble_os_t * p_os, ble_os_rec_t * p_rec)
 {
+    ret_code_t err_code;
+    
     p_rec->meas.sequence_number = m_next_seq_num++;
-    return ble_os_db_record_add(p_rec);
+    err_code = ble_os_db_record_add(p_rec);
+    
+    return err_code;
 }
 
 

@@ -43,6 +43,7 @@
 
 #include <stdint.h>
 #include "ble.h"
+#include "time.h"
 #include "ble_srv_common.h"
 #include "nrf_sdh_ble.h"
 #include "ble_date_time.h"
@@ -107,12 +108,10 @@ typedef void (*ble_os_evt_handler_t) (ble_os_t * p_os, ble_os_evt_t * p_evt);
 /**@brief Our Service structure. This contains our service measurement value. */
 typedef struct
 {
-    uint8_t         flags;                                      /**< Flags */
     uint16_t        sequence_number;                            /**< Sequence number */
-    ble_date_time_t base_time;                                  /**< Time stamp */
+    time_t          time_stamp;                                 /**< Time stamp */
     uint16_t        temperature;                                /**< Sensor temperature value */
     uint16_t        humidity;                                   /**< Sensor humidity value */
-    uint16_t        sensor_status_annunciation;                 /**< Sensor status annunciation */
 } ble_os_meas_t;
 
 /**@brief Our service measurement record */
@@ -216,7 +215,7 @@ struct ble_os_s
  *
  * @return      NRF_SUCCESS on successful initialization of service, otherwise an error code.
  */
-uint32_t ble_os_init(ble_os_t * p_os, ble_os_init_t const * p_os_init);
+ret_code_t ble_os_init(ble_os_t * p_os, ble_os_init_t const * p_os_init);
 
 
 /**@brief Function for handling the Application's BLE Stack events.
@@ -239,7 +238,7 @@ void ble_os_on_ble_evt(ble_evt_t const * p_ble_evt, void * p_context);
  *
  * @return      NRF_SUCCESS on success, otherwise an error code.
  */
-uint32_t ble_os_sensor_new_meas(ble_os_t * p_os, ble_os_rec_t * p_rec);
+ret_code_t ble_os_sensor_new_meas(ble_os_t * p_os, ble_os_rec_t * p_rec);
 
 
 #ifdef __cplusplus

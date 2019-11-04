@@ -42,7 +42,7 @@ struct tm *nrf_cal_get_time(void);
 struct tm *nrf_cal_get_time_calibrated(void);
 
 // Returns the calibrated time (calibration factor != 0) or the uncalibrated time, or time since boot, resp., as time_t
-time_t nrf_cat_get_time_long(void);
+time_t nrf_cal_get_time_long(void);
 
 // Returns a string for printing the date and time. Turn the calibration on/off by setting the calibrate parameter. 
 char *nrf_cal_get_time_string(bool calibrated);
