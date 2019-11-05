@@ -180,6 +180,7 @@ uint32_t ble_os_init(ble_os_t * p_os, const ble_os_init_t * p_os_init)
     ble_os_rec_t            initial_os_rec_value;
 
     // Initialize data base
+    // NRF_LOG_DEBUG("ble_os_db_init, OFFLINE_BUFFER_SIZE %d", OFFLINE_BUFFER_SIZE);
     err_code = ble_os_db_init();
     if (err_code != NRF_SUCCESS)
     {

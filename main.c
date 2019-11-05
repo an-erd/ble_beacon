@@ -130,7 +130,7 @@
 #define USE_SENSORINIT_SHT3
 #define USE_SENSORINIT_KX022
 #define USE_APPTIMER
-#define OFFLINE_FUNCTION
+#define USE_OFFLINE_FUNCTION
 #define USE_SCHEDULER
 #define USE_GAP_GATT
 #define USE_CONNPARAMS_PEERMGR
@@ -207,19 +207,11 @@ static uint8_t m_buffer[BUFFER_SIZE];
 #endif
 
 // Offline Buffer
-// Time (4 byte), Temerature (2 byte), Humidity (2 byte) -> 8 x uint8_t byte/entry
-// 20 KB = 20.000 Byte -> 2.500 entries a 8 byte
-#ifdef OFFLINE_FUNCTION
-//#define OFFLINE_BUFFER_RESERVED_BYTE    20000   // 20 KB RAM reserved
-//#define OFFLINE_BUFFER_SIZE_PER_ENTRY   8       // uint8_t
-//#define OFFLINE_BUFFER_SIZE             (OFFLINE_BUFFER_RESERVED_BYTE / OFFLINE_BUFFER_SIZE_PER_ENTRY)
+
+#ifdef USE_OFFLINE_FUNCTION
 #define OFFLINE_BUFFER_SAMPLE_INTERVAL  5       // in multiples of APP_TIMER_TICKS_UPDATE_OFFLINEBUFFER
-//static int m_offlinebuffer_counter = 0;         // next entry in buffer
-//static uint8_t m_offlinebuffer[OFFLINE_BUFFER_SIZE][OFFLINE_BUFFER_SIZE_PER_ENTRY];
-//void offline_buffer_init();
 ret_code_t offline_buffer_update(uint8_t *buffer);
-//void test_data_send_array(int num_to_send, bool restart);
-#endif // OFFLINE_FUCTION
+#endif // USE_OFFLINE_FUCTION
 
 // BLE defines 
 #define APP_FAST_ADV_INTERVAL           50                                  /**< The advertising interval for fast advertisement. */
@@ -842,7 +834,7 @@ static void repeated_timer_handler_update_offlinebuffer()
 {
     ret_code_t err_code;
     static uint8_t counter = 0;
-    if (counter == 10)
+    if (counter == 200)
         return;
     counter++;
 
@@ -979,7 +971,7 @@ static void timers_start()
     */
 }
 
-#ifdef OFFLINE_FUNCTION
+#ifdef USE_OFFLINE_FUNCTION
 
 /**@brief Function to update next entry in offline buffer.
  *
@@ -990,6 +982,7 @@ ret_code_t offline_buffer_update(uint8_t *buffer)
     ret_code_t err_code;
     ble_os_rec_t rec;
 
+    // NRF_LOG_DEBUG("size of ble_os_rec_t: %d", sizeof(rec)); // 12
 
     rec.meas.time_stamp = nrf_cal_get_time_long();
     memcpy(&rec.meas.temperature,   buffer,   2);
@@ -1005,7 +998,7 @@ ret_code_t offline_buffer_update(uint8_t *buffer)
 
     return err_code;
 }
-#endif // OFFLINE_FUNCTION
+#endif // USE_OFFLINE_FUNCTION
 
 
 
@@ -2223,9 +2216,9 @@ void assert_nrf_callback(uint16_t line_num, const uint8_t * p_file_name)
     timers_create();
 #endif // USE_APPTIMER
 
-#ifdef OFFLINE_FUNCTION
+#ifdef USE_OFFLINE_FUNCTION
 //    offline_buffer_init();      // Initialize offline buffer
-#endif // OFFLINE_FUNCTION
+#endif // USE_OFFLINE_FUNCTION
 	
     ble_stack_init();           // Initialize the BLE stack
 

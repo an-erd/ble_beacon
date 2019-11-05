@@ -62,7 +62,7 @@
 extern "C" {
 #endif
 
-#define BLE_OS_DB_MAX_RECORDS      20
+#define BLE_OS_DB_MAX_RECORDS      (OFFLINE_BUFFER_SIZE)    // 20
 
 /**@brief Function for initializing the Our Service record database.
  *
