@@ -517,8 +517,10 @@ static ret_code_t racp_report_records_greater_or_equal(ble_os_t * p_os)
 {
     uint16_t total_records = ble_os_db_num_records_get();
 
+
     while (m_racp_proc_record_ndx < total_records)
     {
+
         ret_code_t   err_code;
         ble_os_rec_t rec;
 
@@ -527,8 +529,49 @@ static ret_code_t racp_report_records_greater_or_equal(ble_os_t * p_os)
         {
             return err_code;
         }
-
         if (rec.meas.sequence_number >= m_racp_proc_seq_num)
+        {
+            err_code = our_service_meas_send(p_os, &rec);
+            if (err_code != NRF_SUCCESS)
+            {
+                return err_code;
+            }
+            break;
+        }
+        m_racp_proc_record_ndx++;
+    }
+    if (m_racp_proc_record_ndx == total_records)
+    {
+        state_set(STATE_NO_COMM);
+    }
+
+    return NRF_SUCCESS;
+}
+
+
+/**@brief Function for responding to the LESS_OR_EQUAL operation.
+ *
+ * @param[in] p_os  Service instance.
+ *
+ * @return NRF_SUCCESS on success, otherwise an error code.
+ */
+static ret_code_t racp_report_records_less_or_equal(ble_os_t * p_os)
+{
+    uint16_t total_records = ble_os_db_num_records_get();
+
+
+    while (m_racp_proc_record_ndx < total_records)
+    {
+
+        ret_code_t   err_code;
+        ble_os_rec_t rec;
+
+        err_code = ble_os_db_record_get(m_racp_proc_record_ndx, &rec);
+        if (err_code != NRF_SUCCESS)
+        {
+            return err_code;
+        }
+        if (rec.meas.sequence_number <= m_racp_proc_seq_num)
         {
             err_code = our_service_meas_send(p_os, &rec);
             if (err_code != NRF_SUCCESS)
@@ -593,6 +636,10 @@ static void racp_report_records_procedure(ble_os_t * p_os)
 
             case RACP_OPERATOR_GREATER_OR_EQUAL:
                 err_code = racp_report_records_greater_or_equal(p_os);
+                break;
+
+            case RACP_OPERATOR_LESS_OR_EQUAL:
+                err_code = racp_report_records_less_or_equal(p_os);
                 break;
 
             default:
@@ -705,6 +752,7 @@ static bool is_request_to_be_executed(ble_racp_value_t const * p_racp_request,
 
             // Operators WITH a filter.
             case RACP_OPERATOR_GREATER_OR_EQUAL:
+            case RACP_OPERATOR_LESS_OR_EQUAL:
                 if (p_racp_request->p_operand[0] == OPERAND_FILTER_TYPE_SEQ_NUM)
                 {
                     if (p_racp_request->operand_len != 3)
@@ -727,7 +775,6 @@ static bool is_request_to_be_executed(ble_racp_value_t const * p_racp_request,
                 break;
 
             // Unsupported operators.
-            case RACP_OPERATOR_LESS_OR_EQUAL:
             case RACP_OPERATOR_RANGE:
                 *p_response_code = RACP_RESPONSE_OPERATOR_UNSUPPORTED;
                  break;
@@ -823,6 +870,34 @@ static void report_num_records_request_execute(ble_os_t * p_os, ble_racp_value_t
             }
 
             if (rec.meas.sequence_number >= seq_num)
+            {
+                num_records++;
+            }
+        }
+    }
+    else if (p_racp_request->operator == RACP_OPERATOR_LESS_OR_EQUAL)
+    {
+        uint16_t seq_num;
+        uint16_t i;
+
+        seq_num = (p_racp_request->p_operand[2] << 8) | p_racp_request->p_operand[1];
+
+        for (i = 0; i < total_records; i++)
+        {
+            ret_code_t   err_code;
+            ble_os_rec_t rec;
+
+            err_code = ble_os_db_record_get(i, &rec);
+            if (err_code != NRF_SUCCESS)
+            {
+                if (p_os->error_handler != NULL)
+                {
+                    p_os->error_handler(err_code);
+                }
+                return;
+            }
+
+            if (rec.meas.sequence_number <= seq_num)
             {
                 num_records++;
             }
