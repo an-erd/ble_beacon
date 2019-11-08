@@ -60,6 +60,11 @@ void nrf_cal_init(void)
                                 APP_TIMER_MODE_REPEATED,
                                 repeated_timer_handler_update_calendar);
     APP_ERROR_CHECK(err_code);
+
+    err_code = app_timer_start(m_repeated_timer_update_calendar, APP_TIMER_TICKS_CALENDAR, NULL);
+    APP_ERROR_CHECK(err_code);  
+    m_timer_running = true;
+
 }
 
 // Returns true if internal nrf_calendar time structures had been initialized with nrf_cal_set_time()
