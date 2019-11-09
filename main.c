@@ -156,6 +156,7 @@ APP_TIMER_DEF(m_repeated_timer_update_offlinebuffer);       /**< Handler for rep
 #define APP_TIMER_TICKS_SAADC                   APP_TIMER_TICKS(60000)      // 1000 60000
 #define APP_TIMER_TICKS_SENSOR                  APP_TIMER_TICKS(15000)      // 1000 15000
 #define APP_TIMER_TICKS_UPDATE_OFFLINEBUFFER    APP_TIMER_TICKS(300000)     // 1000 300000
+#define OFFLINE_BUFFER_SAMPLE_INTERVAL          3           // in multiples of APP_TIMER_TICKS_UPDATE_OFFLINEBUFFER
 
 // SAADC defines
 #define SAADC_CALIBRATION_INTERVAL  5       // SAADC calibration interval relative to NRF_DRV_SAADC_EVT_DONE event
@@ -208,9 +209,7 @@ static uint8_t m_buffer[BUFFER_SIZE];
 #endif
 
 // Offline Buffer
-
 #ifdef USE_OFFLINE_FUNCTION
-//#define OFFLINE_BUFFER_SAMPLE_INTERVAL  1       // in multiples of APP_TIMER_TICKS_UPDATE_OFFLINEBUFFER
 ret_code_t offline_buffer_update(uint8_t *buffer);
 #endif // USE_OFFLINE_FUCTION
 
@@ -817,26 +816,29 @@ static void singleshot_timer_handler_read_sensor_step()
 static void repeated_timer_handler_update_offlinebuffer()
 {
     ret_code_t err_code;
-    static uint8_t counter = 0;
-    if (counter == OFFLINE_BUFFER_SIZE)
-        return;
-    counter++;
+    static uint8_t timer_intervall_counter = OFFLINE_BUFFER_SAMPLE_INTERVAL;    // always do first one...
 
-    // Update offline buffer regularly
+    timer_intervall_counter++;
+    if(timer_intervall_counter < OFFLINE_BUFFER_SAMPLE_INTERVAL){
+        return;
+    }
+    timer_intervall_counter = 0;
+
+    if(ble_os_db_num_free_entries_get() == 0)
+    {
+        err_code = ble_os_db_record_delete(0);
+        APP_ERROR_CHECK(err_code);
+        NRF_LOG_DEBUG("Buffer was full, deleted oldest entry");
+    }
+
+    // Update offline buffer with current measurement regularly
     err_code = offline_buffer_update(m_buffer);
     if(err_code == NRF_ERROR_NO_MEM)
     {
-        NRF_LOG_DEBUG("Offline Buffer full");
+        NRF_LOG_ERROR("Offline Buffer full");
     } else {
         APP_ERROR_CHECK(err_code);
     }
-    
-//    static uint16_t counter = 0;
-//    counter++;
-//    counter %= OFFLINE_BUFFER_SAMPLE_INTERVAL;
-//    if (!counter){
-//        offline_buffer_update(m_buffer);
-//    }
 }
 
 static void repeated_timer_handler_init()
@@ -939,19 +941,6 @@ static void timers_start()
 
     err_code = app_timer_start(m_repeated_timer_init, APP_TIMER_TICKS_INIT, NULL);
     APP_ERROR_CHECK(err_code);
-    
-    /*
-    // timer will now be started in a stepwise process in repeated_timer_handler_init, 
-    // and also advertising will be startet there.
-    err_code = app_timer_start(m_repeated_timer_read_saadc, APP_TIMER_TICKS_SAADC, NULL);
-    APP_ERROR_CHECK(err_code);
-
-    err_code = app_timer_start(m_repeated_timer_read_sensor, APP_TIMER_TICKS_SENSOR, NULL);
-    APP_ERROR_CHECK(err_code);
-
-    err_code = app_timer_start(m_repeated_timer_update_offlinebuffer, APP_TIMER_TICKS_UPDATE_OFFLINEBUFFER, NULL);
-    APP_ERROR_CHECK(err_code);
-    */
 }
 
 #ifdef USE_OFFLINE_FUNCTION

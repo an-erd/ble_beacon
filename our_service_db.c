@@ -87,6 +87,11 @@ uint16_t ble_os_db_num_records_get(void)
     return m_num_records;
 }
 
+uint16_t ble_os_db_num_free_entries_get(void)
+{
+    return BLE_OS_DB_MAX_RECORDS - m_num_records;
+}
+
 
 uint32_t ble_os_db_record_get(uint8_t rec_ndx, ble_os_rec_t * p_rec)
 {
@@ -100,7 +105,6 @@ uint32_t ble_os_db_record_get(uint8_t rec_ndx, ble_os_rec_t * p_rec)
 
     return NRF_SUCCESS;
 }
-
 
 uint32_t ble_os_db_record_add(ble_os_rec_t * p_rec)
 {

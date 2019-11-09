@@ -67,18 +67,12 @@ NRF_SDH_BLE_OBSERVER(_name ## _obs,                             \
                      ble_os_on_ble_evt, &_name)
 
 // Offline Buffer
-// TODO
-// with old structure
-//      Time (4 byte), Temerature (2 byte), Humidity (2 byte) -> 8 x uint8_t byte/entry
-//      20 KB = 20.000 Byte -> 2.500 entries a 8 byte
-//  with RACP/DB now we have 12 byte/entry
-//      20 KB = 20.000 Byte -> 1.666 entries
-
+//  with RACP/DB now we have 16 byte/entry
+//      20 KB = 20.000 Byte -> 1.250 entries
 //#ifdef USE_OFFLINE_FUNCTION
 #define OFFLINE_BUFFER_RESERVED_BYTE    20000   // 20 KB RAM reserved
 #define OFFLINE_BUFFER_SIZE_PER_ENTRY   16      // uint8_t
 #define OFFLINE_BUFFER_SIZE             (OFFLINE_BUFFER_RESERVED_BYTE / OFFLINE_BUFFER_SIZE_PER_ENTRY)
-#define OFFLINE_BUFFER_SAMPLE_INTERVAL  1       // in multiples of APP_TIMER_TICKS_UPDATE_OFFLINEBUFFER
 //#endif // USE_OFFLINE_FUCTION
 
 

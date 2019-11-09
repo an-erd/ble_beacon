@@ -89,6 +89,15 @@ uint32_t ble_os_db_update_time_stamps(time_t timedelta);
  */
 uint16_t ble_os_db_num_records_get(void);
 
+
+/**@brief Function for getting information of free entries in the database.
+ *
+ * @details This call returns the number of free entries, 0 means full.
+ *
+ * @return      Number of free slots in the database.
+ */
+uint16_t ble_os_db_num_free_entries_get(void);
+
 /**@brief Function for getting a record from the database.
  *
  * @details This call returns a specified record from the database.
