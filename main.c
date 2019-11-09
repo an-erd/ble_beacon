@@ -95,6 +95,7 @@
 #include "sht3.h"
 #include "kx022.h"
 #include "our_service.h"
+#include "our_service_db.h"
 #include "nrf_calendar.h"
 #include "compiler_abstraction.h"
 
@@ -209,7 +210,7 @@ static uint8_t m_buffer[BUFFER_SIZE];
 // Offline Buffer
 
 #ifdef USE_OFFLINE_FUNCTION
-#define OFFLINE_BUFFER_SAMPLE_INTERVAL  1       // in multiples of APP_TIMER_TICKS_UPDATE_OFFLINEBUFFER
+//#define OFFLINE_BUFFER_SAMPLE_INTERVAL  1       // in multiples of APP_TIMER_TICKS_UPDATE_OFFLINEBUFFER
 ret_code_t offline_buffer_update(uint8_t *buffer);
 #endif // USE_OFFLINE_FUCTION
 
