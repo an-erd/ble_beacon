@@ -38,6 +38,7 @@
  *
  */
 #include "sdk_common.h"
+#include "nrf_log.h"
 #include "our_service_db.h"
 
 
@@ -55,6 +56,8 @@ static uint16_t         m_num_records;
 uint32_t ble_os_db_init(void)
 {
     int i;
+
+//    NRF_LOG_DEBUG("ble_os_db_init, sizeof(database_entry_t) = %d", sizeof(database_entry_t));
 
     for (i = 0; i < BLE_OS_DB_MAX_RECORDS; i++)
     {

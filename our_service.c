@@ -49,11 +49,6 @@
 #include "app_error.h"
 #include "SEGGER_RTT.h"
 
-// https://devzone.nordicsemi.com/f/nordic-q-a/45679/loss-of-notifications-when-sending-them-from-peripheral-to-central-as-bulk-transfer
-// https://devzone.nordicsemi.com/f/nordic-q-a/25637/can-you-not-call-sd_ble_gatts_hvx-in-a-loop
-
-
-
 #define OPERAND_FILTER_TYPE_SEQ_NUM     0x01                                     /**< Filter data using Sequence Number criteria. */
 #define OPERAND_FILTER_TYPE_FACING_TIME 0x02                                     /**< Filter data using User Facing Time criteria. */
 #define OPERAND_FILTER_TYPE_RFU_START   0x07                                     /**< Start of filter types reserved For Future Use range */

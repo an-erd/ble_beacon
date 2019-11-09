@@ -79,7 +79,7 @@ void nrf_cal_set_time(uint32_t year, uint32_t month, uint32_t day, uint32_t hour
     static time_t uncal_difftime, difftime, newtime;
     
     time_struct.tm_year = year - 1900;
-    time_struct.tm_mon = month;
+    time_struct.tm_mon = month - 1;     /* months since January - [0,11] */
     time_struct.tm_mday = day;
     time_struct.tm_hour = hour;
     time_struct.tm_min = minute;
