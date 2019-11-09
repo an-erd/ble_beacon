@@ -141,7 +141,7 @@
 #define USE_CTS
 #define USE_DIS
 #undef  USE_BUTTONLESS_DFU
-
+// CONFIG_NFCT_PINS_AS_GPIOS // preprocessor
 // TODO
 static uint8_t m_send_notification = false;
 
@@ -152,9 +152,9 @@ APP_TIMER_DEF(m_repeated_timer_read_sensor);                /**< Handler for rep
 APP_TIMER_DEF(m_singleshot_timer_read_sensor_step);         /**< Handler for repeated timer for TWI sensor, steps. */
 APP_TIMER_DEF(m_repeated_timer_update_offlinebuffer);       /**< Handler for repeated timer to update offline buffer. */
 #define APP_TIMER_TICKS_INIT                    APP_TIMER_TICKS(200)
-#define APP_TIMER_TICKS_SAADC                   APP_TIMER_TICKS(1000)   // ( 60000)
-#define APP_TIMER_TICKS_SENSOR                  APP_TIMER_TICKS(1000)   // ( 15000)
-#define APP_TIMER_TICKS_UPDATE_OFFLINEBUFFER    APP_TIMER_TICKS(1000)   // (300000)
+#define APP_TIMER_TICKS_SAADC                   APP_TIMER_TICKS(60000)      // 1000 60000
+#define APP_TIMER_TICKS_SENSOR                  APP_TIMER_TICKS(15000)      // 1000 15000
+#define APP_TIMER_TICKS_UPDATE_OFFLINEBUFFER    APP_TIMER_TICKS(300000)     // 1000 300000
 
 // SAADC defines
 #define SAADC_CALIBRATION_INTERVAL  5       // SAADC calibration interval relative to NRF_DRV_SAADC_EVT_DONE event
@@ -209,7 +209,7 @@ static uint8_t m_buffer[BUFFER_SIZE];
 // Offline Buffer
 
 #ifdef USE_OFFLINE_FUNCTION
-#define OFFLINE_BUFFER_SAMPLE_INTERVAL  5       // in multiples of APP_TIMER_TICKS_UPDATE_OFFLINEBUFFER
+#define OFFLINE_BUFFER_SAMPLE_INTERVAL  1       // in multiples of APP_TIMER_TICKS_UPDATE_OFFLINEBUFFER
 ret_code_t offline_buffer_update(uint8_t *buffer);
 #endif // USE_OFFLINE_FUCTION
 
@@ -462,23 +462,6 @@ static void bsp_event_handler(bsp_event_t event)
 
     case BSP_EVENT_KEY_1: // button on jig pressed
         NRF_LOG_DEBUG("button BSP_EVENT_KEY_1");
-//#ifdef USE_CTS
-//        if (m_cts_c.conn_handle != BLE_CONN_HANDLE_INVALID)
-//        {
-//            err_code = ble_cts_c_current_time_read(&m_cts_c);
-//            if (err_code == NRF_ERROR_NOT_FOUND)
-//            {
-//                NRF_LOG_DEBUG("Current Time Service is not discovered.");
-//            }
-//        }
-//#endif
-//    NRF_LOG_DEBUG("our_service_send_data_control, counter = %d", m_offlinebuffer_counter);
-//        our_service_send_data_control(&m_our_service, (uint8_t *) m_offlinebuffer, m_offlinebuffer_counter, OFFLINE_BUFFER_SIZE_PER_ENTRY, true);
-//        if(m_send_notification)
-//            m_send_notification = 0;
-//        else 
-//            m_send_notification = 1;
-
         break;
     
     case BSP_EVENT_KEY_1_RELEASED: // button on jig released
@@ -834,16 +817,15 @@ static void repeated_timer_handler_update_offlinebuffer()
 {
     ret_code_t err_code;
     static uint8_t counter = 0;
-    if (counter == 200)
+    if (counter == OFFLINE_BUFFER_SIZE)
         return;
     counter++;
 
     // Update offline buffer regularly
-    // TODO
     err_code = offline_buffer_update(m_buffer);
     if(err_code == NRF_ERROR_NO_MEM)
     {
-//        NRF_LOG_DEBUG("Offline Buffer full");
+        NRF_LOG_DEBUG("Offline Buffer full");
     } else {
         APP_ERROR_CHECK(err_code);
     }
@@ -1366,6 +1348,8 @@ static void current_time_update_calendar(ble_cts_c_evt_t * p_evt)
 static void on_cts_c_evt(ble_cts_c_t * p_cts, ble_cts_c_evt_t * p_evt)
 {
     ret_code_t err_code;
+    time_t calendar_time_before_update, calendar_update_delta;
+    bool do_db_backward_update = false;
 
     switch (p_evt->evt_type)
     {
@@ -1375,19 +1359,25 @@ static void on_cts_c_evt(ble_cts_c_t * p_cts, ble_cts_c_evt_t * p_evt)
                                                 p_evt->conn_handle,
                                                 &p_evt->params.char_handles);
             APP_ERROR_CHECK(err_code);
+
+#ifdef USE_CTS
+            if (m_cts_c.conn_handle != BLE_CONN_HANDLE_INVALID)
+            {
+                err_code = ble_cts_c_current_time_read(&m_cts_c);
+                if (err_code == NRF_ERROR_NOT_FOUND)
+                {
+                    NRF_LOG_DEBUG("Current Time Service is not discovered.");
+                } else {
+                    APP_ERROR_CHECK(err_code);
+                }
+            }
+#endif
+
             break;
 
         case BLE_CTS_C_EVT_DISCOVERY_FAILED:
             NRF_LOG_WARNING("Current Time Service not found on server. ");
-            // TODO
-            // CTS not found in this case we just disconnect. There is no reason to stay
-            // in the connection for this simple app since it all wants is to interact with CT
-//            if (p_evt->conn_handle != BLE_CONN_HANDLE_INVALID)
-//            {
-//                err_code = sd_ble_gap_disconnect(p_evt->conn_handle,
-//                                                 BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
-//                APP_ERROR_CHECK(err_code);
-//            }
+            // TODO currently do nothing...
             break;
 
         case BLE_CTS_C_EVT_DISCONN_COMPLETE:
@@ -1397,7 +1387,23 @@ static void on_cts_c_evt(ble_cts_c_t * p_cts, ble_cts_c_evt_t * p_evt)
         case BLE_CTS_C_EVT_CURRENT_TIME:
             NRF_LOG_DEBUG("Current Time received.");
             current_time_print(p_evt);
+            if(!nrf_cal_get_initialized()){
+                // we need to update the entries in the db with the current time which is available now.
+                // So, take current calendar time before and after update, and the difference is the time to add to existing 
+                // db entries, which gives the correct time stamps (but drift not corrected)
+                do_db_backward_update = true;
+                calendar_time_before_update = nrf_cal_get_time_long();
+            }
             current_time_update_calendar(p_evt);
+
+            if(do_db_backward_update)
+            {
+                calendar_update_delta = nrf_cal_get_time_long() - calendar_time_before_update;
+                NRF_LOG_DEBUG("BLE_CTS_C_EVT_CURRENT_TIME: backward_update %d, time_before %d, time_after %d, time_delta %d",
+                    (do_db_backward_update?1:0), calendar_time_before_update,  nrf_cal_get_time_long(), calendar_update_delta);
+                ble_os_db_update_time_stamps(calendar_update_delta);
+            }
+
             break;
 
         case BLE_CTS_C_EVT_INVALID_TIME:

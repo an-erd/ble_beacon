@@ -112,14 +112,6 @@ void nrf_cal_set_time(uint32_t year, uint32_t month, uint32_t day, uint32_t hour
     err_code = app_timer_start(m_repeated_timer_update_calendar, APP_TIMER_TICKS_CALENDAR, NULL);
     APP_ERROR_CHECK(err_code);  
     m_timer_running = true;
-
-    // TODO
-    /*
-    static char cal_string[80];
-    strftime(cal_string, 80, "%d.%m.%y / %H:%M:%S", localtime(&m_time));
-    NRF_LOG_INFO("nrf_cal_set_time, m_time just set to: %s", cal_string);
-    NRF_LOG_FLUSH();
-    */
 }    
 
 struct tm *nrf_cal_get_time(void)

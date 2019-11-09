@@ -72,6 +72,15 @@ extern "C" {
  */
 uint32_t ble_os_db_init(void);
 
+/**@brief Function for updating existing entries in the Our Service record database with time now available
+ *
+ * @details This call updates existing entries by updating timedelta to them. No check is done but an assert 
+ * that current time stamp is between year 1900 and 1902
+ *
+ * @return      NRF_SUCCESS on success.
+ */
+uint32_t ble_os_db_update_time_stamps(time_t timedelta);
+
 /**@brief Function for getting the number of records in the database.
  *
  * @details This call returns the number of records in the database.

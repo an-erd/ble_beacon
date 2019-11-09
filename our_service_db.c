@@ -51,6 +51,7 @@ typedef struct
 static database_entry_t m_database[BLE_OS_DB_MAX_RECORDS];
 static uint8_t          m_database_crossref[BLE_OS_DB_MAX_RECORDS];
 static uint16_t         m_num_records;
+#define TIME_BEFORE_TIME_UPDATE     (2*365*24*60*60)    // 2 years will be sufficient to determine whether it's an not-updated time
 
 
 uint32_t ble_os_db_init(void)
@@ -70,6 +71,16 @@ uint32_t ble_os_db_init(void)
     return NRF_SUCCESS;
 }
 
+uint32_t ble_os_db_update_time_stamps(time_t timedelta)
+{
+    for (int i = 0; i < m_num_records; i++)
+    {
+        ASSERT(m_database[m_database_crossref[i]].record.meas.time_stamp < TIME_BEFORE_TIME_UPDATE);
+        m_database[m_database_crossref[i]].record.meas.time_stamp += timedelta;
+    }
+
+    return NRF_SUCCESS;
+}
 
 uint16_t ble_os_db_num_records_get(void)
 {

@@ -110,17 +110,5 @@ Sketch
 20:13:54.750	Attribute value changed, handle: 0x25, value (0x): 03-00-04-00-00-00-62-05-7D-B0
 20:13:54.750	Attribute value changed, handle: 0x25, value (0x): 04-00-05-00-00-00-61-FA-7D-AD
 20:13:54.750	Attribute value changed, handle: 0x2A, value (0x): 06-00-01-01
-			
-			
-			
-			
-			
-			
-			
-			
-			
-			
-			
-			
 
-
+https://www.unixtimestamp.com/index.php
