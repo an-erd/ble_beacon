@@ -141,10 +141,7 @@
 #define USE_OUR_SERVICES
 #define USE_CTS
 #define USE_DIS
-#undef  USE_BUTTONLESS_DFU
-// CONFIG_NFCT_PINS_AS_GPIOS // preprocessor
-// TODO
-static uint8_t m_send_notification = false;
+#define USE_BUTTONLESS_DFU
 
 // App Timer defines
 APP_TIMER_DEF(m_repeated_timer_init);                       /**< Handler for repeated timer for init process (sensor, offline buffer, ...). */
@@ -153,10 +150,10 @@ APP_TIMER_DEF(m_repeated_timer_read_sensor);                /**< Handler for rep
 APP_TIMER_DEF(m_singleshot_timer_read_sensor_step);         /**< Handler for repeated timer for TWI sensor, steps. */
 APP_TIMER_DEF(m_repeated_timer_update_offlinebuffer);       /**< Handler for repeated timer to update offline buffer. */
 #define APP_TIMER_TICKS_INIT                    APP_TIMER_TICKS(200)
-#define APP_TIMER_TICKS_SAADC                   APP_TIMER_TICKS(60000)      // 1000 60000
-#define APP_TIMER_TICKS_SENSOR                  APP_TIMER_TICKS(15000)      // 1000 15000
-#define APP_TIMER_TICKS_UPDATE_OFFLINEBUFFER    APP_TIMER_TICKS(300000)     // 1000 300000
-#define OFFLINE_BUFFER_SAMPLE_INTERVAL          3           // in multiples of APP_TIMER_TICKS_UPDATE_OFFLINEBUFFER
+#define APP_TIMER_TICKS_SAADC                   APP_TIMER_TICKS(60000)      // every 1 min
+#define APP_TIMER_TICKS_SENSOR                  APP_TIMER_TICKS(15000)      // every 15 secs
+#define APP_TIMER_TICKS_UPDATE_OFFLINEBUFFER    APP_TIMER_TICKS(300000)     // every 5 min, overall with interval every 15 min
+#define OFFLINE_BUFFER_SAMPLE_INTERVAL          3                           // in multiples of APP_TIMER_TICKS_UPDATE_OFFLINEBUFFER
 
 // SAADC defines
 #define SAADC_CALIBRATION_INTERVAL  5       // SAADC calibration interval relative to NRF_DRV_SAADC_EVT_DONE event

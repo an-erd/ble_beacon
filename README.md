@@ -71,8 +71,32 @@ AKAEM@PC MINGW32 ~/nrf52/nRF5_SDK_15.3.0_59ac345/projects/ble_peripheral/ble_bea
 $ nrfutil pkg generate --hw-version 52 --application-version 0 --application ble_beacon_pca10040_s132.hex --sd-req 0xb7 --key-file private.key app_dfu_package1.zip
 Zip created at app_dfu_package1.zip
 
-AKAEM@PC MINGW32 ~/nrf52/nRF5_SDK_15.3.0_59ac345/projects/ble_peripheral/ble_beacon/pca10040/s132/ses/Output/Debug/Exe
+AKAEM@PC MINGW32 ~/nrf52/nRF5_SDK_15.3.0_59ac345/projects/dfu/secure_bootloader/pca10040_ble/ses/Output/Release/Exe
 $ nrfutil settings generate --family NRF52 --application ../../../../../../../ble_peripheral/ble_beacon/pca10040/s132/ses/Output/Debug/Exe/ble_beacon_pca10040_s132.hex --application-version 0 --bootloader-version 0 --bl-settings-version 1 bootloader_setting.hex
+
+Note: Generating a DFU settings page with backup page included.
+This is only required for bootloaders from nRF5 SDK 15.1 and newer.
+If you want to skip backup page generation, use --no-backup option.
+
+Generated Bootloader DFU settings .hex file and stored it in: bootloader_setting.hex
+
+Bootloader DFU Settings:
+* File:                     bootloader_setting.hex
+* Family:                   nRF52
+* Start Address:            0x0007F000
+* CRC:                      0xE6EF6F2A
+* Settings Version:         0x00000001 (1)
+* App Version:              0x00000000 (0)
+* Bootloader Version:       0x00000000 (0)
+* Bank Layout:              0x00000000
+* Current Bank:             0x00000000
+* Application Size:         0x00020638 (132664 bytes)
+* Application CRC:          0x29E0DEEC
+* Bank0 Bank Code:          0x00000001
+* Softdevice Size:          0x00000000 (0 bytes)
+* Boot Validation CRC:      0x00000000
+* SD Boot Validation Type:  0x00000000 (0)
+* App Boot Validation Type: 0x00000000 (0)
 
 c:\msys32\home\AKAEM\nrf52\nRF5_SDK_15.3.0_59ac345\projects\dfu\secure_bootloader\pca10040_ble\ses\Output\Release\Exe>mergehex -m bootloader_setting.hex secure_bootloader_ble_s132_pca10040.hex --output output.hex
 
