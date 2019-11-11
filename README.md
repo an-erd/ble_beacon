@@ -1,174 +1,225 @@
-# ble_beacon
+# A Bluetooth Low Energy Beacon (ble_beacon)
 
-## Programming the device
+## Overview
 
-### Preparation Application zip file
+**ble_beacon** is a software for the Nordic Semiconductor SOC NRF52832 and similar. It reads sensor data (in our case temperature, humidity and acceleration data) and send it using Bluetooth Low Energy using advertisement packages. Getting a history of data points is available when establishing a BLE connection to the device.
 
-Step 1) Create zip file with the application
-- go to the application build directory with the application already build, e.g. cd ~/nrf52/nRF5_SDK_15.3.0_59ac345/projects/ble_peripheral/ble_beacon/pca10040/s132/ses/Output/Release/Exe
-- if not done yet, copy the private.key to this directory, e.g. cp ../../../../../../Keys/private.key .
-- generate the package, e.g. nrfutil pkg generate --hw-version 52 --application-version 1 --application ble_beacon_pca10040_s132.hex --sd-req 0xb7 --key-file private.key app_dfu_package.zip
+The code is written for an low power consumption environment. As of today, the average power consumption during unconnectable undirected advertising is 14.4 uA, and with connectable undirected advertising ~19 uA.
 
-### Preparation Bootloader settings and merge settings with bootloader to one .hex
+### Advertising
 
-Step 2) Generate settings for the bootloader
-- go to bootloader application build directory with the bootloader already build, e.g.  ~/nrf52/nRF5_SDK_15.3.0_59ac345/projects/dfu/secure_bootloader/pca10040_ble/ses/Output/Release/Exe
-- nrfutil settings generate --family NRF52 --application ../../../../../../../ble_peripheral/ble_beacon/pca10040/s132/ses/Output/Debug/Exe/ble_beacon_pca10040_s132.hex --application-version 0 --bootloader-version 0 --bl-settings-version 1 bootloader_setting.hex
+The following data will be send during advertising:
 
-Step 3) Merge the bootloader and settings file to loater allow to flash the application together with the bootloader/settings during production and without the need to update using DFU
-- open a Windows cmd shell and go to the bootloader directory, e.g. c:\msys32\home\AKAEM\nrf52\nRF5_SDK_15.3.0_59ac345\projects\dfu\secure_bootloader\pca10040_ble\ses\Output\Release\Exe>
-- mergehex -m bootloader_setting.hex secure_bootloader_ble_s132_pca10040.hex --output output.hex
+- Address type: `RandomStatic`
 
-### Program the device
+- Advertising type: `Connectable undirected`
 
-Step 4) Use nRF Connect Programmer to upload all necessary .hex files
+- Services: `1400`
+
+- Flags: `LeGeneralDiscMode BrEdrNotSupported LeOnlyLimitedDiscMode LeOnlyGeneralDiscMode`
+
+- `BLE_GAP_AD_TYPE_TX_POWER_LEVEL`: TxPowerLevel: 00
+
+- `BLE_GAP_AD_TYPE_MANUFACTURER_SPECIFIC_DATA`: ManufacturerSpecificData
+
+- Example: `59-00-00-07-00-08-5D-B4-73-6F-B8-FC-2C-FK-62-3F-0B-6A`
+
+   | Topic              | Bytes    | Example | Result                                   |
+   | ------------------ | -------- | ------- | ---------------------------------------- |
+   | Company Identifier | [0..1]   | 59 00   | = 0x0059, Nordic Semiconductor           |
+   | Major              | [2..3]   | 00 07   | = 0x0007                                 |
+   | Minor              | [4..5]   | 00 08   | = 0x0008                                 |
+   | Temperature        | [6..7]   | 5D B4   | = 19,05 = (0x5DB4 * 175) / 0xFFFF (° C)  |
+   | Humidity           | [8..9]   | 73 6F   | = 45,09 = (0x736F * 100) / 0xFFFF (% RH) |
+   | Accel-X            | [10..11] | B8 FD   | = 0xFDB8, 2's complement = -248          |
+   | Accel-Y            | [12..13] | 2C FB   | = 0xFB2C, 2's c = -1236                  |
+   | Accel-Z            | [14..15] | 62 3F   | = 0x3F62, 2's c = ‭+16542‬                 |
+   | Battery Voltage    | [16..17] | 0B 6A   | = 0x0B6A = 2992 mV                       |
+
+Remark: The temperature and humidity data are send using 
+
+### Provided Services
+
+
+In addition you can connect to the device and can use additional features:
+
+- Download the stored data point from the device
+- Get number of data points available
+- Delete the data points
+- Update software using DFU
+
+### Offline Buffer Functionality
+
+Beside the advertising of the sensor measurements the beacon can store the measurements in an offline buffer. The offline buffer is located  in RAM, i.e., with a reboot the values will be reset, too. Currently 20.000 bytes are reserved for the offline buffer, with an size of 16 bytes for one entry, this gives 20.000/16 bytes = 1.250 entries. With an interval of 15 min/entry the beacon will store data for around 13 days. If the buffer is full, the oldest value will be deleted (i.e. a ring buffer is used). The data of the offline buffer can be accessed and downloaded when connecting to the device.
+
+### Available Sensors on Board
+
+Currently the following sensors are on-board:
+
+- KX022 accelerometer
+- SHT03 temperature and humidity sensor
+
+Both sensors use the TWI (i.e. I2C) bus to communicate with the NRF52.
+
+### Additional NFC Antenna and Functionality
+
+An additional NFC (Near field communication) antenna can be attached to allow for an easy paring process with iPhone and Android mobile phones. 
+
+**Important:** If NFC is to be used, you must remove the preprocessor define to not use the NFC pins as GPIO pins. To use NFC, undefine `CONFIG_NFCT_PINS_AS_GPIOS`. If it is defined, the pins P9 and P10 serve as GPIO pins.
+
+**Remark:** NFC functionality is not yet implemented but planned for a future release. The board already provides the point to attach the antenna with.
+
+## Programming the Device
+
+### Preparation Application zip File
+
+**Step 1)** Create zip file with the application
+
+- go to the application build directory with the application already build, e.g. `cd ~/nrf52/nRF5_SDK_15.3.0_59ac345/projects/ble_peripheral/ble_beacon/pca10040/s132/ses/Output/Release/Exe`
+- if not done yet, copy the `private.key` to this directory, e.g. `cp ../../../../../../Keys/private.key .`
+- generate the package, e.g. `nrfutil pkg generate --hw-version 52 --application-version 1 --application ble_beacon_pca10040_s132.hex --sd-req 0xb7 --key-file private.key app_dfu_package.zip`
+
+### Preparation Bootloader Settings and Merge Settings with Bootloader to one .hex
+
+**Step 2)** Generate settings for the bootloader
+
+- go to bootloader application build directory with the bootloader already build, e.g.  `cd ~/nrf52/nRF5_SDK_15.3.0_59ac345/projects/dfu/secure_bootloader/pca10040_ble/ses/Output/Release/Exe`
+- `nrfutil settings generate --family NRF52 --application ../../../../../../../ble_peripheral/ble_beacon/pca10040/s132/ses/Output/Debug/Exe/ble_beacon_pca10040_s132.hex --application-version 0 --bootloader-version 0 --bl-settings-version 1 bootloader_setting.hex`
+
+**Step 3)** Merge the bootloader and settings file to allow flashing the application together with the bootloader/settings during production and without the need to update using DFU
+
+- open a Windows `cmd` shell and go to the bootloader directory, e.g. `c:\msys32\home\AKAEM\nrf52\nRF5_SDK_15.3.0_59ac345\projects\dfu\secure_bootloader\pca10040_ble\ses\Output\Release\Exe>`
+- `mergehex -m bootloader_setting.hex secure_bootloader_ble_s132_pca10040.hex --output output.hex`
+
+### Program the Device
+
+**Step 4)** Use nRF Connect Programmer to upload all necessary .hex files
+
 - Open nRF Connect Programmer, connect, read device
-- Add HEX files
-* Softdevice .hex file
-* merged settings and bootloader file generated in Step 3
-* application .hex file generated during application build
+- Add files
+  - HEX files
+  - Softdevice .hex file
+  - merged settings and bootloader file generated in Step 3
+  - application .hex file generated during application build
+- Press `Erase & Write`
 
-Step 5) (optional) If necessary, write UICR with the device MAJOR and MINOR address
-- to read the current flashed values: nrfjprog -f NRF52 --memrd 0x10001080 --n 4
-- to write (requires previous delete -> set to 0xFF): nrfjprog -f nrf52 --memwr 0x10001080 --val 0x000700FF (adjust!)
+**Step 5)** (optional) If necessary, write UICR with the device MAJOR and MINOR address
 
-### Update the device using DFU
+- to read the current flashed values: `nrfjprog -f NRF52 --memrd 0x10001080 --n 4`
+- to write (requires previous delete -> set to 0xFF): `nrfjprog -f nrf52 --memwr 0x10001080 --val 0x000700FF` (adjust!)
 
-Step 6) to update the application use DFU and the application zip file generated as in Step 1) using nRF Connect Bluetooth Low Energy application on Windows (with nrf52832 dongle) or iPhone/Android app.
+### Update the Device using DFU
 
-## Get offline buffer data from device
+**Step 6)** to update the application use DFU and the application zip file generated as in Step 1) using nRF Connect Bluetooth Low Energy application on Windows (with nrf52832 dongle) or iPhone/Android app.
 
-### Connect to the device using nRF Connect 
+#### Remark: Using without bootloader and DFU
 
-- use nRF Connect Bluetooth Low Energy tool to connect to the device from Windows with an nrf52832/nrf52840 dongle
+If you want to use the software without the bootloader and without buttonless DFU you need to comment out the call to `ble_dfu_buttonless_async_svci_init();` or use `#undef  USE_BUTTONLESS_DFU`. Otherwise you'll get an error  `<error> app: ERROR 4 [NRF_ERROR_NO_MEM]`
 
-- or use the iPhone nRF Connect app
+## Provided Services by Device
 
-- or use the Android nRF Connect app
+You can connect to the device and use the following additional features:
 
-- go to the service 1400
+- Download the stored data point from the device
+- Get number of data points available
+- Delete data points
+- Update software using DFU
 
-- turn on notification on 1401
+### Connect to the Device using nRF Connect 
 
-- turn on indication on 2A52/Random Access Control Point
+- You can use the following tools, besides other, to connect to the device:
+  - nRF Connect Bluetooth Low Energy tool to connect to the device from Windows with an nrf52832/nrf52840 dongle
+  - iPhone nRF Connect app
+  - Android nRF Connect app
 
-- write to 2A52 the following commands
+### Preparation
 
-* 01 01 (Report Records, All)   -> 2A52: 06 00 01 01 (Response, Operator NULL, ?, Success), 1401: 00-00-01-00-00-00-60-AD-74-15 (2 byte seq, 4 byte time, 2 byte temperature, 2 byte humidity)
+- Connect to the service 1400
+- Pairing - **TBD**
+- Turn on **Notification** on characteristic 1401
+- Turn on **Indication** on characteristic 2A52 (Random Access Control Point)
 
-* 01 05 (Report Records, First) -> see 01 01
+### Get Data from device
 
-* 01 06 (Report Records, Last)  -> see 01 01
+You can retrieve data from the device or delete the device offline buffer memory using the following commands:
 
-* 04 01 (Report Num Records, All) -> 2A52: 05 00 01 00 (Number of stored records response, ?, num records 2B LSB first)
+- **write** to 2A52 the following commands:
 
-* 02 01 (Delete All Records)
+  - `01 01` (Report Records, All)   -> `2A52: 06 00 01 01` (Response, Operator NULL, ?, Success), `1401: 00-00-01-00-00-00-60-AD-74-15` (2 byte seq. number = 0, 4 byte time (here: not yet real time, thus 1 sec), 2 byte temperature `60 AD`, 2 byte humidity `74 15`)
+  - `01 05` (Report Records, First) -> see `01 01`
+  - `01 06` (Report Records, Last)  -> see `01 01`
+  - `04 01` (Report Number Records, All) -> `2A52: 05 00 01 00` (Number of stored records response, number of records 2 byte  LSB first,  here: 1 record)
+  - `02 01` (Delete All Records)
 
-### Decode sequential number
+  **Remarks:** the byte order is LSB-MSB
 
-- just coded 2 byte, LSB first, than MSB
+#### Decode sequential number/Number of entries
 
-### Decode time stamp
+The number of records in return to the Report Number Records request and the sequential numbers in the records itself are 2 byte, which are coded LSB first, than MSB.
 
-- 4 bytes, LSB-MSB
+#### Decode time stamp
 
-- decode using a epoch Unix time calculator, e.g. https://www.unixtimestamp.com/index.php
+The time stamp is reported in the records as seconds since 01.01.1970, 00:00:00 (UTC), and is given in 4 Bytes with LSB-MSB ordering. 
 
-### Old stuff, to be sorted
+The time stamp can be decoded using an appropriate online calculator, for example
 
-critical:
-for the beacon PCB use the preprocessor define CONFIG_NFCT_PINS_AS_GPIOS
+- Unix Epoch time calculator, e.g. https://www.unixtimestamp.com/index.php
 
-adv flags	
-	len	 	02 				length
-	type 	01 				type (flags)
-	val 	04 				value (BR/EDR Not Supported)
-adv header	
-	len 	1a 
-	type 	ff 				(custum manufacturer packet)
-			59 00 			(manufacturer ID)
-																APP_BEACON_INFO_LENGTH 0x17			
-dev type	02  (iBeacon)
-Data Len	0x15  = 21
+If the beacon does not have the correct time, the time stamps are reported since boot time, which is 0. If the correct time is available, this will be used.
 
-UUID 		01 12 23 34 45 56 67 78 89 9a ab bc cd de ef f0
-MAJ 		01 02
-MIN			03 04 
-RSSI		c3
+### Battery Information Service (BAS)
 
+The Bluetooth service "Battery Information Service" is available as service 0x180F, and provides a single value characteristic 0x2A19. This will return the battery level in percentage.
 
-0x0059	Nordic Semiconductor
+### Device Information Service (DIS)
 
+The Bluetooth service "Device Information Service" is available as service 0x180A, and provides the following characteristics:
 
-new advertisement packet
-adv flags		02 01 04			3
-adv header		1a ff 59 00			4
-dev type		02					1
-data len		XX					1
-UUID			xx xx xx xx			4
-major id		xx xx				2
-minor id 		xx xx				2
-rssi			xx					1
-temp			xx xx				2
-humidity		xx xx				2
-x				xx xx				2
-y				yy yy				2
-z				zz zz				2
-battery			xx xx				2
+| UUID   | Title                    | Example             |
+| ------ | ------------------------ | ------------------- |
+| 0x2A24 | Model Number String      | 1                   |
+| 0x2A25 | Serial Number String     | 38 (="")            |
+| 0x2A26 | Firmware Revision String | 0.1a                |
+| 0x2A27 | Hardware Revision String | 1.0                 |
+| 0x2A28 | Software Revision String | 0.9                 |
+| 0x2A29 | Manufacturer Name        | "ansprechendeKunst" |
 
-SUM									30
+### Secure DFU 
 
-result:
-20190317-09:10 (0x00070001) rssi -59 | temp  19.0 | hum  23 | x   +154 | y   -250 | z +16242 | batt 2808
-18:34	2814
-20190318-07:00 (0x00070001) rssi -45 | temp  18.0 | hum  34 | x    -32 | y   -399 | z +16259 | batt 2784
+The Bluetooth service "Secure DFU" is available as service 0xFE59, and provides characteristic to update the device buttonless using Nordic's Secure DFU. 
 
-nrfjprog -f NRF52 --memrd 0x10001080 --n 4
+## Used Services by Device
 
+### Current Time Service (CTS)
 
+As soon as the device is connected, it checks whether a CTS (Current Time Service) server is provided by the central device. If it is available, the following steps will be performed:
 
-FC:4C:B4:F2:10:03	FC:4C:B4:F2:10:04	beac1
-EB:30:72:AB:35:37	EB:30:72:AB:35:38 	beac2
-E8:1C:81:77:36:E4	beac3
-D4:21:12:9D:E7:F6	beac4
-F1:A0:51:21:A0:13	beac5
-DB:AE:BA:AB:67:2E	DB:AE:BA:AB:67:2F	beac6
+- If CTS and thus the current time is available for the **first time** (e. g., directly after booting):
+  - The current time is fetched from CTS
+  - The internal function (nrf_calendar) to keep the time is set to the current time.
+  - If there are any entries stored in the offline buffer, these entries will be updated with the correct time. This is done by calculating the delta, and adding this correction value to all previous entries.
+-  For subsequent updates of the time using CTS:
+  - The current time is fetched from CTS
+  - The internal function (nrf_calendar) will be updated with the current time.
+  - The drift will be calculated and for future requests inside the beacon used as a correction factor.
+  - Remark: Old values eventually stored in the offline buffer will not be updated/corrected with the drift factor.
 
-F1:A0:51:21:A0:12
+## Buttons
 
+The device provides one push button. When attached to the programming JIG, another button is available for testing.
 
+## Power Consumption
 
+todo
 
+## Programming JIG
 
-#define RACP_OPCODE_REPORT_RECS             1       /**< Record Access Control Point opcode - Report stored records. */
-#define RACP_OPCODE_DELETE_RECS             2       /**< Record Access Control Point opcode - Delete stored records. */
-#define RACP_OPCODE_ABORT_OPERATION         3       /**< Record Access Control Point opcode - Abort operation. */
-#define RACP_OPCODE_REPORT_NUM_RECS         4       /**< Record Access Control Point opcode - Report number of stored records. */
-#define RACP_OPCODE_NUM_RECS_RESPONSE       5       /**< Record Access Control Point opcode - Number of stored records response. */
-#define RACP_OPCODE_RESPONSE_CODE           6       /**< Record Access Control Point opcode - Response code. */
+There is a separate Readme for the programming jig, see [here](Documentation/JIG/README.md)
 
-/**@brief Record Access Control Point operators. */
-#define RACP_OPERATOR_NULL                   0       /**< Record Access Control Point operator - Null. */
-#define RACP_OPERATOR_ALL                    1       /**< Record Access Control Point operator - All records. */
-#define RACP_OPERATOR_LESS_OR_EQUAL          2       /**< Record Access Control Point operator - Less than or equal to. */
-#define RACP_OPERATOR_GREATER_OR_EQUAL       3       /**< Record Access Control Point operator - Greater than or equal to. */
-#define RACP_OPERATOR_RANGE                  4       /**< Record Access Control Point operator - Within range of (inclusive). */
-#define RACP_OPERATOR_FIRST                  5       /**< Record Access Control Point operator - First record (i.e. oldest record). */
-#define RACP_OPERATOR_LAST                   6       /**< Record Access Control Point operator - Last record (i.e. most recent record). */
-#define RACP_OPERATOR_RFU_START              7       /**< Record Access Control Point operator - Start of Reserved for Future Use area. */
+![Alt text](Documentation/JIG/IMG_JIG_4_resize.jpg?raw=true "Complete JIG")
 
-/**@brief Record Access Control Point Operand Filter Type Value. */
-#define RACP_OPERAND_FILTER_TYPE_TIME_OFFSET 1       /**< Record Access Control Point Operand Filter Type Value - Time Offset. */
-#define RACP_OPERAND_FILTER_TYPE_FACING_TIME 2       /**< Record Access Control Point Operand Filter Type Value - User Facing Time. */
+## Schematics
 
-/**@brief Record Access Control Point response codes. */
-#define RACP_RESPONSE_RESERVED               0       /**< Record Access Control Point response code - Reserved for future use. */
-#define RACP_RESPONSE_SUCCESS                1       /**< Record Access Control Point response code - Successful operation. */
-#define RACP_RESPONSE_OPCODE_UNSUPPORTED     2       /**< Record Access Control Point response code - Unsupported op code received. */
-#define RACP_RESPONSE_INVALID_OPERATOR       3       /**< Record Access Control Point response code - Operator not valid for service. */
-#define RACP_RESPONSE_OPERATOR_UNSUPPORTED   4       /**< Record Access Control Point response code - Unsupported operator. */
-#define RACP_RESPONSE_INVALID_OPERAND        5       /**< Record Access Control Point response code - Operand not valid for service. */
-#define RACP_RESPONSE_NO_RECORDS_FOUND       6       /**< Record Access Control Point response code - No matching records found. */
-#define RACP_RESPONSE_ABORT_FAILED           7       /**< Record Access Control Point response code - Abort could not be completed. */
-#define RACP_RESPONSE_PROCEDURE_NOT_DONE     8       /**< Record Access Control Point response code - Procedure could not be completed. */
-#define RACP_RESPONSE_OPERAND_UNSUPPORTED    9       /**< Record Access Control Point response code - Unsupported operand. */
+The schematics for the beacon I use is available here. The product is available from Radioland China using ALIEXPRESS.
+
+![Alt text](Documentation/beacon_hardware/nRF52832+KX022+SHT30 circuit.jpg?raw=true "Complete JIG")
