@@ -222,4 +222,4 @@ There is a separate Readme for the programming jig, see [here](Documentation/JIG
 
 The schematics for the beacon I use is available here. The product is available from Radioland China using ALIEXPRESS.
 
-![Alt text](Documentation/beacon_hardware/nRF52832+KX022+SHT30 circuit.jpg?raw=true "Complete JIG")
+![Alt text](Documentation/beacon_hardware/nRF52832+KX022+SHT30%20circuit.jpg?raw=true "Complete JIG")
