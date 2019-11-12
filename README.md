@@ -226,10 +226,13 @@ As soon as the device is connected, it checks whether a CTS (Current Time Servic
   - If there are any entries stored in the offline buffer, these entries will be updated with the correct time. This is done by calculating the delta, and adding this correction value to all previous entries.
   
     
--  For **subsequent updates** of the time using CTS:
+- For **subsequent updates** of the time using CTS:
   - The current time is fetched from CTS
+  
   - The internal function (nrf_calendar) will be updated with the current time.
+  
   - The drift will be calculated and for future requests inside the beacon used as a correction factor.
+  
   - Remark: Previous values eventually stored in the offline buffer will not be updated/corrected with the drift factor.
 
 ## Buttons
