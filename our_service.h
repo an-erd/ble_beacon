@@ -137,8 +137,11 @@ typedef struct
     ble_os_evt_handler_t        evt_handler;                    /**< Event handler to be called for handling events in Our Service. */
     ble_srv_error_handler_t     error_handler;                  /**< Function to be called in case of an error. */
     uint16_t                    feature;                        /**< Feature value indicating supported features. */
+    uint16_t                    annunciation;                   /**< Initial annunciation value. */
     security_req_t              os_meas_cccd_wr_sec;            /**< Security requirement for writing our service measurement characteristic CCCD. */
     security_req_t              os_feature_rd_sec;              /**< Security requirement for reading our service feature characteristic. */
+    security_req_t              os_annunciation_rd_sec;         /**< Security requirement for reading our service annunciation characteristic. */
+    security_req_t              os_annunciation_wr_sec;         /**< Security requirement for writing our service annunciation characteristic. */
     security_req_t              racp_cccd_wr_sec;               /**< Security requirement for writing RACP Characteristic CCCD. */
     security_req_t              racp_wr_sec;                    /**< Security requirement for writing RACP Characteristic. (Service specification mandates authentication) */
 } ble_os_init_t;
@@ -149,21 +152,21 @@ struct ble_os_s
     ble_os_evt_handler_t        evt_handler;                    /**< Event handler to be called for handling events in Our Service. */
     ble_srv_error_handler_t     error_handler;                  /**< Function to be called in case of an error. */
     uint16_t                    service_handle;                 /**< Handle of Our Service (as provided by the BLE stack). */
-    ble_gatts_char_handles_t    osm_handles;                     /**< Handles related to the Our Service Measurement characteristic. */
+    ble_gatts_char_handles_t    osm_handles;                    /**< Handles related to the Our Service Measurement characteristic. */
     ble_gatts_char_handles_t    osf_handles;                    /**< Handles related to the Our Service Feature characteristic. */
-    ble_gatts_char_handles_t    racp_handles;                    /**< Handles related to the Record Access Control Point characteristic. */
-    uint16_t                    conn_handle;                     /**< Handle of the current connection (as provided by the BLE stack, is BLE_CONN_HANDLE_INVALID if not in a connection). */
-    uint16_t                    feature;
+    ble_gatts_char_handles_t    racp_handles;                   /**< Handles related to the Record Access Control Point characteristic. */
+    ble_gatts_char_handles_t    osa_handles;                    /**< Handles related to the Our Service Annunciation characteristic. */
+    uint16_t                    conn_handle;                    /**< Handle of the current connection (as provided by the BLE stack, is BLE_CONN_HANDLE_INVALID if not in a connection). */
+    uint16_t                    feature;                        /**< Features provided by the device. */
+    uint16_t                    annunciation;                   /**< Annunciation given by the device. Will be reset if read. (TODO) */
 };
 
-// TODO
 // randomly generated 128-bit base UUID: 612f3d33-37f5-4c4f-9ff2-320c4ba2b73c
 #define BLE_UUID_OUR_BASE_UUID                  {0x3C, 0xB7, 0xA2, 0x4B, 0x0C, 0x32, 0xF2, 0x9F, 0x4F, 0x4C, 0xF5, 0x37, 0x00, 0x00, 0x2F, 0x61} 
 #define BLE_UUID_OUR_SERVICE                    0x1400  // 16-bit service UUIDs
 #define BLE_UUID_OUR_SERVICE_MEASUREMENT_CHAR   0x1401  // 16-bit characteristic UUID for the masurement values
 #define BLE_UUID_OUR_SERVICE_FEATURE_CHAR       0x1402  // 16-bit characteristic UUID for the feature values
-
-
+#define BLE_UUID_OUR_SERVICE_ANNUNCIATION_CHAR  0x1403  // 16-bit characteristic UUID for the annunciation values
 
 //
 ///**@brief Function for handling our service event.

@@ -188,13 +188,12 @@ uint32_t ble_os_init(ble_os_t * p_os, const ble_os_init_t * p_os_init)
         return err_code;
     }
 
-
     // Initialize service structure
-    p_os->evt_handler          = p_os_init->evt_handler;
-    p_os->error_handler        = p_os_init->error_handler;
-    p_os->feature              = p_os_init->feature;
-    p_os->conn_handle          = BLE_CONN_HANDLE_INVALID;
-
+    p_os->evt_handler           = p_os_init->evt_handler;
+    p_os->error_handler         = p_os_init->error_handler;
+    p_os->feature               = p_os_init->feature;
+    p_os->annunciation          = p_os_init->annunciation;
+    p_os->conn_handle           = BLE_CONN_HANDLE_INVALID;
 
     // Initialize global variables
     state_set(STATE_NO_COMM);
@@ -269,6 +268,24 @@ uint32_t ble_os_init(ble_os_t * p_os, const ble_os_init_t * p_os_init)
     err_code = characteristic_add(p_os->service_handle,
                                   &add_char_params,
                                   &p_os->racp_handles);
+    if (err_code != NRF_SUCCESS)
+    {
+        return err_code;
+    }
+
+    // Add Our Service annunciation characteristic
+    memset(&add_char_params, 0, sizeof(add_char_params));
+
+    add_char_params.uuid              = BLE_UUID_OUR_SERVICE_ANNUNCIATION_CHAR;
+    add_char_params.max_len           = sizeof (uint16_t);
+    add_char_params.init_len          = uint16_encode(p_os->annunciation, init_value_encoded);
+    add_char_params.p_init_value      = init_value_encoded;
+    add_char_params.char_props.read   = 1;
+    add_char_params.char_props.write  = 1;
+    add_char_params.read_access       = p_os_init->os_annunciation_rd_sec;
+    add_char_params.write_access      = p_os_init->os_annunciation_wr_sec;
+
+    err_code = characteristic_add(p_os->service_handle, &add_char_params, &p_os->osa_handles);
     if (err_code != NRF_SUCCESS)
     {
         return err_code;

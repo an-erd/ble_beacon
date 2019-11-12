@@ -141,7 +141,7 @@
 #define USE_OUR_SERVICES
 #define USE_CTS
 #define USE_DIS
-#define USE_BUTTONLESS_DFU
+#undef  USE_BUTTONLESS_DFU
 
 // App Timer defines
 APP_TIMER_DEF(m_repeated_timer_init);                       /**< Handler for repeated timer for init process (sensor, offline buffer, ...). */
@@ -297,7 +297,7 @@ BLE_OS_DEF(m_our_service);
 #ifdef USE_DIS
 #define DIS_MANUFACTURER_NAME           "ansprechendeKunst"     /**< Manufacturer. Will be passed to Device Information Service. */
 #define DIS_MODEL_NUMBER                "1"
-#define DIS_SERIAL_NUMBER               "8" 
+#define DIS_SERIAL_NUMBER               "1" 
 #define DIS_HW_REV                      "1.0"
 #define DIS_SW_REV                      "0.9"
 #define DIS_FW_REV                      "0.1a"
@@ -1640,18 +1640,21 @@ static void os_init(void)
     // Initialize Our Service
     memset(&os_init, 0, sizeof(os_init));
 
-    os_init.evt_handler          = NULL;
-    os_init.error_handler        = service_error_handler;
-    os_init.feature              = 0;
-//    os_init.feature             |= BLE_OS_FEATURE_LOW_BATT;
-    os_init.feature             |= BLE_OS_FEATURE_TEMPERATURE;
-    os_init.feature             |= BLE_OS_FEATURE_HUMIDITY;
+    os_init.evt_handler             = NULL;
+    os_init.error_handler           = service_error_handler;
+    os_init.feature                 = 0;
+//    os_init.feature                 |= BLE_OS_FEATURE_LOW_BATT;
+    os_init.feature                 |= BLE_OS_FEATURE_TEMPERATURE;
+    os_init.feature                 |= BLE_OS_FEATURE_HUMIDITY;
+    os_init.annunciation            = 0;
 
     // Here the sec level for the Our Service can be changed/increased.
-    os_init.os_meas_cccd_wr_sec = SEC_JUST_WORKS;
-    os_init.os_feature_rd_sec   = SEC_JUST_WORKS;
-    os_init.racp_cccd_wr_sec    = SEC_JUST_WORKS;
-    os_init.racp_wr_sec         = SEC_JUST_WORKS;
+    os_init.os_meas_cccd_wr_sec     = SEC_JUST_WORKS;
+    os_init.os_feature_rd_sec       = SEC_JUST_WORKS;
+    os_init.os_annunciation_rd_sec  = SEC_JUST_WORKS;
+    os_init.os_annunciation_wr_sec  = SEC_JUST_WORKS;
+    os_init.racp_cccd_wr_sec        = SEC_JUST_WORKS;
+    os_init.racp_wr_sec             = SEC_JUST_WORKS;
 
     err_code = ble_os_init(&m_our_service, &os_init);
     APP_ERROR_CHECK(err_code);
