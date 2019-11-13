@@ -1220,6 +1220,20 @@ static void on_osm_cccd_write(ble_os_t * p_os, ble_gatts_evt_write_t const * p_e
 }
 
 
+/**@brief Function for handling the Our Service annunciation write event.
+ *
+ * @param[in] p_os        Service instance.
+ * @param[in] p_evt_write  WRITE event to be handled.
+ */
+static void on_annunciation_write(ble_os_t * p_os, ble_gatts_evt_write_t const * p_evt_write)
+{
+    if (p_evt_write->len == 2)
+    {
+        NRF_LOG_DEBUG("on_annunciation_write: 0x%2X%2X", p_evt_write->data[0], p_evt_write->data[1]);
+    }
+}
+
+
 /**@brief Function for handling the WRITE event.
  *
  * @details Handles WRITE events from the BLE stack.
@@ -1238,6 +1252,10 @@ static void on_write(ble_os_t * p_os, ble_evt_t const * p_ble_evt)
     else if (p_evt_write->handle == p_os->racp_handles.value_handle)
     {
         on_racp_value_write(p_os, p_evt_write);
+    }
+    else if (p_evt_write->handle == p_os->osa_handles.value_handle)
+    {
+        on_annunciation_write(p_os, p_evt_write);
     }
 }
 
@@ -1369,35 +1387,21 @@ ret_code_t ble_os_sensor_new_meas(ble_os_t * p_os, ble_os_rec_t * p_rec)
 }
 
 
+ret_code_t ble_os_new_annunciation(ble_os_t * p_os, uint16_t new_annunciation)
+{
+    ret_code_t err_code;
+    ble_gatts_value_t gatts_value;
+    uint16_t annunciation = new_annunciation;
 
+    // Initialize value struct.
+    memset(&gatts_value, 0, sizeof(gatts_value));
 
-// TODO
+    gatts_value.len     = sizeof(annunciation);
+    gatts_value.offset  = 0;
+    gatts_value.p_value = (uint8_t *) &annunciation;
 
-
-//
-///**@brief Function for handling Our Service event.
-// *
-// * @param[in]   p_our_service   Our Service structure.
-// * @param[in]   p_ble_evt       Event received from the BLE stack.
-// */
-//static void on_our_service_evt_handler(ble_os_t * p_our_service, ble_os_evt_t * p_ble_evt)
-//{
-//    NRF_LOG_DEBUG("Our Service event handler called with event 0x%X", p_ble_evt->evt_type);
-//
-//    // Implement switch case handling BLE events related to our service. 
-//    switch (p_ble_evt->evt_type)
-//    {
-//        case BLE_OS_EVT_NOTIFICATION_ENABLED:
-//            NRF_LOG_DEBUG("on_our_service_evt_handler: BLE_OS_EVT_NOTIFICATION_ENABLED");
-//            break;
-//
-//        case BLE_OS_EVT_NOTIFICATION_DISABLED:
-//            NRF_LOG_DEBUG("on_our_service_evt_handler: BLE_OS_EVT_NOTIFICATION_DISABLED");
-//            break;
-//
-//        default:
-//            // No implementation needed.
-//            break;
-//    }		
-//}
+    err_code = sd_ble_gatts_value_set(p_os->conn_handle, p_os->osa_handles.value_handle, &gatts_value);
+    
+    return err_code;
+}
 

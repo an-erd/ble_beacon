@@ -459,6 +459,8 @@ static void bsp_event_handler(bsp_event_t event)
 
     case BSP_EVENT_KEY_1: // button on jig pressed
         NRF_LOG_DEBUG("button BSP_EVENT_KEY_1");
+        err_code = ble_os_new_annunciation(&m_our_service, 0xBEEF);
+        APP_ERROR_CHECK(err_code);
         break;
     
     case BSP_EVENT_KEY_1_RELEASED: // button on jig released

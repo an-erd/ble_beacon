@@ -168,53 +168,6 @@ struct ble_os_s
 #define BLE_UUID_OUR_SERVICE_FEATURE_CHAR       0x1402  // 16-bit characteristic UUID for the feature values
 #define BLE_UUID_OUR_SERVICE_ANNUNCIATION_CHAR  0x1403  // 16-bit characteristic UUID for the annunciation values
 
-//
-///**@brief Function for handling our service event.
-// *
-// * @param[in]   p_our_service   Our Service structure.
-// * @param[in]   p_ble_evt       Event received from the BLE stack.
-// */
-//static void on_our_service_evt_handler(ble_os_t * p_our_service, ble_os_evt_t * p_ble_evt);
-//
-///**@brief Function for handling the GATT module's events.
-// *
-// * @details Handles all events from the GATT module of interest to the Custom Service.
-// *
-// * @param[in]   p_os       Our Service structure.
-// * @param[in]   p_gatt_evt  Event received from the GATT module.
-// */
-//void ble_os_on_gatt_evt(ble_os_t * p_os, nrf_ble_gatt_evt_t const * p_gatt_evt);
-//
-//
-///**@brief Function for handling BLE Stack events related to our service and characteristic.
-// *
-// * @details Handles all events from the BLE stack of interest to Our Service.
-// *
-// * @param[in]   p_our_service       Our Service structure.
-// * @param[in]   p_ble_evt  Event received from the BLE stack.
-// */
-//void ble_our_service_on_ble_evt(ble_evt_t const * p_ble_evt, void * p_context);
-//
-///**@brief Function for initializing our new service.
-// *
-// * @param[in]   p_our_service       Pointer to Our Service structure.
-// */
-//void our_service_init(ble_os_t * p_our_service);
-//
-///**@brief Function for updating and sending new characteristic values
-// *
-// * @details The application calls this function whenever our timer_timeout_handler triggers
-// *
-// * @param[in]   p_our_service                     Our Service structure.
-// * @param[in]   characteristic_value     New characteristic value.
-// */
-//uint32_t our_service_characteristic_update(ble_os_t *p_our_service, uint8_t *p_data, uint8_t data_len);
-////void our_service_characteristic_update(ble_os_t *p_our_service, int32_t *temperature_value);
-////void our_service_characteristic_update(ble_os_t *p_our_service, int8_t *p_transfer_dataset);
-//
-//void our_service_send_data_control(ble_os_t *p_our_service, uint8_t *p_data, uint8_t num_entries, uint8_t data_len_entry, bool restart);
-
-
 
 /**@brief Function for initializing the Our Service service.
  *
@@ -251,6 +204,18 @@ void ble_os_on_ble_evt(ble_evt_t const * p_ble_evt, void * p_context);
  * @return      NRF_SUCCESS on success, otherwise an error code.
  */
 ret_code_t ble_os_sensor_new_meas(ble_os_t * p_os, ble_os_rec_t * p_rec);
+
+
+/**@brief Function for reporting a new Our Service annunciation.
+ *
+ * @details The application calls this function if a new annunciation is available.
+ *
+ * @param[in]   p_os                    Our Service structure.
+ * @param[in]   p_rec                   Pointer to Our Service record.
+ *
+ * @return      NRF_SUCCESS on success, otherwise an error code.
+ */
+ret_code_t ble_os_new_annunciation(ble_os_t * p_os, uint16_t new_annunciation);
 
 
 #ifdef __cplusplus
