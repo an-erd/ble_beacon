@@ -130,18 +130,22 @@
 #define USE_SENSOR
 #define USE_SENSORINIT_SHT3
 #define USE_SENSORINIT_KX022
+#define USE_SENSOR_SHT3
+#define USE_SENSOR_KX022
+#define USE_SENSOR_SAADC
 #define USE_APPTIMER
 #define USE_OFFLINE_FUNCTION
 #define USE_SCHEDULER
 #define USE_GAP_GATT
 #define USE_CONNPARAMS_PEERMGR
-#undef  USE_CONN_ADV_INIT
-#undef  USE_NONCONN_ADV_INIT
-#define USE_ADVERTISING
-#define USE_OUR_SERVICES
-#define USE_CTS
-#define USE_DIS
-#undef  USE_BUTTONLESS_DFU
+                            #undef  USE_CONN_ADV_INIT
+                            #undef  USE_NONCONN_ADV_INIT
+#define  USE_ADVERTISING
+#define  USE_OUR_SERVICES
+#define  USE_CTS
+#define  USE_DIS
+#define  USE_DFU
+                            #undef  USE_BUTTONLESS_DFU
 
 // App Timer defines
 APP_TIMER_DEF(m_repeated_timer_init);                       /**< Handler for repeated timer for init process (sensor, offline buffer, ...). */
@@ -459,8 +463,8 @@ static void bsp_event_handler(bsp_event_t event)
 
     case BSP_EVENT_KEY_1: // button on jig pressed
         NRF_LOG_DEBUG("button BSP_EVENT_KEY_1");
-        err_code = ble_os_new_annunciation(&m_our_service, 0xBEEF);
-        APP_ERROR_CHECK(err_code);
+//        err_code = ble_os_new_annunciation(&m_our_service, 0xBEEF);
+//        APP_ERROR_CHECK(err_code);
         break;
     
     case BSP_EVENT_KEY_1_RELEASED: // button on jig released
@@ -731,13 +735,16 @@ static void read_all_sensors(bool restart)
     switch(step){
     case 0:
         // SHT3
+#ifdef USE_SENSOR_SHT3
         APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, SHT3_ADDR, config_SHT3_0, 2, false));
-        
+#endif // USE_SENSOR_SHT3
+#ifdef USE_SENSOR_KX022
         // KX022 
         APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, config_kx022_0, 2, false));
         APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, config_kx022_1, 2, false));
         APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, config_kx022_2, 2, false));
-   
+#endif // USE_SENSOR_KX022   
+
         // timer for next step, 6 ms (>1.2/ODR)
         err_code = app_timer_start(m_singleshot_timer_read_sensor_step, APP_TIMER_TICKS(6), NULL); // (6)
         APP_ERROR_CHECK(err_code);
@@ -746,8 +753,10 @@ static void read_all_sensors(bool restart)
         break;
     
     case 1:
+#ifdef USE_SENSOR_KX022
         // KX022 
         APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, config_kx022_3, 2, false));
+#endif // USE_SENSOR_KX022   
     
         // timer for next step,6 ms (>1.2/ODR)
         err_code = app_timer_start(m_singleshot_timer_read_sensor_step, APP_TIMER_TICKS(6), NULL); // (6)
@@ -757,12 +766,14 @@ static void read_all_sensors(bool restart)
         break;
     
     case 2:
+#ifdef USE_SENSOR_KX022
         // KX022 
         reg[0] = KX022_1020_REG_XOUTL;
         APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, reg, 1, true));
         // read 6 bytes (x (lsb+msb), y (lsb+msb), z (lsb+msb)
         APP_ERROR_CHECK(nrf_drv_twi_rx(&m_twi, KX022_ADDR, &m_buffer[6], 6));
         APP_ERROR_CHECK(nrf_drv_twi_tx(&m_twi, KX022_ADDR, config_kx022_0, 2, false));
+#endif // USE_SENSOR_KX022   
 
         // timer fillup for SHT3 15 ms (15 -6 -6 -running time of functions = ~1 ms)
         err_code = app_timer_start(m_singleshot_timer_read_sensor_step, APP_TIMER_TICKS(1), NULL); // (1)
@@ -772,8 +783,10 @@ static void read_all_sensors(bool restart)
         break;  // time to go until SHT3 is ready
     
     case 3:
+#ifdef USE_SENSOR_SHT3
         // read 6 bytes (temp (msb+lsb+crc) and hum (msb+lsb+crc)
         APP_ERROR_CHECK(nrf_drv_twi_rx(&m_twi, SHT3_ADDR, &m_buffer[0], 6));
+#endif // USE_SENSOR_SHT3
             
         process_all_data();
         // TODO work on INS1 and INT_REL
@@ -791,6 +804,7 @@ static void read_all_sensors(bool restart)
 
 static void repeated_timer_handler_read_saadc()
 {
+#ifdef USE_SENSOR_SAADC
     if(!m_saadc_initialized) {
         saadc_init();
     }
@@ -798,6 +812,7 @@ static void repeated_timer_handler_read_saadc()
 
     // Trigger the SAADC SAMPLE task
     nrfx_saadc_sample();
+#endif // USE_SENSOR_SAADC
 }
 
 static void repeated_timer_handler_read_sensors()
@@ -830,6 +845,7 @@ static void repeated_timer_handler_update_offlinebuffer()
         NRF_LOG_DEBUG("Buffer was full, deleted oldest entry");
     }
 
+#ifdef USE_OFFLINE_FUNCTION
     // Update offline buffer with current measurement regularly
     err_code = offline_buffer_update(m_buffer);
     if(err_code == NRF_ERROR_NO_MEM)
@@ -838,6 +854,7 @@ static void repeated_timer_handler_update_offlinebuffer()
     } else {
         APP_ERROR_CHECK(err_code);
     }
+#endif // USE_OFFLINE_FUNCTION
 }
 
 static void repeated_timer_handler_init()
@@ -889,8 +906,9 @@ static void repeated_timer_handler_init()
 
         err_code = app_timer_stop(m_repeated_timer_init);
         APP_ERROR_CHECK(err_code);
-
+#ifdef USE_ADVERTISING
         advertising_start(m_erase_bonds);
+#endif // USE_ADVERTISING
 
         step++;
 
@@ -1237,7 +1255,7 @@ static void nrf_qwr_error_handler(uint32_t nrf_error)
     APP_ERROR_HANDLER(nrf_error);
 }
 
-
+#ifdef USE_GAP_GATT
 /**@brief Function for initializing the Queued Write Module.
  */
 static void qwr_init(void)
@@ -1250,7 +1268,7 @@ static void qwr_init(void)
     err_code = nrf_ble_qwr_init(&m_qwr, &qwr_init_obj);
     APP_ERROR_CHECK(err_code);
 }
-
+#endif // USE_GAP_GATT
 
 #ifdef USE_DIS
 /**@brief Function for initializing Device Information Service.
@@ -1694,10 +1712,15 @@ static void on_yys_evt(ble_yy_service_t     * p_yy_service,
 static void services_init(void)
 {
     ret_code_t         err_code;
-
+#ifdef USE_GAP_GATT
     qwr_init();
+#endif
+#ifdef USE_DIS
     dis_init();
+#endif
+#ifdef USE_DFU
     dfu_init();
+#endif
     bas_init();
 
 #ifdef USE_CTS
@@ -1993,7 +2016,9 @@ static void pm_evt_handler(pm_evt_t const * p_evt)
                          ble_conn_state_role(p_evt->conn_handle),
                          p_evt->conn_handle,
                          p_evt->params.conn_sec_succeeded.procedure);
+#ifdef USE_CONNPARAMS_PEERMGR
             m_peer_id = p_evt->peer_id;
+#endif
 
 #ifdef USE_CTS
             // Discover peer's services.
