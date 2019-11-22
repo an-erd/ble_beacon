@@ -138,7 +138,7 @@
 #define USE_SCHEDULER
 #define USE_GAP_GATT
 #define USE_CONNPARAMS_PEERMGR
-#undef  USE_CONN_ADV_INIT
+#define USE_CONN_ADV_INIT
 #undef  USE_NONCONN_ADV_INIT
 #define USE_ADVERTISING
 #define USE_OUR_SERVICES
@@ -260,8 +260,8 @@ ret_code_t offline_buffer_update(uint8_t *buffer);
 #define SEC_PARAM_MAX_KEY_SIZE          16                                  /**< Maximum encryption key size. */
 
 // Initialise the BLE advertising data with some rememberable values, only used during advertising_init()
-#define APP_BEACON_INFO_LENGTH  0x10            /**< Total length of information advertised by the Beacon. */
 #define APP_COMPANY_IDENTIFIER  0x0059          /**< Company identifier for Nordic Semiconductor ASA. as per www.bluetooth.org. */
+#define APP_BEACON_INFO_LENGTH  0x10            /**< Total length of information advertised by the Beacon. */
 #define APP_MAJOR_VALUE         0x00, 0x07      /**< Major value used to identify Beacons. */
 #define APP_MINOR_VALUE         0x00, 0xFF      /**< Minor value used to identify Beacons. -> caution: see UICR */
 #define APP_DATA_TEMP           0xfd, 0xfd      /**< Temperature data. */
@@ -270,19 +270,16 @@ ret_code_t offline_buffer_update(uint8_t *buffer);
 #define APP_DAT_y               0xbb, 0xbb      /**< Acceleration Y data. */
 #define APP_DAT_Z               0xcc, 0xcc      /**< Acceleration Z Temperature data. */
 #define APP_DAT_BATTERY         0xFF, 0xFF      /**< Battery voltage data. */
-#define APP_BEACON_PAD          0xFF            /**< Padding data (maybe used, maybe not.) */
 
 #if defined(USE_UICR_FOR_MAJ_MIN_VALUES)
-#define MAJ_VAL_OFFSET_IN_MANUF_DATA    0                       /**< Position of the MSB of the Major Value in m_beacon_info array. */
-#define UICR_ADDRESS                    0x10001080              /**< Address of the UICR register  */
+#define MAJ_VAL_OFFSET_IN_MANUF_DATA    0           /**< Position of the MSB of the Major Value in m_beacon_info array. */
+#define UICR_ADDRESS                    0x10001080  /**< Address of the UICR register  */
 #endif
 
 #define DEAD_BEEF                       0xDEADBEEF  /**< Value used as error code on stack dump, can be used to identify stack location on stack unwind. */
 
-#define PAYLOAD_OFFSET_IN_BEACON_INFO_ADV   18  /**< First position to write the payload to in enc advdata */
+#define PAYLOAD_OFFSET_IN_BEACON_INFO_ADV   11      /**< First position to write the payload to in enc advdata */
 #define PAYLOAD_OFFSET_BATTERY_INFO     (PAYLOAD_OFFSET_IN_BEACON_INFO_ADV + 10)  /**< Position to write the battery voltage payload to */									
-#define PAYLOAD_OFFSET_IN_BEACON_INFO_ADV_OLD   11  /**< First position to write the payload to in enc advdata */
-#define PAYLOAD_OFFSET_BATTERY_INFO_OLD     (PAYLOAD_OFFSET_IN_BEACON_INFO_ADV_OLD + 10)  /**< Position to write the battery voltage payload to */									
 
 // BLE Services
 #define DEVICE_NAME                     "Beac8"                 /**< Name of device. Will be included in the advertising data. */
@@ -351,18 +348,6 @@ static uint8_t              m_addl_adv_manuf_data[APP_BEACON_INFO_LENGTH]; // AD
 static uint8_t              m_adv_handle = BLE_GAP_ADV_SET_HANDLE_NOT_SET;  /**< Advertising handle used to identify an advertising set. */
 static uint8_t              m_enc_advdata[BLE_GAP_ADV_SET_DATA_SIZE_MAX];   /**< Buffer for storing an encoded advertising set. */
 static uint16_t             m_conn_handle = BLE_CONN_HANDLE_INVALID;        /**< Handle of the current connection. */
-
-//static uint8_t m_beacon_info[APP_BEACON_INFO_LENGTH] =      /**< Information advertised by the Beacon. */
-//{
-//        APP_MAJOR_VALUE,        // Device major value
-//        APP_MINOR_VALUE,        // Device minor value
-//        APP_DATA_TEMP,          // temperature
-//        APP_DATA_HUM,           // humidity
-//        APP_DAT_X,              // accel x pos
-//        APP_DAT_y,              // accel y pos
-//        APP_DAT_Z,              // accel z pos
-//        APP_DAT_BATTERY         // battery voltage
-//};
 
 // BLE Advertising forward declaration
 static void advertising_start(bool erase_bonds);
@@ -709,6 +694,8 @@ void process_all_data()
     m_adv_data.adv_data.p_data[payload_idx++] = m_buffer[10];
     m_adv_data.adv_data.p_data[payload_idx++] = m_buffer[11];
 
+    // TODO
+
 #ifdef DEBUG
 //    NRF_LOG_INFO("m_advertising.enc_advdata[0..30]:");
 //    NRF_LOG_RAW_HEXDUMP_INFO(m_advertising.enc_advdata, 31);
@@ -930,9 +917,9 @@ static void repeated_timer_handler_init()
         err_code = app_timer_stop(m_repeated_timer_init);
         APP_ERROR_CHECK(err_code);
 #ifdef USE_ADVERTISING
-#ifdef USE_CONN_ADV_INIT
+//#ifdef USE_CONN_ADV_INIT
         advertising_start(m_erase_bonds);
-#endif
+//#endif
 #ifdef USE_NONCONN_ADV_INIT
         err_code = sd_ble_gap_adv_start(m_adv_handle, APP_BLE_CONN_CFG_TAG);
         APP_ERROR_CHECK(err_code);
@@ -1107,6 +1094,16 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
                 m_cts_c.conn_handle = BLE_CONN_HANDLE_INVALID;
             }
 #endif
+#ifdef USE_ADVERTISING
+//#ifdef USE_CONN_ADV_INIT
+        advertising_start(false);
+//#endif
+#ifdef USE_NONCONN_ADV_INIT
+        err_code = sd_ble_gap_adv_start(m_adv_handle, APP_BLE_CONN_CFG_TAG);
+        APP_ERROR_CHECK(err_code);
+#endif
+#endif // USE_ADVERTISING
+
             break;
 
         case BLE_GAP_EVT_CONNECTED:
@@ -1821,7 +1818,7 @@ static void advertising_init()
 
     //Set manufacturing data
     manuf_data.company_identifier   = APP_COMPANY_IDENTIFIER;
-    manuf_data.data.size            = APP_BEACON_INFO_LENGTH;//ADV_ADDL_MANUF_DATA_LEN; //APP_BEACON_INFO_LENGTH;   // ADV_ADDL_MANUF_DATA_LEN
+    manuf_data.data.size            = APP_BEACON_INFO_LENGTH; //APP_BEACON_INFO_LENGTH;  ADV_ADDL_MANUF_DATA_LEN
     manuf_data.data.p_data          = init_manuf_data; //m_addl_adv_manuf_data;    
     advdata.name_type               = BLE_ADVDATA_NO_NAME;
     advdata.flags                   = flags;
@@ -2067,6 +2064,7 @@ static void pm_evt_handler(pm_evt_t const * p_evt)
 {
     ret_code_t err_code;
 
+     NRF_LOG_INFO("pm_evt_handler: evt_id = %d", p_evt->evt_id);
 #ifdef USE_CONNPARAMS_PEERMGR
     pm_handler_on_pm_evt(p_evt);
     pm_handler_flash_clean(p_evt);
@@ -2128,7 +2126,8 @@ static void pm_evt_handler(pm_evt_t const * p_evt)
 
         case PM_EVT_PEERS_DELETE_SUCCEEDED:
         {
-            advertising_start(false);
+            NRF_LOG_INFO("pm_evt_handler: PM_EVT_PEERS_DELETE_SUCCEEDED");
+//            advertising_start(false);
         } break;
 
         case PM_EVT_PEER_DATA_UPDATE_FAILED:
@@ -2332,11 +2331,11 @@ void assert_nrf_callback(uint16_t line_num, const uint8_t * p_file_name)
 #endif
 
 #ifdef USE_ADVERTISING
-#ifdef USE_NONCONN_ADV_INIT
-    non_connectable_adv_init();
-#elif  USE_CONN_ADV_INIT
-    connectable_adv_init();
-#endif
+//#ifdef USE_NONCONN_ADV_INIT
+//    non_connectable_adv_init();
+//#elif  USE_CONN_ADV_INIT
+//    connectable_adv_init();
+//#endif
     advertising_init();         // Initialize the advertising functionality
 #endif
 
