@@ -139,7 +139,7 @@
 #define USE_GAP_GATT
 #define USE_CONNPARAMS_PEERMGR
 #undef  USE_CONN_ADV_INIT
-#define USE_NONCONN_ADV_INIT
+#undef  USE_NONCONN_ADV_INIT
 #define USE_ADVERTISING
 #define USE_OUR_SERVICES
 #define USE_CTS
@@ -341,6 +341,9 @@ NRF_BLE_QWR_DEF(m_qwr);                                         /**< Context for
 #endif // USE_GAP_GATT
 //BLE_ADVERTISING_DEF(m_advertising);                             /**< Advertising module instance. */
 
+NRF_BLE_GQ_DEF(m_ble_gatt_queue,
+               NRF_SDH_BLE_CENTRAL_LINK_COUNT,
+               NRF_BLE_GQ_QUEUE_SIZE);
 
 // BLE Advertising variables and structs
 static ble_gap_adv_params_t m_adv_params;                                   /**< Parameters to be passed to the stack when starting advertising. */
@@ -1263,8 +1266,16 @@ static void db_disc_handler(ble_db_discovery_evt_t * p_evt)
  */
 static void db_discovery_init(void)
 {
-    ret_code_t err_code = ble_db_discovery_init(db_disc_handler);
+    ble_db_discovery_init_t db_init;
+
+    memset(&db_init, 0, sizeof(ble_db_discovery_init_t));
+
+    db_init.evt_handler  = db_disc_handler;
+    db_init.p_gatt_queue = &m_ble_gatt_queue;
+
+    ret_code_t err_code = ble_db_discovery_init(&db_init);
     APP_ERROR_CHECK(err_code);
+
 }
 #endif // USE_CTS
 
@@ -1301,8 +1312,8 @@ static void qwr_init(void)
  */
 static void dis_init(void)
 {
-    ret_code_t       err_code;
-    ble_dis_init_t     dis_init;
+    ret_code_t          err_code;
+    ble_dis_init_t      dis_init;
             
     memset(&dis_init, 0, sizeof(dis_init));
 
@@ -1632,15 +1643,16 @@ static void cts_init(void)
     ret_code_t       err_code;
     ble_cts_c_init_t   cts_init = {0};
 
-    cts_init.evt_handler   = on_cts_c_evt;
-    cts_init.error_handler = current_time_error_handler;
+    cts_init.evt_handler    = on_cts_c_evt;
+    cts_init.p_gatt_queue   = &m_ble_gatt_queue;
+    cts_init.error_handler  = current_time_error_handler;
 
     err_code               = ble_cts_c_init(&m_cts_c, &cts_init);
     APP_ERROR_CHECK(err_code);
 }
 #endif
 
-/**@brief Function for initializing CTS.
+/**@brief Function for initializing BAS.
  */
  static void bas_init(void)
 {
@@ -1769,7 +1781,7 @@ static void advertising_init()
     ret_code_t               err_code;
     ble_advdata_t            advdata;
     ble_advdata_manuf_data_t manuf_data;
-    uint8_t                  flags = BLE_GAP_ADV_FLAGS_LE_ONLY_LIMITED_DISC_MODE;
+    uint8_t                  flags = BLE_GAP_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE; //BLE_GAP_ADV_FLAGS_LE_ONLY_LIMITED_DISC_MODE;
 
     APP_ERROR_CHECK_BOOL(sizeof(flags) == ADV_FLAGS_LEN);  // Assert that these two values of the same.
 
@@ -1818,11 +1830,11 @@ static void advertising_init()
 // Initialize advertising parameters (used when starting advertising).
     memset(&m_adv_params, 0, sizeof(m_adv_params));
 
-    m_adv_params.properties.type    = BLE_GAP_ADV_TYPE_NONCONNECTABLE_NONSCANNABLE_UNDIRECTED;
+    m_adv_params.properties.type    = BLE_GAP_ADV_TYPE_CONNECTABLE_SCANNABLE_UNDIRECTED; //BLE_GAP_ADV_TYPE_NONCONNECTABLE_NONSCANNABLE_UNDIRECTED;
     m_adv_params.p_peer_addr        = NULL;     // Undirected advertisement.
     m_adv_params.filter_policy      = BLE_GAP_ADV_FP_ANY;
     m_adv_params.interval           = NON_CONNECTABLE_ADV_INTERVAL;
-    m_adv_params.duration           = 3000;        // Never time out. 0
+    m_adv_params.duration           = BLE_GAP_ADV_TIMEOUT_GENERAL_UNLIMITED;
 
     err_code = ble_advdata_encode(&advdata, m_adv_data.adv_data.p_data, &m_adv_data.adv_data.len);
     APP_ERROR_CHECK(err_code);
