@@ -271,6 +271,9 @@ ret_code_t offline_buffer_update(uint8_t *buffer);
 #define APP_DAT_Z               0xcc, 0xcc      /**< Acceleration Z Temperature data. */
 #define APP_DAT_BATTERY         0xFF, 0xFF      /**< Battery voltage data. */
 
+// TODO
+#define APP_BEACON_SCAN_RESP_LENGTH  0x10       /**< Total length of information in scan response set by the Beacon. */
+
 #if defined(USE_UICR_FOR_MAJ_MIN_VALUES)
 #define MAJ_VAL_OFFSET_IN_MANUF_DATA    0           /**< Position of the MSB of the Major Value in m_beacon_info array. */
 #define UICR_ADDRESS                    0x10001080  /**< Address of the UICR register  */
@@ -347,6 +350,7 @@ static ble_gap_adv_params_t m_adv_params;                                   /**<
 static uint8_t              m_addl_adv_manuf_data[APP_BEACON_INFO_LENGTH]; // ADV_ADDL_MANUF_DATA_LEN /**< Value of the additional manufacturer specific data that will be placed in air (initialized to all zeros). */
 static uint8_t              m_adv_handle = BLE_GAP_ADV_SET_HANDLE_NOT_SET;  /**< Advertising handle used to identify an advertising set. */
 static uint8_t              m_enc_advdata[BLE_GAP_ADV_SET_DATA_SIZE_MAX];   /**< Buffer for storing an encoded advertising set. */
+static uint8_t              m_enc_srdata[BLE_GAP_ADV_SET_DATA_SIZE_MAX];    /**< Buffer for storing an encoded scan response set. */
 static uint16_t             m_conn_handle = BLE_CONN_HANDLE_INVALID;        /**< Handle of the current connection. */
 
 // BLE Advertising forward declaration
@@ -362,8 +366,8 @@ static ble_gap_adv_data_t m_adv_data =
     },
     .scan_rsp_data =
     {
-        .p_data = NULL,
-        .len    = 0
+        .p_data = m_enc_srdata,
+        .len    = BLE_GAP_ADV_SET_DATA_SIZE_MAX
     }
 };
 
@@ -693,8 +697,6 @@ void process_all_data()
     m_adv_data.adv_data.p_data[payload_idx++] = m_buffer[ 9];
     m_adv_data.adv_data.p_data[payload_idx++] = m_buffer[10];
     m_adv_data.adv_data.p_data[payload_idx++] = m_buffer[11];
-
-    // TODO
 
 #ifdef DEBUG
 //    NRF_LOG_INFO("m_advertising.enc_advdata[0..30]:");
@@ -1776,8 +1778,8 @@ static void services_init(void)
 static void advertising_init()
 {
     ret_code_t               err_code;
-    ble_advdata_t            advdata;
-    ble_advdata_manuf_data_t manuf_data;
+    ble_advdata_t            advdata, srdata;
+    ble_advdata_manuf_data_t manuf_data, manuf_data_response;
     uint8_t                  flags = BLE_GAP_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE; //BLE_GAP_ADV_FLAGS_LE_ONLY_LIMITED_DISC_MODE;
 
     APP_ERROR_CHECK_BOOL(sizeof(flags) == ADV_FLAGS_LEN);  // Assert that these two values of the same.
@@ -1824,7 +1826,7 @@ static void advertising_init()
     advdata.flags                   = flags;
     advdata.p_manuf_specific_data   = &manuf_data;
 
-// Initialize advertising parameters (used when starting advertising).
+    // Initialize advertising parameters (used when starting advertising).
     memset(&m_adv_params, 0, sizeof(m_adv_params));
 
     m_adv_params.properties.type    = BLE_GAP_ADV_TYPE_CONNECTABLE_SCANNABLE_UNDIRECTED; //BLE_GAP_ADV_TYPE_NONCONNECTABLE_NONSCANNABLE_UNDIRECTED;
@@ -1836,41 +1838,23 @@ static void advertising_init()
     err_code = ble_advdata_encode(&advdata, m_adv_data.adv_data.p_data, &m_adv_data.adv_data.len);
     APP_ERROR_CHECK(err_code);
 
-//    err_code = sd_ble_gap_adv_set_configure(&m_adv_handle, NULL, &m_adv_params);
+     // Build and set scan response data and manufacturer specific data packet
+    memset(&srdata, 0, sizeof(srdata));
+    uint8_t data_response[]                 = "MyTherResp";
+    manuf_data_response.company_identifier  = APP_COMPANY_IDENTIFIER;
+    manuf_data_response.data.p_data         = data_response;
+    manuf_data_response.data.size           = sizeof(data_response);
+    srdata.name_type                        = BLE_ADVDATA_FULL_NAME;
+    srdata.p_manuf_specific_data            = &manuf_data_response;
+//    srdata.uuids_complete.uuid_cnt     = sizeof(m_adv_uuids) / sizeof(m_adv_uuids[0]);
+//    srdata.uuids_complete.p_uuids      = m_adv_uuids;
+
+    err_code = ble_advdata_encode(&srdata, m_adv_data.scan_rsp_data.p_data, &m_adv_data.scan_rsp_data.len);
+    APP_ERROR_CHECK(err_code);
+
     err_code = sd_ble_gap_adv_set_configure(&m_adv_handle, &m_adv_data, &m_adv_params);
     APP_ERROR_CHECK(err_code);
 
-
-    // Build and set advertising data.
-//    init.advdata.name_type                  = BLE_ADVDATA_NO_NAME;  // BLE_ADVDATA_FULL_NAME
-//    init.advdata.flags                      = BLE_GAP_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE;
-//    init.advdata.p_manuf_specific_data      = &manuf_specific_data;
-//    init.advdata.uuids_complete.uuid_cnt    = sizeof(m_adv_uuids) / sizeof(m_adv_uuids[0]);
-//    init.advdata.uuids_complete.p_uuids     = m_adv_uuids;
-//
-//    int8_t tx_power                         = 0; // set TX power for advertising
-//    init.advdata.p_tx_power_level           = &tx_power;
-//
-//    // TODO work on scan response. Necessary?
-//     // Build and set scan response data and manufacturer specific data packet
-////    ble_advdata_manuf_data_t                manuf_data_response;
-////    uint8_t data_response[]                 = "Many_bytes_of_data";
-////    manuf_data_response.company_identifier  = 0x0059;
-////    manuf_data_response.data.p_data         = data_response;
-////    manuf_data_response.data.size           = sizeof(data_response);
-////    init.srdata.name_type                   = BLE_ADVDATA_NO_NAME; // BLE_ADVDATA_NO_NAME; BLE_ADVDATA_FULL_NAME;
-////    init.srdata.p_manuf_specific_data       = &manuf_data_response;
-////    init.srdata.uuids_complete.uuid_cnt     = sizeof(m_adv_uuids) / sizeof(m_adv_uuids[0]);
-////    init.srdata.uuids_complete.p_uuids      = m_adv_uuids;
-//
-//    // Set advertising modes and intervals
-//    init.config.ble_adv_fast_enabled    = false;    // currently only use slow
-//    init.config.ble_adv_fast_interval   = APP_FAST_ADV_INTERVAL;
-//    init.config.ble_adv_fast_timeout    = APP_ADV_FAST_DURATION;
-//    init.config.ble_adv_slow_enabled    = true;
-//    init.config.ble_adv_slow_interval   = APP_SLOW_ADV_INTERVAL;
-//    init.config.ble_adv_slow_timeout    = APP_ADV_SLOW_DURATION;
-//
 //    // Set event handler that will be called upon advertising events
 //    init.evt_handler = on_adv_evt;
 //
