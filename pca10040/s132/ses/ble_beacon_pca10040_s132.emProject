@@ -105,6 +105,7 @@
       <file file_name="../../../our_service.c" />
       <file file_name="../../../nrf_calendar.c" />
       <file file_name="../../../our_service_db.c" />
+      <file file_name="../../../led_indication.c" />
     </folder>
     <folder Name="nRF_Segger_RTT">
       <file file_name="../../../../../../external/segger_rtt/SEGGER_RTT.c" />

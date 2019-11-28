@@ -66,6 +66,7 @@
 #include "nrfx_saadc.h"
 #include "nrf_drv_ppi.h"
 #include "bsp.h"
+#include "bsp_config.h"
 #include "app_error.h"
 #include "nrf_soc.h"
 #include "nrf_sdh.h"
@@ -97,6 +98,7 @@
 #include "our_service.h"
 #include "our_service_db.h"
 #include "nrf_calendar.h"
+#include "led_indication.h"
 #include "compiler_abstraction.h"
 
 #include "nrf_log.h"
@@ -1948,12 +1950,15 @@ static void advertising_reconfig(bool conn_scan_advertising)
     {
         connectable_adv_init();  
         include_scan_response_in_adv(true);
-
+        led_indication_start(LED_INDICATION_2);
+//        bsp_indication_set(BSP_INDICATE_ADVERTISING_SLOW);    // TODO just for testing
     } 
     else 
     {
         non_connectable_adv_init();
         include_scan_response_in_adv(false);
+//        bsp_indication_set(BSP_INDICATE_ADVERTISING_DIRECTED);       // TODO just for testing
+        led_indication_start(LED_INDICATION_1);
     }
     
     err_code = sd_ble_gap_adv_set_configure(&m_adv_handle, &m_adv_data, &m_adv_params);
@@ -2287,7 +2292,8 @@ void assert_nrf_callback(uint16_t line_num, const uint8_t * p_file_name)
     bsp_event_to_button_action_assign(0, BSP_BUTTON_ACTION_RELEASE,  BSP_EVENT_KEY_0_RELEASED);
     bsp_event_to_button_action_assign(0, BSP_BUTTON_ACTION_LONG_PUSH,  BSP_EVENT_KEY_0_LONG);
     bsp_event_to_button_action_assign(1, BSP_BUTTON_ACTION_RELEASE,  BSP_EVENT_KEY_1_RELEASED);
-    bsp_event_to_button_action_assign(1, BSP_BUTTON_ACTION_LONG_PUSH,  BSP_EVENT_KEY_1_LONG);    
+    bsp_event_to_button_action_assign(1, BSP_BUTTON_ACTION_LONG_PUSH,  BSP_EVENT_KEY_1_LONG);
+    led_indication_init();
 #endif // USE_BSP
 
 #ifdef USE_TWI
