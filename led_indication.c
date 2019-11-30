@@ -18,7 +18,8 @@ static uint16_t m_led_indication_prog[LED_NUM_INDICATIONS][LED_INDCATION_MAX_STE
     {
         {500, 100, 200, 400,   0,   0,   0,   0,   0,   0},  // LED_INDICATION_1 = .-
         {500, 100, 200, 100, 200, 400,   0,   0,   0,   0},  // LED_INDICATION_2 = ..-
-        {500, 100, 200, 100, 200, 100, 200, 400,   0,   0}   // LED_INDICATION_3 = ...-
+        {500, 400,   0,   0,   0,   0,   0,   0,   0,   0},  // LED_INDICATION_3 = -
+        {500, 400, 200, 400, 200, 400,   0,   0,   0,   0}   // LED_INDICATION_4 = ---
     };
 
  // APP_TIMER_TICKS(MS)

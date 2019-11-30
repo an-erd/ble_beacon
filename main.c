@@ -152,13 +152,15 @@
 APP_TIMER_DEF(m_repeated_timer_init);                       /**< Handler for repeated timer for init process (sensor, offline buffer, ...). */
 APP_TIMER_DEF(m_repeated_timer_read_saadc);                 /**< Handler for repeated timer used to read battery level by SAADC. */
 APP_TIMER_DEF(m_repeated_timer_read_sensor);                /**< Handler for repeated timer used to read TWI sensors. */
-APP_TIMER_DEF(m_singleshot_timer_read_sensor_step);         /**< Handler for repeated timer for TWI sensor, steps. */
+APP_TIMER_DEF(m_singleshot_timer_read_sensor_step);         /**< Handler for single shot timer for TWI sensor, steps. */
 APP_TIMER_DEF(m_repeated_timer_update_offlinebuffer);       /**< Handler for repeated timer to update offline buffer. */
+APP_TIMER_DEF(m_singleshot_timer_delete_bonds);             /**< Handler for single shot timer for initiating delete bonds. */
 #define APP_TIMER_TICKS_INIT                    APP_TIMER_TICKS(200)
 #define APP_TIMER_TICKS_SAADC                   APP_TIMER_TICKS(60000)      // every 1 min
 #define APP_TIMER_TICKS_SENSOR                  APP_TIMER_TICKS(15000)      // every 15 secs
 #define APP_TIMER_TICKS_UPDATE_OFFLINEBUFFER    APP_TIMER_TICKS(300000)     // every 5 min, overall with interval every 15 min
 #define OFFLINE_BUFFER_SAMPLE_INTERVAL          3                           // in multiples of APP_TIMER_TICKS_UPDATE_OFFLINEBUFFER
+#define APP_TIMER_TICKS_WAIT_DELETE_BONDS       APP_TIMER_TICKS(5000)       // wait 5 secs
 
 // SAADC defines
 #define SAADC_CALIBRATION_INTERVAL  5       // SAADC calibration interval relative to NRF_DRV_SAADC_EVT_DONE event
@@ -220,12 +222,12 @@ ret_code_t offline_buffer_update(uint8_t *buffer);
 #define APP_BLE_CONN_CFG_TAG            1                                   /**< A tag identifying the SoftDevice BLE configuration. */
 #define NON_CONNECTABLE_ADV_INTERVAL    MSEC_TO_UNITS(1000, UNIT_0_625_MS)  /**< The advertising interval for non-connectable advertisement (100 ms). This value can vary between 100ms to 10.24s). */
 #define CONNECTABLE_ADV_INTERVAL        MSEC_TO_UNITS(1000, UNIT_0_625_MS)  /**< The advertising interval for non-connectable advertisement (100 ms). This value can vary between 100ms to 10.24s). */
-#define MIN_CONN_INTERVAL               MSEC_TO_UNITS(100, UNIT_1_25_MS)    /**< Minimum acceptable connection interval (0.1 seconds). */
+#define MIN_CONN_INTERVAL               MSEC_TO_UNITS(200, UNIT_1_25_MS)    /**< Minimum acceptable connection interval (was: 0.1 seconds). */
 #define MAX_CONN_INTERVAL               MSEC_TO_UNITS(200, UNIT_1_25_MS)    /**< Maximum acceptable connection interval (0.2 second). */
 #define SLAVE_LATENCY                   0                                   /**< Slave latency. */
 #define CONN_SUP_TIMEOUT                MSEC_TO_UNITS(4000, UNIT_10_MS)     /**< Connection supervisory timeout (4 seconds). */
 
-#define FIRST_CONN_PARAMS_UPDATE_DELAY  APP_TIMER_TICKS(5000)               /**< Time from initiating event (connect or start of notification) to first time sd_ble_gap_conn_param_update is called (5 seconds). */
+#define FIRST_CONN_PARAMS_UPDATE_DELAY  APP_TIMER_TICKS(2000)               /**< Time from initiating event (connect or start of notification) to first time sd_ble_gap_conn_param_update is called (was: 5 seconds). */
 #define NEXT_CONN_PARAMS_UPDATE_DELAY   APP_TIMER_TICKS(30000)              /**< Time between each call to sd_ble_gap_conn_param_update after the first call (30 seconds). */
 #define MAX_CONN_PARAMS_UPDATE_COUNT    3                                   /**< Number of attempts before giving up the connection parameter negotiation. */
 
@@ -261,12 +263,20 @@ ret_code_t offline_buffer_update(uint8_t *buffer);
 #define PAYLOAD_OFFSET_BATTERY_INFO     (PAYLOAD_OFFSET_IN_BEACON_INFO_ADV + 10)  /**< Position to write the battery voltage payload to */									
 
 // BLE Services
-#define DEVICE_NAME                     "Beac8"                 /**< Name of device. Will be included in the advertising data. */
+#define DEVICE_NAME                     "Beac8"     /**< Name of device. Will be included in the advertising data. */
 static ble_uuid_t m_adv_uuids[] = 
 {
-    { BLE_UUID_OUR_SERVICE, BLE_UUID_TYPE_BLE  },               /**< 16-bit UUID for our service. */
+    { BLE_UUID_OUR_SERVICE, BLE_UUID_TYPE_BLE  },   /**< 16-bit UUID for our service. */
 };
 
+// BLE Advertising Modes
+typedef enum
+{
+    APP_ADV_NONE,                                   /**< The device will not advertise at all. */
+    APP_ADV_NONSCAN_NONCONN,                        /**< The device will advertise in non-scannable, non-connectable mode. */
+    APP_ADV_SCAN_CONN,                              /**< The device will advertise in scannable, connectable mode. */
+    APP_ADV_MAXNUM
+} app_advertising_mode_t;
 
 // Peer Manager variables 
 #ifdef USE_CONNPARAMS_PEERMGR
@@ -309,7 +319,7 @@ BLE_DB_DISCOVERY_DEF(m_ble_db_discovery);                       /**< DB discover
 #endif
 
 // Battery Service 
-BLE_BAS_DEF(m_bas);                                                 /**< Structure used to identify the battery service. */
+BLE_BAS_DEF(m_bas);                                             /**< Structure used to identify the battery service. */
 
 #ifdef USE_GAP_GATT
 NRF_BLE_GATT_DEF(m_gatt);                                       /**< GATT module instance. */
@@ -324,13 +334,13 @@ static uint8_t  m_addl_adv_manuf_data[APP_BEACON_INFO_LENGTH];  /**< Value of th
 static uint8_t  m_adv_handle = BLE_GAP_ADV_SET_HANDLE_NOT_SET;  /**< Advertising handle used to identify an advertising set. */
 static uint8_t  m_enc_advdata[BLE_GAP_ADV_SET_DATA_SIZE_MAX];   /**< Buffer for storing an encoded advertising set. */
 static uint8_t  m_enc_srdata[BLE_GAP_ADV_SET_DATA_SIZE_MAX];    /**< Buffer for storing an encoded scan response set. */
-static bool     m_adv_scan_response = false;                    /**< Advertising with scan response (in connectable advertising mode) is used. */
+static app_advertising_mode_t m_adv_mode = APP_ADV_NONE;        /**< Advertising mode used, e.g., non-scan/non-conn, scan/conn, none). */
 static uint16_t m_conn_handle = BLE_CONN_HANDLE_INVALID;        /**< Handle of the current connection. */
 static bool     m_ble_adv_on_disconnect_disabled = false;       /**< Disable advertising after disconnect, used only for DFU update procedure. */
 
 // BLE Advertising forward declaration
 static void advertising_start(bool erase_bonds);
-static void advertising_reconfig(bool conn_scan_advertising);
+static void advertising_reconfig(app_advertising_mode_t adv_mode);
 
 /**@brief Struct that contains pointers to the encoded advertising data. */
 static ble_gap_adv_data_t m_adv_data =
@@ -451,8 +461,9 @@ static void bsp_event_handler(bsp_event_t event)
 
     case BSP_EVENT_KEY_1: // button on jig pressed
         NRF_LOG_DEBUG("button BSP_EVENT_KEY_1");
-        advertising_reconfig(!m_adv_scan_response);
-        NRF_LOG_DEBUG("set m_adv_scan_response %d", m_adv_scan_response);
+        m_adv_mode = (m_adv_mode + 1) % APP_ADV_MAXNUM;
+        advertising_reconfig(m_adv_mode);
+        NRF_LOG_DEBUG("set m_adv_scan_response %d", m_adv_mode);
         break;
     
     case BSP_EVENT_KEY_1_RELEASED: // button on jig released
@@ -461,6 +472,10 @@ static void bsp_event_handler(bsp_event_t event)
     
     case BSP_EVENT_KEY_1_LONG: // button on jig long pressed
         NRF_LOG_DEBUG("button BSP_EVENT_KEY_1_LONG"); 
+
+        err_code = app_timer_start(m_singleshot_timer_delete_bonds, APP_TIMER_TICKS_WAIT_DELETE_BONDS, NULL); 
+        APP_ERROR_CHECK(err_code);
+
         break;
 
     case BSP_EVENT_WHITELIST_OFF:
@@ -845,6 +860,28 @@ static void repeated_timer_handler_update_offlinebuffer()
 #endif // USE_OFFLINE_FUNCTION
 }
 
+static void singleshot_timer_handler_delete_bonds()
+{
+    static uint8_t step = 0;
+
+    ret_code_t err_code;
+
+    switch(step) {
+    case 0:
+        advertising_reconfig(APP_ADV_NONE);
+        step++;
+        
+        err_code = app_timer_start(m_singleshot_timer_delete_bonds, APP_TIMER_TICKS(2000), NULL); 
+        APP_ERROR_CHECK(err_code);
+        break;
+    case 1:
+        led_indication_start(LED_INDICATION_4);
+        delete_bonds();
+        step = 0;
+        break;
+    }
+}
+
 static void repeated_timer_handler_init()
 {
     ret_code_t err_code;
@@ -936,6 +973,11 @@ static void timers_create()
     err_code = app_timer_create(&m_repeated_timer_update_offlinebuffer,
                                 APP_TIMER_MODE_REPEATED,
                                 repeated_timer_handler_update_offlinebuffer);
+    APP_ERROR_CHECK(err_code);
+
+    err_code = app_timer_create(&m_singleshot_timer_delete_bonds,
+                                APP_TIMER_MODE_SINGLE_SHOT,
+                                singleshot_timer_handler_delete_bonds);
     APP_ERROR_CHECK(err_code);
 }
 
@@ -1224,6 +1266,7 @@ static void gatt_init(void)
  */
 static void db_disc_handler(ble_db_discovery_evt_t * p_evt)
 {
+    NRF_LOG_DEBUG("db_disc_handler handler called with event 0x%x", p_evt->evt_type);
     ble_cts_c_on_db_disc_evt(&m_cts_c, p_evt);
 }
 
@@ -1784,13 +1827,15 @@ static void include_scan_response_in_adv(bool include)
     if (!include){
         ASSERT(m_adv_params.properties.type  == BLE_GAP_ADV_TYPE_NONCONNECTABLE_NONSCANNABLE_UNDIRECTED);
         
-        m_adv_scan_response = false;
+        // TODO
+        //m_adv_mode = APP_ADV_NONSCAN_NONCONN;
         m_adv_data.scan_rsp_data.len = 0;
         m_adv_data.scan_rsp_data.p_data = NULL;        
     } else {
         ASSERT(m_adv_params.properties.type  == BLE_GAP_ADV_TYPE_CONNECTABLE_SCANNABLE_UNDIRECTED);
 
-        m_adv_scan_response = true;
+        // TODO
+        //m_adv_mode = APP_ADV_SCAN_CONN;
         m_adv_data.scan_rsp_data.p_data = m_enc_srdata;
         m_adv_data.scan_rsp_data.len    = BLE_GAP_ADV_SET_DATA_SIZE_MAX;
 
@@ -1870,9 +1915,11 @@ static void advertising_init()
 
     // Initialize advertising parameters (used when starting advertising).
 #ifdef USE_CONN_ADV_INIT
-    connectable_adv_init();    
+    connectable_adv_init();  
+    m_adv_mode = APP_ADV_SCAN_CONN;
 #else 
     non_connectable_adv_init();
+    m_adv_mode = APP_ADV_NONSCAN_NONCONN;
 #endif
 
     err_code = ble_advdata_encode(&advdata, m_adv_data.adv_data.p_data, &m_adv_data.adv_data.len);
@@ -1886,21 +1933,6 @@ static void advertising_init()
 
     err_code = sd_ble_gap_adv_set_configure(&m_adv_handle, &m_adv_data, &m_adv_params);
     APP_ERROR_CHECK(err_code);
-
-//#ifdef USE_CONN_ADV_INIT
-//    connectable_adv_init();    
-//#else 
-//    non_connectable_adv_init();
-//#endif
-
-//    // Set event handler that will be called upon advertising events
-//    init.evt_handler = on_adv_evt;
-//
-//    // ble_app
-//    err_code = ble_advertising_init(&m_advertising, &init);
-//    APP_ERROR_CHECK(err_code);
-//
-//    ble_advertising_conn_cfg_tag_set(&m_advertising, APP_BLE_CONN_CFG_TAG);
 }
 
 /**@brief Function for starting advertising.
@@ -1910,7 +1942,7 @@ static void advertising_start(bool erase_bonds)
     if (erase_bonds == true)
     {
         delete_bonds();
-        // Advertising is started by PM_EVT_PEERS_DELETED_SUCEEDED event
+        // Advertising is started by PM_EVT_PEERS_DELETE_SUCCEEDED event
     }
     else
     {
@@ -1939,32 +1971,42 @@ static void advertising_start(bool erase_bonds)
 }
 
 
-static void advertising_reconfig(bool conn_scan_advertising)
+static void advertising_reconfig(app_advertising_mode_t adv_mode)
 {
     ret_code_t err_code;
 
     err_code = sd_ble_gap_adv_stop(m_adv_handle);
-    APP_ERROR_CHECK(err_code);
-
-    if(conn_scan_advertising)
+    if( (err_code != NRF_SUCCESS) && (err_code != NRF_ERROR_INVALID_STATE) )
     {
+        APP_ERROR_CHECK(err_code);
+    }
+
+    switch(adv_mode){
+    case APP_ADV_NONE:
+        led_indication_start(LED_INDICATION_3);
+        break;
+    case APP_ADV_NONSCAN_NONCONN:
+        non_connectable_adv_init();
+        include_scan_response_in_adv(false);
+        led_indication_start(LED_INDICATION_1);
+        break;
+    case APP_ADV_SCAN_CONN:
         connectable_adv_init();  
         include_scan_response_in_adv(true);
         led_indication_start(LED_INDICATION_2);
-//        bsp_indication_set(BSP_INDICATE_ADVERTISING_SLOW);    // TODO just for testing
-    } 
-    else 
-    {
-        non_connectable_adv_init();
-        include_scan_response_in_adv(false);
-//        bsp_indication_set(BSP_INDICATE_ADVERTISING_DIRECTED);       // TODO just for testing
-        led_indication_start(LED_INDICATION_1);
+        break;
+    default:
+        break;
     }
-    
+
     err_code = sd_ble_gap_adv_set_configure(&m_adv_handle, &m_adv_data, &m_adv_params);
     APP_ERROR_CHECK(err_code);
 
-    advertising_start(false);
+    m_adv_mode = adv_mode;
+    if(adv_mode != APP_ADV_NONE)
+    {
+        advertising_start(false);
+    }
 }
 
 
@@ -2289,10 +2331,10 @@ void assert_nrf_callback(uint16_t line_num, const uint8_t * p_file_name)
     
 #ifdef USE_BSP
     bsp_configuration();        // Initialize BSP (leds and buttons)
-    bsp_event_to_button_action_assign(0, BSP_BUTTON_ACTION_RELEASE,  BSP_EVENT_KEY_0_RELEASED);
-    bsp_event_to_button_action_assign(0, BSP_BUTTON_ACTION_LONG_PUSH,  BSP_EVENT_KEY_0_LONG);
-    bsp_event_to_button_action_assign(1, BSP_BUTTON_ACTION_RELEASE,  BSP_EVENT_KEY_1_RELEASED);
-    bsp_event_to_button_action_assign(1, BSP_BUTTON_ACTION_LONG_PUSH,  BSP_EVENT_KEY_1_LONG);
+    bsp_event_to_button_action_assign(0, BSP_BUTTON_ACTION_RELEASE,     BSP_EVENT_KEY_0_RELEASED);
+    bsp_event_to_button_action_assign(0, BSP_BUTTON_ACTION_LONG_PUSH,   BSP_EVENT_KEY_0_LONG);
+    bsp_event_to_button_action_assign(1, BSP_BUTTON_ACTION_RELEASE,     BSP_EVENT_KEY_1_RELEASED);
+    bsp_event_to_button_action_assign(1, BSP_BUTTON_ACTION_LONG_PUSH,   BSP_EVENT_KEY_1_LONG);
     led_indication_init();
 #endif // USE_BSP
 

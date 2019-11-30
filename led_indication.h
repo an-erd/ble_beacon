@@ -12,10 +12,11 @@
 
 // OWN LED INDICATION
 #define LED_NO_INDICATION           255
-#define LED_INDICATION_1            0
-#define LED_INDICATION_2            1
-#define LED_INDICATION_3            2
-#define LED_NUM_INDICATIONS         3
+#define LED_INDICATION_1            0   // non-scan non-conn advertising
+#define LED_INDICATION_2            1   // scan, conn advertising
+#define LED_INDICATION_3            2   // no advertising, only offline buffer
+#define LED_INDICATION_4            3   // delete bonds, go to standard mode (defined by USE_CONN_ADV_INIT)
+#define LED_NUM_INDICATIONS         4
 #define LED_INDCATION_MAX_STEPS     10
 
 // Initializes the led indication library. Run this before calling any other functions. 
