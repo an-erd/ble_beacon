@@ -272,7 +272,8 @@ static ble_uuid_t m_adv_uuids[] =
 // BLE Advertising Modes
 typedef enum
 {
-    APP_ADV_NONE,                                   /**< The device will not advertise at all. */
+    APP_ADV_NONE_SENSOR_NONE = 0,                   /**< The device will not advertise and not get sensor values. */
+    APP_ADV_NONE,                                   /**< The device will not advertise at all, but get sensor values. */
     APP_ADV_NONSCAN_NONCONN,                        /**< The device will advertise in non-scannable, non-connectable mode. */
     APP_ADV_SCAN_CONN,                              /**< The device will advertise in scannable, connectable mode. */
     APP_ADV_MAXNUM
@@ -807,6 +808,11 @@ static void read_all_sensors(bool restart)
 
 static void repeated_timer_handler_read_saadc()
 {
+    if(m_adv_mode == APP_ADV_NONE_SENSOR_NONE)
+    {
+        return;
+    }
+
 #ifdef USE_SENSOR_SAADC
     if(!m_saadc_initialized) {
         saadc_init();
@@ -820,6 +826,11 @@ static void repeated_timer_handler_read_saadc()
 
 static void repeated_timer_handler_read_sensors()
 {
+    if(m_adv_mode == APP_ADV_NONE_SENSOR_NONE)
+    {
+        return;
+    }
+
     // Trigger the sensor retrieval task from the beginning
     read_all_sensors(true);	// init w/step0
 }
@@ -875,7 +886,7 @@ static void singleshot_timer_handler_delete_bonds()
         APP_ERROR_CHECK(err_code);
         break;
     case 1:
-        led_indication_start(LED_INDICATION_4);
+        led_indication_start(LED_INDICATION_5);
         delete_bonds();
         step = 0;
         break;
@@ -1982,18 +1993,21 @@ static void advertising_reconfig(app_advertising_mode_t adv_mode)
     }
 
     switch(adv_mode){
+    case APP_ADV_NONE_SENSOR_NONE:
+        led_indication_start(LED_INDICATION_1);
+        break;
     case APP_ADV_NONE:
-        led_indication_start(LED_INDICATION_3);
+        led_indication_start(LED_INDICATION_2);
         break;
     case APP_ADV_NONSCAN_NONCONN:
         non_connectable_adv_init();
         include_scan_response_in_adv(false);
-        led_indication_start(LED_INDICATION_1);
+        led_indication_start(LED_INDICATION_3);
         break;
     case APP_ADV_SCAN_CONN:
         connectable_adv_init();  
         include_scan_response_in_adv(true);
-        led_indication_start(LED_INDICATION_2);
+        led_indication_start(LED_INDICATION_4);
         break;
     default:
         break;
@@ -2003,7 +2017,7 @@ static void advertising_reconfig(app_advertising_mode_t adv_mode)
     APP_ERROR_CHECK(err_code);
 
     m_adv_mode = adv_mode;
-    if(adv_mode != APP_ADV_NONE)
+    if( (adv_mode != APP_ADV_NONE) && (adv_mode != APP_ADV_NONE_SENSOR_NONE) )
     {
         advertising_start(false);
     }

@@ -16,13 +16,12 @@ static uint8_t  m_led_current_status    = 0;
 static uint16_t m_led_indication_prog[LED_NUM_INDICATIONS][LED_INDCATION_MAX_STEPS] = 
     // Steps: time in ms for (0) OFF - (1) ON - OFF - ON - OFF - ON - OFF - (7) ON
     {
-        {500, 100, 200, 400,   0,   0,   0,   0,   0,   0},  // LED_INDICATION_1 = .-
-        {500, 100, 200, 100, 200, 400,   0,   0,   0,   0},  // LED_INDICATION_2 = ..-
-        {500, 400,   0,   0,   0,   0,   0,   0,   0,   0},  // LED_INDICATION_3 = -
-        {500, 400, 200, 400, 200, 400,   0,   0,   0,   0}   // LED_INDICATION_4 = ---
+        {500, 400,   0,   0,   0,   0,   0,   0,   0,   0},  // LED_INDICATION_1 = -
+        {500, 100, 200, 400,   0,   0,   0,   0,   0,   0},  // LED_INDICATION_2 = .-
+        {500, 100, 200, 100, 200, 400,   0,   0,   0,   0},  // LED_INDICATION_3 = ..-
+        {500, 100, 200, 100, 200, 100, 200, 400,   0,   0},  // LED_INDICATION_4 = ...-
+        {500, 400, 200, 400, 200, 400,   0,   0,   0,   0}   // LED_INDICATION_5 = ---
     };
-
- // APP_TIMER_TICKS(MS)
 
 
 
