@@ -154,13 +154,15 @@ APP_TIMER_DEF(m_repeated_timer_read_saadc);                 /**< Handler for rep
 APP_TIMER_DEF(m_repeated_timer_read_sensor);                /**< Handler for repeated timer used to read TWI sensors. */
 APP_TIMER_DEF(m_singleshot_timer_read_sensor_step);         /**< Handler for single shot timer for TWI sensor, steps. */
 APP_TIMER_DEF(m_repeated_timer_update_offlinebuffer);       /**< Handler for repeated timer to update offline buffer. */
+APP_TIMER_DEF(m_singleshot_timer_config_mode);              /**< Handler for single shot timer for config mode (after long press for X secs). */
 APP_TIMER_DEF(m_singleshot_timer_delete_bonds);             /**< Handler for single shot timer for initiating delete bonds. */
 #define APP_TIMER_TICKS_INIT                    APP_TIMER_TICKS(200)
 #define APP_TIMER_TICKS_SAADC                   APP_TIMER_TICKS(60000)      // every 1 min
 #define APP_TIMER_TICKS_SENSOR                  APP_TIMER_TICKS(15000)      // every 15 secs
 #define APP_TIMER_TICKS_UPDATE_OFFLINEBUFFER    APP_TIMER_TICKS(300000)     // every 5 min, overall with interval every 15 min
 #define OFFLINE_BUFFER_SAMPLE_INTERVAL          3                           // in multiples of APP_TIMER_TICKS_UPDATE_OFFLINEBUFFER
-#define APP_TIMER_TICKS_WAIT_DELETE_BONDS       APP_TIMER_TICKS(5000)       // wait 5 secs
+#define APP_TIMER_TICKS_CONFIG_MODE             APP_TIMER_TICKS(7000)       // inactivity timer for config mode
+#define APP_TIMER_TICKS_WAIT_DELETE_BONDS       APP_TIMER_TICKS(3000)       // wait 5 secs
 
 // SAADC defines
 #define SAADC_CALIBRATION_INTERVAL  5       // SAADC calibration interval relative to NRF_DRV_SAADC_EVT_DONE event
@@ -203,6 +205,9 @@ static const nrf_drv_twi_t  m_twi = NRF_DRV_TWI_INSTANCE(TWI_INSTANCE_ID);
 #else
     #error "Please choose an output pin"
 #endif
+
+// Button mode
+static bool m_button_config_mode = false;
 
 // Sensor defines
 #define BUFFER_SIZE             21  // read buffer from sensors: temp+hum (6=2*msb,lsb,crc) + xyz (6=3*lsb,msb) + INT_REL (5) + INS1 (4)
@@ -462,9 +467,22 @@ static void bsp_event_handler(bsp_event_t event)
 
     case BSP_EVENT_KEY_1: // button on jig pressed
         NRF_LOG_DEBUG("button BSP_EVENT_KEY_1");
-        m_adv_mode = (m_adv_mode + 1) % APP_ADV_MAXNUM;
-        advertising_reconfig(m_adv_mode);
-        NRF_LOG_DEBUG("set m_adv_scan_response %d", m_adv_mode);
+
+        if(m_button_config_mode)
+        {
+            // restart config mode timer
+            err_code = app_timer_stop(m_singleshot_timer_config_mode);
+            APP_ERROR_CHECK(err_code);
+
+            err_code = app_timer_start(m_singleshot_timer_config_mode, APP_TIMER_TICKS_CONFIG_MODE, NULL); 
+            APP_ERROR_CHECK(err_code);
+
+
+            m_adv_mode = (m_adv_mode + 1) % APP_ADV_MAXNUM;
+            advertising_reconfig(m_adv_mode);
+            NRF_LOG_DEBUG("set m_adv_scan_response %d", m_adv_mode);
+        }
+
         break;
     
     case BSP_EVENT_KEY_1_RELEASED: // button on jig released
@@ -474,8 +492,19 @@ static void bsp_event_handler(bsp_event_t event)
     case BSP_EVENT_KEY_1_LONG: // button on jig long pressed
         NRF_LOG_DEBUG("button BSP_EVENT_KEY_1_LONG"); 
 
-        err_code = app_timer_start(m_singleshot_timer_delete_bonds, APP_TIMER_TICKS_WAIT_DELETE_BONDS, NULL); 
-        APP_ERROR_CHECK(err_code);
+        if(!m_button_config_mode)
+        {
+            m_button_config_mode = true;
+            
+            err_code = app_timer_start(m_singleshot_timer_config_mode, APP_TIMER_TICKS_CONFIG_MODE, NULL); 
+            APP_ERROR_CHECK(err_code);
+
+            led_indication_start(LED_INDICATION_6);
+        } 
+        else {
+            err_code = app_timer_start(m_singleshot_timer_delete_bonds, APP_TIMER_TICKS_WAIT_DELETE_BONDS, NULL); 
+            APP_ERROR_CHECK(err_code);
+        }
 
         break;
 
@@ -871,6 +900,13 @@ static void repeated_timer_handler_update_offlinebuffer()
 #endif // USE_OFFLINE_FUNCTION
 }
 
+static void singleshot_timer_handler_config_mode()
+{
+    m_button_config_mode = false;
+    led_indication_start(LED_INDICATION_7);
+}
+
+
 static void singleshot_timer_handler_delete_bonds()
 {
     static uint8_t step = 0;
@@ -986,6 +1022,11 @@ static void timers_create()
                                 repeated_timer_handler_update_offlinebuffer);
     APP_ERROR_CHECK(err_code);
 
+    err_code = app_timer_create(&m_singleshot_timer_config_mode,
+                                APP_TIMER_MODE_SINGLE_SHOT,
+                                singleshot_timer_handler_config_mode);
+    APP_ERROR_CHECK(err_code);
+
     err_code = app_timer_create(&m_singleshot_timer_delete_bonds,
                                 APP_TIMER_MODE_SINGLE_SHOT,
                                 singleshot_timer_handler_delete_bonds);
@@ -995,7 +1036,6 @@ static void timers_create()
 static void timers_start()
 {
     ret_code_t err_code;
-
 
     err_code = app_timer_start(m_repeated_timer_init, APP_TIMER_TICKS_INIT, NULL);
     APP_ERROR_CHECK(err_code);

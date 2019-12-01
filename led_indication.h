@@ -18,9 +18,11 @@
 #define LED_INDICATION_3            2   // sensor, non-scan/non-conn advertising
 #define LED_INDICATION_4            3   // sensor, scan/conn advertising
 #define LED_INDICATION_5            4   // delete bonds, go to standard mode (defined by USE_CONN_ADV_INIT)
-#define LED_NUM_INDICATIONS         5
+#define LED_INDICATION_6            5   // start config mode
+#define LED_INDICATION_7            6   // end config mode
+#define LED_NUM_INDICATIONS         7
 
-#define LED_INDCATION_MAX_STEPS     10
+#define LED_INDCATION_MAX_STEPS     12
 
 // Initializes the led indication library. Run this before calling any other functions. 
 void led_indication_init(void);
