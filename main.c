@@ -161,8 +161,8 @@ APP_TIMER_DEF(m_singleshot_timer_delete_bonds);             /**< Handler for sin
 #define APP_TIMER_TICKS_SENSOR                  APP_TIMER_TICKS(15000)      // every 15 secs
 #define APP_TIMER_TICKS_UPDATE_OFFLINEBUFFER    APP_TIMER_TICKS(300000)     // every 5 min, overall with interval every 15 min
 #define OFFLINE_BUFFER_SAMPLE_INTERVAL          3                           // in multiples of APP_TIMER_TICKS_UPDATE_OFFLINEBUFFER
-#define APP_TIMER_TICKS_CONFIG_MODE             APP_TIMER_TICKS(7000)       // inactivity timer for config mode
-#define APP_TIMER_TICKS_WAIT_DELETE_BONDS       APP_TIMER_TICKS(3000)       // wait 5 secs
+#define APP_TIMER_TICKS_CONFIG_MODE             APP_TIMER_TICKS(10000)      // inactivity timer for config mode
+#define APP_TIMER_TICKS_WAIT_DELETE_BONDS       APP_TIMER_TICKS(3000)       // wait X secs
 
 // SAADC defines
 #define SAADC_CALIBRATION_INTERVAL  5       // SAADC calibration interval relative to NRF_DRV_SAADC_EVT_DONE event
