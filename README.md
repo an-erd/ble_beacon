@@ -4,7 +4,7 @@
 
 **ble_beacon** is a software for the Nordic Semiconductor SOC NRF52832 and similar. It reads sensor data (in our case temperature, humidity and acceleration data) and sends it using Bluetooth Low Energy advertisement packages. Getting a history of data points is available when establishing a BLE connection to the device.
 
-The code is power optimized. As of today, the average power consumption during unconnectable undirected advertising is 14.4 uA, and with connectable undirected advertising ~19 uA.
+The code is power optimized. As of today, the average power consumption during unconnectable undirected advertising is 14.4 &#181;A, and with connectable undirected advertising ~17.4 &#181;A(see below for more detailed figures).
 
 ### Advertising
 
@@ -147,7 +147,7 @@ You can retrieve data from the device or delete the device offline buffer memory
   - `04 01` (Report Number Records, All) -> `2A52: 05 00 01 00` (Number of stored records response, number of records 2 byte  LSB first,  here: 1 record)
   - `02 01` (Delete All Records)
 
-  **Remarks:** the byte order is LSB-MSB
+  **Remark:** the byte order is LSB-MSB
 
 #### Decode sequential number/Number of entries
 
@@ -225,15 +225,11 @@ As soon as the device is connected, it checks whether a CTS (Current Time Servic
   
   - If there are any entries stored in the offline buffer, these entries will be updated with the correct time. This is done by calculating the delta, and adding this correction value to all previous entries.
   
-    
 - For **subsequent updates** of the time using CTS:
   - The current time is fetched from CTS
-  
   - The internal function (nrf_calendar) will be updated with the current time.
-  
   - The drift will be calculated and for future requests inside the beacon used as a correction factor.
-  
-  - Remark: Previous values eventually stored in the offline buffer will not be updated/corrected with the drift factor.
+  - **Remark:** Previous values eventually stored in the offline buffer will not be updated/corrected with the drift factor.
 
 ## Buttons
 
@@ -241,7 +237,22 @@ The device provides one push button. When attached to the programming JIG, anoth
 
 ## Power Consumption
 
-todo
+
+
+| Mode | Title                                                        | Power Consumption (&#181;A) |
+| ---- | ------------------------------------------------------------ | --------------------------- |
+| 0    | no sensor, no advertising                                    | 3.9                         |
+| 1    | sensor active, store to offline buffer, but no advertising   | 5.45                        |
+| 2    | sensor active, store values to offline buffer, non-scannable non-connectable advertising (advertising interval 1 sec) | 13.5                        |
+| 3    | sensor active, store values to offline buffer, scannable connectable advertising (advertising interval 1 sec) | 17.8                        |
+| 3'   | same as 3, but in connected state<br />- during first 2 sec with advertising interval 7.5 ms<br />- after 2 sec with advertising interval 200 ms | <br />460<br />24           |
+
+**Remark:**
+
+- The measurement is done with Nordic [Power Profiler Kit](https://www.nordicsemi.com/Software-and-tools/Development-Kits/Power-Profiler-Kit)
+- The temperature and humidity sensor used has a typical power consumption of 0.2 &#181;A, and a maximum of 2 &#181;A (idle state when in single shot mode). With some devices I experienced a higher consumption but still below the max specifications. 
+- The figures above are measure with a sensor with ~0.4 &#181;A. 
+- See [SHT03 Data Sheet](Documentation/datasheets/Sensirion_Humidity_Sensors_SHT3x_Datasheet_digital-971521.pdf), section *2.1 Electrical Specifications*.
 
 ## Programming JIG
 
