@@ -219,10 +219,8 @@ The Bluetooth service "Secure DFU" is available as service 0xFE59, and provides 
 As soon as the device is connected, it checks whether a CTS (Current Time Service) server is provided by the central device. If it is available, the following steps will be performed:
 
 - If CTS and thus the current time is available for the **first time** (e. g., directly after booting):
-  - The current time is fetched from CTS
-  
-  - The internal function (nrf_calendar) to keep the time is set to the current time.
-  
+  - The current time is fetched from CTS  
+  - The internal function (nrf_calendar) to keep the time is set to the current time.  
   - If there are any entries stored in the offline buffer, these entries will be updated with the correct time. This is done by calculating the delta, and adding this correction value to all previous entries.
   
 - For **subsequent updates** of the time using CTS:
