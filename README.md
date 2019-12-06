@@ -4,7 +4,9 @@
 
 **ble_beacon** is a software for the Nordic Semiconductor SOC NRF52832 and similar. It reads sensor data (in our case temperature, humidity and acceleration data) and sends it using Bluetooth Low Energy advertisement packages. Getting a history of data points is available when establishing a BLE connection to the device.
 
-The code is power optimized. As of today, the average power consumption during unconnectable undirected advertising is 14.4 &#181;A, and with connectable undirected advertising ~17.4 &#181;A(see below for more detailed figures).
+The code is power optimized. As of today, the average power consumption during unconnectable undirected advertising is 14.4 &#181;A, and with connectable undirected advertising ~17.4 &#181;A (see below for more detailed figures).
+
+Using the push button, different modes (sensor, advertising, etc.) and deleting BLE bonds can be configured.
 
 ### Advertising
 
@@ -36,23 +38,23 @@ The following data will be send during advertising:
    | Acceleration Z     | [14..15] | 62 3F   | = 0x3F62, 2's c = ‭+16542‬                 |
    | Battery Voltage    | [16..17] | 0B 6A   | = 0x0B6A = 2992 mV                       |
 
-Remark: The temperature and humidity data are send using the sensors native 2 byte format, with the formular given in the table above. See [SHT03 Data Sheet](Documentation/datasheets/Sensirion_Humidity_Sensors_SHT3x_Datasheet_digital-971521.pdf), section *4.13 Conversion of Signal Output* for more information.
+Remark: The temperature and humidity data are sent using the sensors native 2 byte format, with the formula given in the table above. See [SHT03 Data Sheet](Documentation/datasheets/Sensirion_Humidity_Sensors_SHT3x_Datasheet_digital-971521.pdf), section *4.13 Conversion of Signal Output* for more information.
 
 ### Provided Services
 
 
-In addition you can connect to the device and use additional features as download and deletion of data points or DFU device update. See below for additional information.
+In addition you can connect to the device and use additional features such as download and deletion of data points or DFU device update. See below for additional information.
 
 ### Offline Buffer Functionality
 
-Beside the advertising of the sensor measurements the beacon can store the measurements in an offline buffer. The offline buffer is located  in RAM, i.e., with a reboot the values will be reset, too. Currently 20.000 bytes are reserved for the offline buffer, with an size of 16 bytes for one entry, this gives 20.000/16 bytes = 1.250 entries. With an interval of 15 min/entry the beacon will store data for around 13 days. If the buffer is full, the oldest value will be deleted (i.e. a ring buffer is used). The data of the offline buffer can be accessed and downloaded when connecting to the device.
+Beside the advertising of the sensor measurements the beacon can store the measurements in an offline buffer. The offline buffer is located  in RAM, i.e. with a reboot the values will be reset, too. Currently 20.000 bytes are reserved for the offline buffer, with an size of 16 bytes for one entry, this gives 20.000/16 bytes = 1.250 entries. With an interval of 15 min/entry the beacon will store data for around 13 days. If the buffer is full, the oldest value will be deleted (i.e. a ring buffer is used). The data of the offline buffer can be accessed and downloaded when connecting to the device.
 
 ### Available Sensors on Board
 
 Currently the following sensors are on-board:
 
-- KX022 accelerometer
-- SHT03 temperature and humidity sensor
+- KX022 accelerometer,[KX022 Data Sheet](Documentation/datasheets/KX022-1020 Specifications Rev4.0 cn.pdf)
+- SHT03 temperature and humidity sensor, [SHT03 Data Sheet](Documentation/datasheets/Sensirion_Humidity_Sensors_SHT3x_Datasheet_digital-971521.pdf), 
 
 Both sensors use the TWI (i.e. I2C) bus to communicate with the NRF52.
 
@@ -110,6 +112,45 @@ An additional NFC (Near field communication) antenna can be attached to allow fo
 #### Remark: Using without bootloader and DFU
 
 If you want to use the software without bootloader and without buttonless DFU again, you need to comment out the call to `ble_dfu_buttonless_async_svci_init();` or use `#undef USE_BUTTONLESS_DFU`. Otherwise you'll get an error  `<error> app: ERROR 4 [NRF_ERROR_NO_MEM]`
+
+## User Configuration of device modes
+
+The push button can be used to configure the device mode. 
+
+### Initializing configuration mode
+
+Press the push button for at least 2 seconds to enter configuration mode. To confirm that you entered configuration mode, you will see the following LED feedback:
+
+- LED short flashes for 3 times, i.e. "&#183; &#183; &#183;"
+
+### Change device mode
+
+Press the push button to change the mode. The number of short LED flashes gives information on the current selected mode.
+
+| Mode | Description                                                  | LED feedback                  |
+| ---- | ------------------------------------------------------------ | ----------------------------- |
+| 0    | no sensor, no advertising                                    | &horbar;                      |
+| 1    | sensor active, store to offline buffer, but no advertising   | &#183; &horbar;               |
+| 2    | sensor active, store values to offline buffer, non-scannable non-connectable advertising (advertising interval 1 sec) | &#183; &#183; &horbar;        |
+| 3    | sensor active, store values to offline buffer, scannable connectable advertising (advertising interval 1 sec) | &#183; &#183; &#183; &horbar; |
+
+**Remark: ** See below for a power consumption comparison for these modes.
+
+### Delete Bluetooth Bonds
+
+If you need to delete Bluetooth bonds, long press the push button (>2 seconds) while in configuration mode. The following steps are performed, and you will see the corresponding LED feedback:
+
+- Switch to mode 1 (no advertising)
+- Perform Delete bonds
+- (and after the idle timeout, see below: Leaving config mode)
+
+**Important:** After deleting bonds the device is still in mode 1, and thus not advertising. To start advertising again, switch to mode 2 or 3 as described above.
+
+### Leaving configuration mode
+
+After 10 seconds without a keypress (i.e., idle), the configuration mode will be left again. To confirm that you left the configuration mode, you will see the following LED feedback:
+
+- LED short flashes for 5 times, i.e. "&#183; &#183; &#183; &#183; &#183;"
 
 ## Provided Services by Device
 
@@ -199,14 +240,14 @@ The Bluetooth service "Battery Information Service" is available as service 0x18
 
 The Bluetooth service "Device Information Service" is available as service 0x180A, and provides the following characteristics:
 
-| UUID   | Title                    | Example             |
-| ------ | ------------------------ | ------------------- |
-| 0x2A24 | Model Number String      | 1                   |
-| 0x2A25 | Serial Number String     | 30 (="1")           |
-| 0x2A26 | Firmware Revision String | 0.1a                |
-| 0x2A27 | Hardware Revision String | 1.0                 |
-| 0x2A28 | Software Revision String | 0.9                 |
-| 0x2A29 | Manufacturer Name        | "ansprechendeKunst" |
+| UUID   | Title                                                        | Example             |
+| ------ | ------------------------------------------------------------ | ------------------- |
+| 0x2A24 | Model Number String                                          | 1                   |
+| 0x2A25 | Serial Number String                                         | 30 (="1")           |
+| 0x2A26 | Firmware Revision String, i.e. version of the SDK used       | 98a08e2             |
+| 0x2A27 | Hardware Revision String                                     | 1.0                 |
+| 0x2A28 | Software Revision String, i.e. version of the project software used | 0.3-94-g556752e     |
+| 0x2A29 | Manufacturer Name                                            | "ansprechendeKunst" |
 
 ### Secure DFU 
 
@@ -235,22 +276,25 @@ The device provides one push button. When attached to the programming JIG, anoth
 
 ## Power Consumption
 
+The software is power optimized. 
 
-
-| Mode | Title                                                        | Power Consumption (&#181;A) |
+| Mode | Description                                                  | Power Consumption (&#181;A) |
 | ---- | ------------------------------------------------------------ | --------------------------- |
-| 0    | no sensor, no advertising                                    | 3.9                         |
+| 0    | no sensor, no advertising (but some timer active)            | 3.9                         |
 | 1    | sensor active, store to offline buffer, but no advertising   | 5.45                        |
 | 2    | sensor active, store values to offline buffer, non-scannable non-connectable advertising (advertising interval 1 sec) | 13.5                        |
 | 3    | sensor active, store values to offline buffer, scannable connectable advertising (advertising interval 1 sec) | 17.8                        |
 | 3'   | same as 3, but in connected state<br />- during first 2 sec with advertising interval 7.5 ms<br />- after 2 sec with advertising interval 200 ms | <br />460<br />24           |
+| all  | in **idle state** (=sleep), i.e. between peaks from sensor handling, <br />advertising, timer, etc. | 3.5                         |
 
 **Remark:**
 
 - The measurement is done with Nordic [Power Profiler Kit](https://www.nordicsemi.com/Software-and-tools/Development-Kits/Power-Profiler-Kit)
-- The temperature and humidity sensor used has a typical power consumption of 0.2 &#181;A, and a maximum of 2 &#181;A (idle state when in single shot mode). With some devices I experienced a higher consumption but still below the max specifications. 
-- The figures above are measure with a sensor with ~0.4 &#181;A. 
-- See [SHT03 Data Sheet](Documentation/datasheets/Sensirion_Humidity_Sensors_SHT3x_Datasheet_digital-971521.pdf), section *2.1 Electrical Specifications*.
+- SHT03 sensor
+  - The temperature and humidity sensor used has a typical power consumption of 0.2 &#181;A, and a maximum of 2 &#181;A (idle state when in single shot mode). With some devices I experienced a higher consumption but still below the max specifications. 
+  - The figures above are measure with a sensor with ~0.4 &#181;A. 
+  - See [SHT03 Data Sheet](Documentation/datasheets/Sensirion_Humidity_Sensors_SHT3x_Datasheet_digital-971521.pdf), section *2.1 Electrical Specifications*.
+- The mode corresponds to the LED flashing code, i.e. the number of short flashes equals the mode. See TODO
 
 ## Programming JIG
 

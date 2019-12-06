@@ -314,8 +314,8 @@ BLE_OS_DEF(m_our_service);
 #define DIS_MODEL_NUMBER                "1"
 #define DIS_SERIAL_NUMBER               "1" 
 #define DIS_HW_REV                      "1.0"
-#define DIS_SW_REV                      "0.9"
-#define DIS_FW_REV                      "0.1a"
+#define DIS_SW_REV                      "0.3-94-g556752e"       /**< Software, use "git describe --tags". */
+#define DIS_FW_REV                      "98a08e2"               /**< Firmware, use version of SDK/SoftDevice. */
 #endif // USE_DIS
 
 // CTS - Current Time Service defiens
