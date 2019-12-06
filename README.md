@@ -287,8 +287,8 @@ The software is power optimized.
 | 1    | sensor active, store to offline buffer, but no advertising   | 5.45                        |
 | 2    | sensor active, store values to offline buffer, non-scannable non-connectable advertising (advertising interval 1 sec) | 13.5                        |
 | 3    | sensor active, store values to offline buffer, scannable connectable advertising (advertising interval 1 sec) | 17.8                        |
-| 3'   | same as 3, but in connected state<br />- during first 2 sec with advertising interval 7.5 ms<br />- after 2 sec with advertising interval 200 ms | <br />460<br />24           |
-| all  | in **idle state** (=sleep), i.e. between peaks from sensor handling, <br />advertising, timer, etc. | 3.5                         |
+| 3'   | same as 3, but in connected state<br />- during first 2 sec with advertising interval 7.5 ms<br />- after 2 sec with advertising interval 200 ms | <br />450<br />24           |
+| all  | in **idle state** (=sleep), i.e. between peaks from sensor handling, <br />advertising, timer, etc. | 3.7                         |
 
 **Remark:**
 
@@ -298,6 +298,42 @@ The software is power optimized.
   - The figures above are measure with a sensor with ~0.4 &#181;A. 
   - See [SHT03 Data Sheet](Documentation/datasheets/Sensirion_Humidity_Sensors_SHT3x_Datasheet_digital-971521.pdf), section *2.1 Electrical Specifications*.
 - The mode corresponds to the LED flashing code, i.e. the number of short flashes equals the mode. See TODO
+
+### Mode 0
+
+![Alt text](Documentation/power_consumption/Mode_0.PNG?raw=true "Mode 0 Power Consumption")
+
+### Mode 1
+
+![Alt text](Documentation/power_consumption/Mode_1.PNG?raw=true "Mode 1 Power Consumption")
+
+### Mode 2
+
+![Alt text](Documentation/power_consumption/Mode_2.PNG?raw=true "Mode 1 Power Consumption")
+
+
+
+### Mode 3
+
+![Alt text](Documentation/power_consumption/Mode_3.PNG?raw=true "Mode 3 Power Consumption")
+
+### Mode 3 Connected
+
+![Alt text](Documentation/power_consumption/Mode_3a.PNG?raw=true "Mode 3 Connected (first 2 sec) Power Consumption")
+
+![Alt text](Documentation/power_consumption/Mode_3b.PNG?raw=true "Mode 3 Connected (after 2 sec) Power Consumption")
+
+### Details: Idle state
+
+![Alt text](Documentation/power_consumption/Mode_Idle.PNG?raw=true "Power Consumption single sensor retrieval")
+
+### Details: Single Advertising (Mode 3)
+
+![Alt text](Documentation/power_consumption/Mode_3_single_adv.PNG?raw=true "Mode 3 single advertising Power Consumption")
+
+### Details: Single Sensor retrieval
+
+![Alt text](Documentation/power_consumption/sensor_retrieval.PNG?raw=true "Power Consumption single sensor retrieval")
 
 ## Programming JIG
 
