@@ -134,7 +134,7 @@ Press the push button to change the mode. The number of short LED flashes gives 
 | 2    | sensor active, store values to offline buffer, non-scannable non-connectable advertising (advertising interval 1 sec) | &#183; &#183; &horbar;        |
 | 3    | sensor active, store values to offline buffer, scannable connectable advertising (advertising interval 1 sec) | &#183; &#183; &#183; &horbar; |
 
-**Remark: ** See below for a power consumption comparison for these modes.
+**Remark:** See below for a power consumption comparison for these modes.
 
 ### Delete Bluetooth Bonds
 
@@ -142,9 +142,12 @@ If you need to delete Bluetooth bonds, long press the push button (>2 seconds) w
 
 - Switch to mode 1 (no advertising)
 - Perform Delete bonds
+- Switch to previous configured mode (before starting delete bonds procedure)
 - (and after the idle timeout, see below: Leaving config mode)
 
-**Important:** After deleting bonds the device is still in mode 1, and thus not advertising. To start advertising again, switch to mode 2 or 3 as described above.
+| Mode   | Description  | LED feedback               |
+| ------ | ------------ | -------------------------- |
+| config | Delete bonds | &horbar; &horbar; &horbar; |
 
 ### Leaving configuration mode
 
