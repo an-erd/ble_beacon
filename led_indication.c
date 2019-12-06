@@ -35,6 +35,9 @@ static void singleshot_timer_led_indication_handler()
     m_led_indication_step++;
     duration = m_led_indication_prog[m_led_indication_type][m_led_indication_step];
 
+//    NRF_LOG_DEBUG("singleshot_timer_led_indication_handler, m_led_indication_type %d, m_led_indication_step %d, duration %d",
+//        m_led_indication_type, m_led_indication_step, duration);
+
     if(duration == 0)
     {
         bsp_board_led_off(BSP_LED_INDICATE);
@@ -74,7 +77,11 @@ void led_indication_start(uint8_t indication_type)
     ret_code_t err_code;
     uint16_t duration;
 
-    NRF_LOG_DEBUG("led_indication_start %d", indication_type);
+//    NRF_LOG_DEBUG("led_indication_start new indication type %d / m_led_indication_type %d, step %d", indication_type, 
+//        m_led_indication_type, m_led_indication_step);
+
+    ASSERT(m_led_indication_type == LED_NO_INDICATION);
+
     m_led_indication_type = indication_type;
     duration = m_led_indication_prog[m_led_indication_type][m_led_indication_step];
 

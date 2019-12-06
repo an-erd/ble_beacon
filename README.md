@@ -1,3 +1,5 @@
+
+
 # A Bluetooth Low Energy Beacon (ble_beacon)
 
 ## Overview
@@ -6,7 +8,7 @@
 
 The code is power optimized. As of today, the average power consumption during unconnectable undirected advertising is 14.4 &#181;A, and with connectable undirected advertising ~17.4 &#181;A (see below for more detailed figures).
 
-Using the push button, different modes (sensor, advertising, etc.) and deleting BLE bonds can be configured.
+Using the push button, different modes (sensor, advertising, etc.) and deleting Bluetooth bonds can be configured.
 
 ### Advertising
 
@@ -53,16 +55,22 @@ Beside the advertising of the sensor measurements the beacon can store the measu
 
 Currently the following sensors are on-board:
 
-- KX022 accelerometer,[KX022 Data Sheet](Documentation/datasheets/KX022-1020 Specifications Rev4.0 cn.pdf)
+- KX022 accelerometer, [KX022 Data Sheet](Documentation/datasheets/KX022-1020 Specifications Rev4.0 cn.pdf)
 - SHT03 temperature and humidity sensor, [SHT03 Data Sheet](Documentation/datasheets/Sensirion_Humidity_Sensors_SHT3x_Datasheet_digital-971521.pdf), 
 
 Both sensors use the TWI (i.e. I2C) bus to communicate with the NRF52.
+
+### Available Buttons and LEDs on Board
+
+There is one tactile push button (connected to P26) and one LED (connected to P25) on-board. 
+
+When attached to the programming JIG, another button and another LED (with a solder bridge) is available for testing. The JIG's button is connected to P9, and the LED is connected to P10, which are used for NFC functionality, too. See the next section for further information.
 
 ### NFC Functionality
 
 An additional NFC (Near field communication) antenna can be attached to allow for an easy paring process with iPhone and Android mobile phones. 
 
-**Important:** If NFC is to be used, you must remove the preprocessor define  `CONFIG_NFCT_PINS_AS_GPIOS` to not use the NFC pins as GPIO pins but for NFC. If it is defined, pins P9 and P10 serve as GPIO pins.
+**Important:** If NFC is to be used, you must remove the preprocessor define  `CONFIG_NFCT_PINS_AS_GPIOS` to not use the NFC pins as GPIO pins but for NFC. If it is defined, pins P0.09 and P0.10 serve as GPIO pins.
 
 **Remark:** NFC functionality is not yet implemented but planned for a future release. The board already provides the points to attach the antenna with.
 
@@ -115,17 +123,19 @@ If you want to use the software without bootloader and without buttonless DFU ag
 
 ## User Configuration of device modes
 
-The push button can be used to configure the device mode. 
+The push button can be used to configure the device mode. To configure the device you first have to enter configuration mode. The configuration mode will be left automatically after an idle time of 10 seconds without a keypress.
 
-### Initializing configuration mode
+### Entering configuration mode
 
-Press the push button for at least 2 seconds to enter configuration mode. To confirm that you entered configuration mode, you will see the following LED feedback:
+Long push the button (at least 2 seconds) to enter configuration mode. To confirm that you entered configuration mode, you will see the following LED feedback:
 
-- LED short flashes for 3 times, i.e. "&#183; &#183; &#183;"
+| Action           | Description       | LED feedback         |
+| ---------------- | ----------------- | -------------------- |
+| Button long push | Enter config mode | &#183; &#183; &#183; |
 
 ### Change device mode
 
-Press the push button to change the mode. The number of short LED flashes gives information on the current selected mode.
+**Push** the button to change the mode. The number of short LED flashes gives information on the current selected mode.
 
 | Mode | Description                                                  | LED feedback                  |
 | ---- | ------------------------------------------------------------ | ----------------------------- |
@@ -138,22 +148,24 @@ Press the push button to change the mode. The number of short LED flashes gives 
 
 ### Delete Bluetooth Bonds
 
-If you need to delete Bluetooth bonds, long press the push button (>2 seconds) while in configuration mode. The following steps are performed, and you will see the corresponding LED feedback:
+If you need to delete Bluetooth bonds, **long press** the push button (>2 seconds) while in configuration mode. The following steps are performed, and you will see the corresponding LED feedback:
 
 - Switch to mode 1 (no advertising)
 - Perform Delete bonds
-- Switch to previous configured mode (before starting delete bonds procedure)
-- (and after the idle timeout, see below: Leaving config mode)
+- (Device will stay in mode 1 and needs to be set manually to the desired mode)
+- (After idle timeout, config mode will be left, see below)
 
-| Mode   | Description  | LED feedback               |
-| ------ | ------------ | -------------------------- |
-| config | Delete bonds | &horbar; &horbar; &horbar; |
+| Action                                       | Description  | LED feedback                                                 | Steps                                             |
+| -------------------------------------------- | ------------ | ------------------------------------------------------------ | ------------------------------------------------- |
+| Button long push (during configuration mode) | Delete bonds | &#183; &horbar; <br />&horbar; &horbar; &horbar;<br />&#183; &#183; &#183; &#183; &#183; | Mode 1<br />Delete bonds<br />(Leave config mode) |
 
 ### Leaving configuration mode
 
 After 10 seconds without a keypress (i.e., idle), the configuration mode will be left again. To confirm that you left the configuration mode, you will see the following LED feedback:
 
-- LED short flashes for 5 times, i.e. "&#183; &#183; &#183; &#183; &#183;"
+| Action       | Description       | LED feedback                       |
+| ------------ | ----------------- | ---------------------------------- |
+| Idel timeout | Leave config mode | &#183; &#183; &#183; &#183; &#183; |
 
 ## Provided Services by Device
 
@@ -175,7 +187,7 @@ You can connect to the device and use the following additional features:
 ### Preparation
 
 - Connect to the service 0x1400
-- Pairing - **TBD**
+- Pairing/Bonding - **TBD**
 - Turn on **Notification** on characteristic 0x1401 (RACP Measurement Values)
 - Turn on **Indication** on characteristic 0x2A52 (Random Access Control Point)
 
@@ -273,10 +285,6 @@ As soon as the device is connected, it checks whether a CTS (Current Time Servic
   - The drift will be calculated and for future requests inside the beacon used as a correction factor.
   - **Remark:** Previous values eventually stored in the offline buffer will not be updated/corrected with the drift factor.
 
-## Buttons
-
-The device provides one push button. When attached to the programming JIG, another button is available for testing.
-
 ## Power Consumption
 
 The software is power optimized. 
@@ -284,9 +292,9 @@ The software is power optimized.
 | Mode | Description                                                  | Power Consumption (&#181;A) |
 | ---- | ------------------------------------------------------------ | --------------------------- |
 | 0    | no sensor, no advertising (but some timer active)            | 3.9                         |
-| 1    | sensor active, store to offline buffer, but no advertising   | 5.45                        |
+| 1    | sensor active, store to offline buffer, but no advertising   | 5.4                         |
 | 2    | sensor active, store values to offline buffer, non-scannable non-connectable advertising (advertising interval 1 sec) | 13.5                        |
-| 3    | sensor active, store values to offline buffer, scannable connectable advertising (advertising interval 1 sec) | 17.8                        |
+| 3    | sensor active, store values to offline buffer, scannable connectable advertising (advertising interval 1 sec) | 17.5                        |
 | 3'   | same as 3, but in connected state<br />- during first 2 sec with advertising interval 7.5 ms<br />- after 2 sec with advertising interval 200 ms | <br />450<br />24           |
 | all  | in **idle state** (=sleep), i.e. between peaks from sensor handling, <br />advertising, timer, etc. | 3.7                         |
 
@@ -295,9 +303,9 @@ The software is power optimized.
 - The measurement is done with Nordic [Power Profiler Kit](https://www.nordicsemi.com/Software-and-tools/Development-Kits/Power-Profiler-Kit)
 - SHT03 sensor
   - The temperature and humidity sensor used has a typical power consumption of 0.2 &#181;A, and a maximum of 2 &#181;A (idle state when in single shot mode). With some devices I experienced a higher consumption but still below the max specifications. 
-  - The figures above are measure with a sensor with ~0.4 &#181;A. 
+  - The figures above are measured with a sensor with a consumption of ~0.4 &#181;A. 
   - See [SHT03 Data Sheet](Documentation/datasheets/Sensirion_Humidity_Sensors_SHT3x_Datasheet_digital-971521.pdf), section *2.1 Electrical Specifications*.
-- The mode corresponds to the LED flashing code, i.e. the number of short flashes equals the mode. See TODO
+- The mode corresponds to the LED flashing code, i.e. the number of short flashes equals the mode. See section *User Configuration of device modes*
 
 ### Mode 0
 
@@ -319,7 +327,13 @@ The software is power optimized.
 
 ### Mode 3 Connected
 
+During the first 2 seconds the connection interval is set to 7.5 ms. Then, by a connection parameter update using `sd_ble_gap_conn_param_update()`, the connection interval is set to 200 ms.
+
+#### Connected state, during first 2 seconds
+
 ![Alt text](Documentation/power_consumption/Mode_3a.PNG?raw=true "Mode 3 Connected (first 2 sec) Power Consumption")
+
+#### Connected state, after first 2 seconds
 
 ![Alt text](Documentation/power_consumption/Mode_3b.PNG?raw=true "Mode 3 Connected (after 2 sec) Power Consumption")
 
@@ -341,7 +355,25 @@ There is a separate Readme for the programming jig, see [here](Documentation/JIG
 
 ![Alt text](Documentation/JIG/IMG_JIG_4_resize.jpg?raw=true "Complete JIG")
 
-## Schematics
+## Pin Assignments and Schematics
+
+### PIN Assignment
+
+| Pin   | Name       | Description                           |
+| ----- | ---------- | ------------------------------------- |
+| 26    | SWDIO      | TP1                                   |
+| 25    | SWDCLK     | TP2                                   |
+| 13/48 | VDD        | TP3                                   |
+| 45    | VSS        | TP4                                   |
+| 31    | GND        | GND                                   |
+| 37    | P0.25      | Tactile switch on-board               |
+| 38    | P0.26      | LED on-board                          |
+| 42    | P0.30      | SCL                                   |
+| 43    | P0.31      | SDA                                   |
+| 11    | NFC1/P0.09 | NFC antenna **or** JIG tactile switch |
+| 12    | NFC2/P0.10 | NFC antenna **or** JIG LED            |
+
+### Schematics
 
 The schematics for the beacon I use is available here. The product is available from Radioland China using ALIEXPRESS.
 

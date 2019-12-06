@@ -910,13 +910,11 @@ static void singleshot_timer_handler_config_mode()
 static void singleshot_timer_handler_delete_bonds()
 {
     static uint8_t step = 0;
-    static app_advertising_mode_t previous_adv_mode = APP_ADV_NONE;
 
     ret_code_t err_code;
 
     switch(step) {
     case 0:
-        previous_adv_mode = m_adv_mode;
         advertising_reconfig(APP_ADV_NONE);
         step++;
         
@@ -926,17 +924,6 @@ static void singleshot_timer_handler_delete_bonds()
     case 1:
         led_indication_start(LED_INDICATION_5);
         delete_bonds();
-       
-        step++;
-        err_code = app_timer_start(m_singleshot_timer_delete_bonds, APP_TIMER_TICKS(2000), NULL); 
-        APP_ERROR_CHECK(err_code);
-        break;
-    case 2:
-        if(previous_adv_mode != APP_ADV_NONE)
-        {
-            advertising_reconfig(previous_adv_mode);
-            previous_adv_mode = APP_ADV_NONE;
-        }
         step = 0;
         break;
     }
