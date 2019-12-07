@@ -106,8 +106,6 @@
       <file file_name="../../../nrf_calendar.c" />
       <file file_name="../../../our_service_db.c" />
       <file file_name="../../../led_indication.c" />
-      <file file_name="../../../ble_beacon_dis.inc" />
-      <file file_name="../../../ble_beacon_dis_sw.inc" />
     </folder>
     <folder Name="nRF_Segger_RTT">
       <file file_name="../../../../../../external/segger_rtt/SEGGER_RTT.c" />

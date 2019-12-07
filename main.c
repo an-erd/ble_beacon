@@ -147,7 +147,7 @@
 #define USE_CTS
 #define USE_DIS
 #define USE_DFU
-#define USE_BUTTONLESS_DFU
+#undef  USE_BUTTONLESS_DFU
 
 // App Timer defines
 APP_TIMER_DEF(m_repeated_timer_init);                       /**< Handler for repeated timer for init process (sensor, offline buffer, ...). */
@@ -2376,7 +2376,7 @@ int main()
     // Initialization and configuration
 #ifdef USE_LOG_INIT
     log_init();                 // Initialize logging
-    NRF_LOG_INFO("Main started.");
+    NRF_LOG_INFO("ble_beacon - main started.");
 #endif // USE_LOG_INIT
 #ifdef USE_BUTTONLESS_DFU
     // Initialize the async SVCI interface to bootloader before any interrupts are enabled.

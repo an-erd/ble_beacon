@@ -100,10 +100,10 @@ If not already done, nRF Util needs to be installed, see [nRF Util](https://info
 - Generate the package:
 
   ```
-  nrfutil pkg generate --hw-version 52 --application-version 1 --application ble_beacon_pca10040_s132.hex --sd-req 0xAF --key-file private.key app_dfu_package.zip
+  nrfutil pkg generate --hw-version 52 --application-version 1 --application ble_beacon_pca10040_s132.hex --sd-req 0xCB --key-file private.key app_dfu_package.zip
   ```
 
-**Remark:** The SoftDevice version string is required using `--sd-req`. Use the NRF Connect Programmer and do a `read` to get the version string. Example: `SoftDevice detected, id 0xAF (S132 v6.1.0)`
+**Remark:** The SoftDevice version string is required using `--sd-req`. Use the NRF Connect Programmer and do a `read` to get the version string. Example: `SoftDevice detected, id 0xCB (S132 v7.0.0)`
 
 ### Preparation of Bootloader Settings and Merge Settings with Bootloader to one .hex
 
