@@ -6,7 +6,7 @@
 
 **ble_beacon** is a software for the Nordic Semiconductor SOC NRF52832 and similar. It reads sensor data (in our case temperature, humidity and acceleration data) and sends it using Bluetooth Low Energy advertisement packages. Getting a history of data points is available when establishing a BLE connection to the device.
 
-The code is power optimized. As of today, the average power consumption during unconnectable undirected advertising is 14.4 &#181;A, and with connectable undirected advertising ~17.4 &#181;A (see below for more detailed figures).
+The code is power optimized. As of today, the average power consumption during unconnectable undirected advertising is 13.5 &#181;A, and with connectable undirected advertising ~17.4 &#181;A (see below for more detailed figures).
 
 Using the push button, different modes (sensor, advertising, etc.) and deleting Bluetooth bonds can be configured.
 
@@ -76,25 +76,66 @@ An additional NFC (Near field communication) antenna can be attached to allow fo
 
 ## Programming the Device
 
+### Installing nRF Util
+
+If not already done, nRF Util needs to be installed, see [nRF Util](https://infocenter.nordicsemi.com/index.jsp?topic=%2Fug_nrfutil%2FUG%2Fnrfutil%2Fnrfutil_intro.html).
+
 ### Preparation Application zip File
 
 **Step 1)** Create zip file with the application
 
-- Go to the application build directory with the application already build, e.g. `cd ~/nrf52/nRF5_SDK_15.3.0_59ac345/projects/ble_peripheral/ble_beacon/pca10040/s132/ses/Output/Release/Exe`
-- If not done yet, copy the `private.key` to this directory, e.g. `cp ~/nrf52/nRF5_SDK_15.3.0_59ac345/projects/ble_peripheral/ble_beacon/Keys/private.key .`
-- Generate the package, e.g. `nrfutil pkg generate --hw-version 52 --application-version 1 --application ble_beacon_pca10040_s132.hex --sd-req 0xb7 --key-file private.key app_dfu_package.zip`
+- Go to the application build directory with the application already build:
+
+  ```
+  cd ~/nrf52/nRF5_SDK_xyz/projects/
+  cd ble_peripheral/ble_beacon/pca10040/s132/ses/Output/Release/Exe
+  ```
+
+- If not done yet, copy the `private.key` to this directory:
+
+  ```
+  cp ~/nrf52/nRF5_SDK_xyz/projects/ble_peripheral/ble_beacon/Keys/private.key .
+  ```
+
+- Generate the package:
+
+  ```
+  nrfutil pkg generate --hw-version 52 --application-version 1 --application ble_beacon_pca10040_s132.hex --sd-req 0xAF --key-file private.key app_dfu_package.zip
+  ```
+
+**Remark:** The SoftDevice version string is required using `--sd-req`. Use the NRF Connect Programmer and do a `read` to get the version string. Example: `SoftDevice detected, id 0xAF (S132 v6.1.0)`
 
 ### Preparation of Bootloader Settings and Merge Settings with Bootloader to one .hex
 
 **Step 2)** Generate settings for the bootloader
 
-- Go to bootloader application build directory with the bootloader already build, e.g.  `cd ~/nrf52/nRF5_SDK_15.3.0_59ac345/projects/dfu/secure_bootloader/pca10040_ble/ses/Output/Release/Exe`
-- `nrfutil settings generate --family NRF52 --application ../../../../../../../ble_peripheral/ble_beacon/pca10040/s132/ses/Output/Debug/Exe/ble_beacon_pca10040_s132.hex --application-version 0 --bootloader-version 0 --bl-settings-version 1 bootloader_setting.hex`
+- Go to bootloader application build directory with the bootloader already build: 
+
+  ```
+  cd ~/nrf52/nRF5_SDK_xyz/projects/
+  cd dfu/secure_bootloader/pca10040_ble/ses/Output/Release/Exe
+  ```
+
+- Generate the settings:
+
+  ```
+  nrfutil settings generate --family NRF52 --application ../../../../../../../ble_peripheral/ble_beacon/pca10040/s132/ses/Output/Debug/Exe/ble_beacon_pca10040_s132.hex --application-version 0 --bootloader-version 0 --bl-settings-version 1 bootloader_setting.hex
+  ```
 
 **Step 3)** Merge the bootloader and settings file to allow flashing the application together with the bootloader/settings during production and without the need to update using DFU
 
-- Open a Windows `cmd` shell and go to the bootloader directory, e.g. `c:\msys32\home\AKAEM\nrf52\nRF5_SDK_15.3.0_59ac345\projects\dfu\secure_bootloader\pca10040_ble\ses\Output\Release\Exe>`
-- `mergehex -m bootloader_setting.hex secure_bootloader_ble_s132_pca10040.hex --output output.hex`
+- Go to the bootloader directory:
+
+  ```
+  cd ~/nrf52/nRF5_SDK_xyz/projects/
+  cd dfu/secure_bootloader/pca10040_ble/ses/Output/Release/Exe
+  ```
+
+- Merge the bootloader and settings file:
+
+  ```
+  mergehex -m bootloader_setting.hex secure_bootloader_ble_s132_pca10040.hex --output output.hex
+  ```
 
 ### Program the Device
 
@@ -110,8 +151,17 @@ An additional NFC (Near field communication) antenna can be attached to allow fo
 
 **Step 5)** (optional) If necessary, write 4 byte UICR with the devices MAJOR and MINOR address
 
-- To write (requires previous delete, i.e. set to 0xFF): `nrfjprog -f nrf52 --memwr 0x10001080 --val 0x000700FF` (adjust!)
-- To read the current flashed values: `nrfjprog -f NRF52 --memrd 0x10001080 --n 4`
+- To write (requires previous delete, i.e. set to 0xFF): 
+
+  ```
+  nrfjprog -f nrf52 --memwr 0x10001080 --val 0x000700FF (adjust!)
+  ```
+
+- To read the current flashed values: 
+
+  ```
+  nrfjprog -f NRF52 --memrd 0x10001080 --n 4
+  ```
 
 ### Update the Device using DFU
 
@@ -119,7 +169,7 @@ An additional NFC (Near field communication) antenna can be attached to allow fo
 
 #### Remark: Using without bootloader and DFU
 
-If you want to use the software without bootloader and without buttonless DFU again, you need to comment out the call to `ble_dfu_buttonless_async_svci_init();` or use `#undef USE_BUTTONLESS_DFU`. Otherwise you'll get an error  `<error> app: ERROR 4 [NRF_ERROR_NO_MEM]`
+If you want to use the software without bootloader and without buttonless DFU again, you need to comment out the call to `ble_dfu_buttonless_async_svci_init();` or use `#undef USE_BUTTONLESS_DFU`. Otherwise you'll get an error  `<error> app: ERROR 4 [NRF_ERROR_NO_MEM]`.
 
 ## User Configuration of device modes
 
@@ -264,6 +314,21 @@ The Bluetooth service "Device Information Service" is available as service 0x180
 | 0x2A28 | Software Revision String, i.e. version of the project software used | 0.3-94-g556752e     |
 | 0x2A29 | Manufacturer Name                                            | "ansprechendeKunst" |
 
+#### Set values for DIS
+
+To set the values returned by DIS, use the files `ble_beacon_dis.inc` and `ble_beacon_dis_sw.inc`.
+
+| Title                    | File to change          | Update                                                     |
+| ------------------------ | ----------------------- | ---------------------------------------------------------- |
+| Model Number String      | `ble_beacon_dis.inc`    | Manual update                                              |
+| Serial Number String     | `ble_beacon_dis.inc`    | Manual update                                              |
+| Firmware Revision String | `ble_beacon_dis.inc`    | Manual update, e.g. after SDK update                       |
+| Hardware Revision String | `ble_beacon_dis.inc`    | Manual update, e.g. when using a new HW                    |
+| Software Revision String | `ble_beacon_dis_sw.inc` | Currently manual, but retrieve automatically in the future |
+| Manufacturer Name        | `ble_beacon_dis.inc`    | Manual update                                              |
+
+**Remark:** The file `ble_beacon_dis.inc` is under version control, `ble_beacon_dis_sw.inc` is not under version control because value changes after check-in and can be retrieved by a `git describe --tags`.
+
 ### Secure DFU 
 
 The Bluetooth service "Secure DFU" is available as service 0xFE59, and provides characteristic to update the device buttonless using Nordic's Secure DFU. 
@@ -378,3 +443,18 @@ There is a separate Readme for the programming jig, see [here](Documentation/JIG
 The schematics for the beacon I use is available here. The product is available from Radioland China using ALIEXPRESS.
 
 ![Alt text](Documentation/beacon_hardware/nRF52832+KX022+SHT30%20circuit.jpg?raw=true "Complete JIG")
+
+## Technical Development Topics
+
+### Set Makefile.windows path
+
+For the installed tool chain, use the following `Makefile.windows`
+
+```
+AKAEM@PC MINGW32 ~/nrf52/nRF5_SDK_16.0.0_98a08e2
+$ cat ./components/toolchain/gcc/Makefile.windows
+GNU_INSTALL_ROOT := /opt/gcc-arm-none-eabi-8-2018-q4-major-win32/bin/
+GNU_VERSION := 8.2.1
+GNU_PREFIX := arm-none-eabi
+```
+

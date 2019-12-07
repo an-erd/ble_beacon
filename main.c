@@ -128,6 +128,7 @@
 #define USE_DCDCEN
 #define USE_LFCLK_APP_TIMER
 #define USE_BSP
+#undef  USE_NFC                 // not yet implemented!
 #define USE_TWI
 #define USE_SENSOR
 #define USE_SENSORINIT_SHT3
@@ -146,7 +147,7 @@
 #define USE_CTS
 #define USE_DIS
 #define USE_DFU
-#undef  USE_BUTTONLESS_DFU
+#define USE_BUTTONLESS_DFU
 
 // App Timer defines
 APP_TIMER_DEF(m_repeated_timer_init);                       /**< Handler for repeated timer for init process (sensor, offline buffer, ...). */
@@ -310,12 +311,15 @@ BLE_OS_DEF(m_our_service);
 
 // DIS - Device Information Service defines
 #ifdef USE_DIS
-#define DIS_MANUFACTURER_NAME           "ansprechendeKunst"     /**< Manufacturer. Will be passed to Device Information Service. */
-#define DIS_MODEL_NUMBER                "1"
-#define DIS_SERIAL_NUMBER               "1" 
-#define DIS_HW_REV                      "1.0"
-#define DIS_SW_REV                      "0.3-94-g556752e"       /**< Software, use "git describe --tags". */
-#define DIS_FW_REV                      "98a08e2"               /**< Firmware, use version of SDK/SoftDevice. */
+// Values are taken from ble_beacon_dis.inc and ble_beacon_dis_sw.inc
+#include "ble_beacon_dis.inc"
+#include "ble_beacon_dis_sw.inc"
+#define DIS_MANUFACTURER_NAME           BLE_BEACON_DIS_MANUFACTURER_NAME            /**< Manufacturer. Will be passed to Device Information Service. */
+#define DIS_MODEL_NUMBER                BLE_BEACON_DIS_MODEL_NUMBER
+#define DIS_SERIAL_NUMBER               BLE_BEACON_DIS_SERIAL_NUMBER
+#define DIS_HW_REV                      BLE_BEACON_DIS_HW_REV
+#define DIS_SW_REV                      BLE_BEACON_DIS_SW_REV                       /**< Software, use "git describe --tags". */
+#define DIS_FW_REV                      BLE_BEACON_DIS_FW_REV                       /**< Firmware, use version of SDK/SoftDevice. */
 #endif // USE_DIS
 
 // CTS - Current Time Service defiens
@@ -2330,6 +2334,17 @@ static void peer_manager_init(void)
     APP_ERROR_CHECK(err_code);
 }
 
+#ifdef USE_NFC
+/**@brief Function for initializing NFC BLE pairing module.
+ */
+static void nfc_pairing_init()
+{
+    ble_advertising_t * const p_advertising = ble_adv_instance_ptr_get();
+
+    ret_code_t err_code = nfc_ble_pair_init(p_advertising, (nfc_pairing_mode_t)NFC_PAIRING_MODE);
+    APP_ERROR_CHECK(err_code);
+}
+#endif // USE_NFC
 
 /**@brief Callback function for asserts in the SoftDevice.
  *
@@ -2350,7 +2365,7 @@ void assert_nrf_callback(uint16_t line_num, const uint8_t * p_file_name)
 /**
  * @brief Function for application main entry.
  */
-    int main()
+int main()
 {
     ret_code_t       err_code;
 
@@ -2363,7 +2378,6 @@ void assert_nrf_callback(uint16_t line_num, const uint8_t * p_file_name)
     log_init();                 // Initialize logging
     NRF_LOG_INFO("Main started.");
 #endif // USE_LOG_INIT
-
 #ifdef USE_BUTTONLESS_DFU
     // Initialize the async SVCI interface to bootloader before any interrupts are enabled.
     err_code = ble_dfu_buttonless_async_svci_init();
@@ -2440,6 +2454,13 @@ void assert_nrf_callback(uint16_t line_num, const uint8_t * p_file_name)
     peer_manager_init();    
 #endif // USE_CONNPARAMS_PEERMGR
 		
+#ifdef USE_NFC
+#ifdef CONFIG_NFCT_PINS_AS_GPIOS
+    #error CONFIG_NFCT_PINS_AS_GPIOS must not be set when using NFC.
+#endif // CONFIG_NFCT_PINS_AS_GPIOS
+    nfc_pairing_init();
+#endif // USE_NFC
+
     // Start execution.
     NRF_LOG_INFO("Beacon started.");
 

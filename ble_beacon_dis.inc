@@ -1,0 +1,5 @@
+#define BLE_BEACON_DIS_MANUFACTURER_NAME           "ansprechendeKunst"
+#define BLE_BEACON_DIS_MODEL_NUMBER                "1"
+#define BLE_BEACON_DIS_SERIAL_NUMBER               "1" 
+#define BLE_BEACON_DIS_HW_REV                      "1.0"
+#define BLE_BEACON_DIS_FW_REV                      "98a08e2"
