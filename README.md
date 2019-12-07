@@ -119,12 +119,12 @@ If not already done, nRF Util needs to be installed, see [nRF Util](https://info
 - Generate the settings:
 
   ```
-  nrfutil settings generate --family NRF52 --application ../../../../../../../ble_peripheral/ble_beacon/pca10040/s132/ses/Output/Debug/Exe/ble_beacon_pca10040_s132.hex --application-version 0 --bootloader-version 0 --bl-settings-version 1 bootloader_setting.hex
+  nrfutil settings generate --family NRF52 --application ../../../../../../../ble_peripheral/ble_beacon/pca10040/s132/ses/Output/Release/Exe/ble_beacon_pca10040_s132.hex --application-version 0 --bootloader-version 0 --bl-settings-version 1 bootloader_setting.hex
   ```
 
 **Step 3)** Merge the bootloader and settings file to allow flashing the application together with the bootloader/settings during production and without the need to update using DFU
 
-- Go to the bootloader directory:
+- Go to the bootloader application build directory:
 
   ```
   cd ~/nrf52/nRF5_SDK_xyz/projects/
@@ -141,13 +141,14 @@ If not already done, nRF Util needs to be installed, see [nRF Util](https://info
 
 **Step 4)** Use nRF Connect Programmer to upload all necessary .hex files
 
-- Open nRF Connect Programmer, connect, read device
-- Add files
-  - HEX files
+- Open nRF Connect Programmer, `connect`, `read` device
+- `Add HEX file`
   - Softdevice .hex file
   - Merged settings and bootloader file generated in Step 3
   - Application .hex file generated during application build
 - Press `Erase & Write`
+
+![Alt text](Documentation\program_docu/nRF_Connect_Programmer_Files.PNG?raw=true "Files to upload during programming the device")
 
 **Step 5)** (optional) If necessary, write 4 byte UICR with the devices MAJOR and MINOR address
 
