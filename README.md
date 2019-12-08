@@ -113,7 +113,7 @@ If not already done, nRF Util needs to be installed, see [nRF Util](https://info
 
   ```
   cd ~/nrf52/nRF5_SDK_xyz/projects/
-  cd dfu/secure_bootloader/pca10040_ble/ses/Output/Release/Exe
+  cd dfu/secure_bootloader/pca10040_s132_ble/ses/Output/Release/Exe
   ```
 
 - Generate the settings:
@@ -459,3 +459,8 @@ GNU_VERSION := 8.2.1
 GNU_PREFIX := arm-none-eabi
 ```
 
+### Strange Issues
+
+#### ERROR 33281 [NRF_ERROR_DRV_TWI_ERR_ANACK] 
+
+I'd a hard time with the error `0> <error> app: ERROR 33281 [NRF_ERROR_DRV_TWI_ERR_ANACK]` which appeared when accessing TWI devices using `nrf_drv_twi_tx()`. Actually, this was caused by an insufficient power supply. In my case the USB cable was not ok, so sometimes it worked, sometimes not.

@@ -74,3 +74,4 @@ pca10040/s132/config/sdk_config_myconfig.h
 pca10040/s132/config/sdk_config_mycurrent.h
 ble_beacon_dis_sw.inc~
 ble_beacon_dis_sw.inc
+hex/nRF_Connect_Programmer_*.hex
