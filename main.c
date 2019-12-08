@@ -435,6 +435,46 @@ static void lfclk_config()
     nrf_drv_clock_lfclk_request(NULL);
 }
 
+static void config_event_key_pressed()
+{
+    ret_code_t err_code;
+
+    if(m_button_config_mode)
+    {
+        // restart config mode timer
+        err_code = app_timer_stop(m_singleshot_timer_config_mode);
+        APP_ERROR_CHECK(err_code);
+
+        err_code = app_timer_start(m_singleshot_timer_config_mode, APP_TIMER_TICKS_CONFIG_MODE, NULL); 
+        APP_ERROR_CHECK(err_code);
+
+        m_adv_mode = (m_adv_mode + 1) % APP_ADV_MAXNUM;
+        advertising_reconfig(m_adv_mode);
+        NRF_LOG_DEBUG("set m_adv_scan_response %d", m_adv_mode);
+    }
+}
+
+static void config_event_key_long_pressed()
+{
+    ret_code_t err_code;
+
+    if(!m_button_config_mode)
+    {
+        m_button_config_mode = true;
+            
+        err_code = app_timer_start(m_singleshot_timer_config_mode, APP_TIMER_TICKS_CONFIG_MODE, NULL); 
+        APP_ERROR_CHECK(err_code);
+
+        led_indication_start(LED_INDICATION_6);
+    } 
+    else {
+        err_code = app_timer_start(m_singleshot_timer_delete_bonds, APP_TIMER_TICKS_WAIT_DELETE_BONDS, NULL); 
+        APP_ERROR_CHECK(err_code);
+    }
+}
+
+
+
 
 /**@brief Function for handling BSP events.
  *
@@ -451,14 +491,7 @@ static void bsp_event_handler(bsp_event_t event)
     {
     case BSP_EVENT_KEY_0: // button on beacon pressed
         NRF_LOG_DEBUG("button BSP_EVENT_KEY_0");
-        if(current_leds){
-            current_leds = false;
-            bsp_board_leds_off();
-        } else {
-            current_leds = true;
-            bsp_board_leds_on();
-        }
-        
+        config_event_key_pressed();
         break;
 
     case BSP_EVENT_KEY_0_RELEASED: // button on beacon released
@@ -467,26 +500,12 @@ static void bsp_event_handler(bsp_event_t event)
     
     case BSP_EVENT_KEY_0_LONG: // button on beacon long pressed
         NRF_LOG_DEBUG("button BSP_EVENT_KEY_0_LONG");
+        config_event_key_long_pressed();
         break;
 
     case BSP_EVENT_KEY_1: // button on jig pressed
         NRF_LOG_DEBUG("button BSP_EVENT_KEY_1");
-
-        if(m_button_config_mode)
-        {
-            // restart config mode timer
-            err_code = app_timer_stop(m_singleshot_timer_config_mode);
-            APP_ERROR_CHECK(err_code);
-
-            err_code = app_timer_start(m_singleshot_timer_config_mode, APP_TIMER_TICKS_CONFIG_MODE, NULL); 
-            APP_ERROR_CHECK(err_code);
-
-
-            m_adv_mode = (m_adv_mode + 1) % APP_ADV_MAXNUM;
-            advertising_reconfig(m_adv_mode);
-            NRF_LOG_DEBUG("set m_adv_scan_response %d", m_adv_mode);
-        }
-
+        config_event_key_pressed();
         break;
     
     case BSP_EVENT_KEY_1_RELEASED: // button on jig released
@@ -495,21 +514,7 @@ static void bsp_event_handler(bsp_event_t event)
     
     case BSP_EVENT_KEY_1_LONG: // button on jig long pressed
         NRF_LOG_DEBUG("button BSP_EVENT_KEY_1_LONG"); 
-
-        if(!m_button_config_mode)
-        {
-            m_button_config_mode = true;
-            
-            err_code = app_timer_start(m_singleshot_timer_config_mode, APP_TIMER_TICKS_CONFIG_MODE, NULL); 
-            APP_ERROR_CHECK(err_code);
-
-            led_indication_start(LED_INDICATION_6);
-        } 
-        else {
-            err_code = app_timer_start(m_singleshot_timer_delete_bonds, APP_TIMER_TICKS_WAIT_DELETE_BONDS, NULL); 
-            APP_ERROR_CHECK(err_code);
-        }
-
+        config_event_key_long_pressed();
         break;
 
     case BSP_EVENT_WHITELIST_OFF:

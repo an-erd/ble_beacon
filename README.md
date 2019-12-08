@@ -80,6 +80,14 @@ An additional NFC (Near field communication) antenna can be attached to allow fo
 
 If not already done, nRF Util needs to be installed, see [nRF Util](https://infocenter.nordicsemi.com/index.jsp?topic=%2Fug_nrfutil%2FUG%2Fnrfutil%2Fnrfutil_intro.html).
 
+### Perform a full erase
+
+Either use the erase function in nRF Connect Programmer or nRFgo Studio, or use
+
+```
+nrfjprog -e
+```
+
 ### Preparation Application zip File
 
 **Step 1)** Create zip file with the application
@@ -464,3 +472,19 @@ GNU_PREFIX := arm-none-eabi
 #### ERROR 33281 [NRF_ERROR_DRV_TWI_ERR_ANACK] 
 
 I'd a hard time with the error `0> <error> app: ERROR 33281 [NRF_ERROR_DRV_TWI_ERR_ANACK]` which appeared when accessing TWI devices using `nrf_drv_twi_tx()`. Actually, this was caused by an insufficient power supply. In my case the USB cable was not ok, so sometimes it worked, sometimes not.
+
+#### Peer manager fails with NRF_ERROR_STORAGE_FULL
+
+When receiving this error message, it was not that the flash was full, but that there's some garbage left in flash. Using `nrfjprog -e` to erase all flash and upload worked fine. See this [link](https://devzone.nordicsemi.com/f/nordic-q-a/44931/peer-manager-fails-with-nrf_error_storage_full).
+
+Detailed error message:
+
+```
+0> <info> app: ble_beacon - main started.
+ 0> <error> peer_manager_pds: Could not initialize flash storage. fds_init() returned 0x860A.
+ 0> <error> peer_manager: pm_init failed because pds_init() returned NRF_ERROR_STORAGE_FULL.
+ 0> <error> app: ERROR 3 [NRF_ERROR_INTERNAL] at C:\msys32\...\projects\ble_peripheral\ble_beacon\main.c:2317
+ 0> PC at: 0x00033035
+ 0> <error> app: End of error report
+```
+
