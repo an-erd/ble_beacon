@@ -53,12 +53,12 @@ Beside the advertising of the sensor measurements the beacon can store the measu
 
 ### Available Sensors on Board
 
-Currently the following sensors are on-board:
+Currently the following sensors are on-board. Both sensors use the TWI (i.e. I2C) bus to communicate with the NRF52. 
 
-- KX022 accelerometer, [KX022 Data Sheet](Documentation/datasheets/KX022-1020 Specifications Rev4.0 cn.pdf)
-- SHT03 temperature and humidity sensor, [SHT03 Data Sheet](Documentation/datasheets/Sensirion_Humidity_Sensors_SHT3x_Datasheet_digital-971521.pdf), 
-
-Both sensors use the TWI (i.e. I2C) bus to communicate with the NRF52.
+| Sensor | Description                                   | Data Sheet                                                   | TWI Address |
+| ------ | --------------------------------------------- | ------------------------------------------------------------ | ----------- |
+| KX022  | ± 2g / 4g / 8g Tri-axis Digital Accelerometer | [KX022 Data Sheet](Documentation/datasheets/KX022-1020%20Specifications%20Rev4.0%20cn.pdf) | 0x1E        |
+| SHT03  | Humidity and Temperature Sensor               | [SHT03 Data Sheet](Documentation/datasheets/Sensirion_Humidity_Sensors_SHT3x_Datasheet_digital-971521.pdf) | 0x44        |
 
 ### Available Buttons and LEDs on Board
 
@@ -471,7 +471,12 @@ GNU_PREFIX := arm-none-eabi
 
 #### ERROR 33281 [NRF_ERROR_DRV_TWI_ERR_ANACK] 
 
-I'd a hard time with the error `0> <error> app: ERROR 33281 [NRF_ERROR_DRV_TWI_ERR_ANACK]` which appeared when accessing TWI devices using `nrf_drv_twi_tx()`. Actually, this was caused by an insufficient power supply. In my case the USB cable was not ok, so sometimes it worked, sometimes not.
+I'd a hard time with the error `0> <error> app: ERROR 33281 [NRF_ERROR_DRV_TWI_ERR_ANACK]` which appeared when accessing TWI devices using `nrf_drv_twi_tx()`. Actually, this was caused by an insufficient power supply. On top of that, I had two overlaying problems:
+
+- a bad USB cable, and
+- the power provided by the Nordic Power Profiler Kit was ~2.2 V. 
+
+The reason for the latter issue is not clear and needs to be follow up, either the PPK itself or the J-Link Mini Edu used.
 
 #### Peer manager fails with NRF_ERROR_STORAGE_FULL
 
