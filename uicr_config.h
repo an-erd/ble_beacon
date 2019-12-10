@@ -77,7 +77,8 @@ extern "C" {
 // const uint32_t UICR_RBPCONF   __attribute__((at(0x10001004))) __attribute__((used)) = 0xFFFFFFFF;
 // const uint32_t UICR_XTALFREQ  __attribute__((at(0x10001008))) __attribute__((used)) = 0xFFFFFFFF;
 
-const uint32_t UICR_ADDR_0x80 __attribute__((at(0x10001080))) __attribute__((used)) = 0x00070008;                                                                                     
+const uint32_t UICR_ADDR_0x80 __attribute__((section(".UICR_0x80"))) = 0x00070008;
+// const uint32_t UICR_ADDR_0x80 __attribute__((at(0x10001080))) __attribute__((used)) = 0x00070008;
 // const uint32_t UICR_ADDR_0x84 __attribute__((at(0x10001084))) __attribute__((used)) = 0xFFFFFFFF;
 // const uint32_t UICR_ADDR_0x88 __attribute__((at(0x10001088))) __attribute__((used)) = 0xFFFFFFFF;
 // const uint32_t UICR_ADDR_0x8C __attribute__((at(0x1000108C))) __attribute__((used)) = 0xFFFFFFFF;
