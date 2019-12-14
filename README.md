@@ -80,13 +80,33 @@ An additional NFC (Near field communication) antenna can be attached to allow fo
 
 If not already done, nRF Util needs to be installed, see [nRF Util](https://infocenter.nordicsemi.com/index.jsp?topic=%2Fug_nrfutil%2FUG%2Fnrfutil%2Fnrfutil_intro.html).
 
+### Install nRF Command Line Tools
+
+If not already done, nRF Command Line Tools needs to be installed, see [nRF Command Line Tools](https://www.nordicsemi.com/Software-and-tools/Development-Tools/nRF-Command-Line-Tools).
+
 ### Perform a full erase
 
-Either use the erase function in nRF Connect Programmer or nRFgo Studio, or use
+Either use the erase function in nRF Connect Programmer or nRFgo Studio, or use:
 
 ```
 nrfjprog -e
 ```
+
+### Add Environment Variable for SDK Base Path
+
+For an Windows environment, add an environment variable with `setx`, for example:
+
+```
+setx NRF_SDK_PATH "C:\msys32\home\AKAEM\nrf52\nRF5_SDK_16.0.0_98a08e2"
+setx NRF_APP_PATH "%NRF_SDK_PATH%\projects\ble_peripheral\ble_beacon"
+setx NRF_BL_PATH  "%NRF_SDK_PATH%\projects\dfu\secure_bootloader"
+```
+
+In the following steps the SDK base path, application path and bootloader path are referenced by `%NRF_SDK_PATH%`, `%NRF_APP_PATH%` and `%NRF_BL_PATH%` . You can append `/M` to make the environment variable system wide, and not just for the user.
+
+### Detailed Information on DFU Update process
+
+A good starting point on DFU, package creation, validation, etc. is provided by Nordic at infocenter.nordic.com, section [Device Firmware Update Process](https://infocenter.nordicsemi.com/topic/sdk_nrf5_v16.0.0/lib_bootloader_dfu_process.html). In particular for validation and acceptance rules look at [link](https://infocenter.nordicsemi.com/topic/sdk_nrf5_v16.0.0/lib_bootloader_dfu_validation.html).
 
 ### Preparation Application zip File
 
@@ -95,14 +115,13 @@ nrfjprog -e
 - Go to the application build directory with the application already build:
 
   ```
-  cd ~/nrf52/nRF5_SDK_xyz/projects/
-  cd ble_peripheral/ble_beacon/pca10040/s132/ses/Output/Release/Exe
+  cd %NRF_APP_PATH%/pca10040/s132/ses/Output/Release/Exe
   ```
-
+  
 - If not done yet, copy the `private.key` to this directory:
 
   ```
-  cp ~/nrf52/nRF5_SDK_xyz/projects/ble_peripheral/ble_beacon/Keys/private.key .
+  cp %NRF_APP_PATH%/Keys/private.key .
   ```
 
 - Generate the package:
@@ -111,7 +130,68 @@ nrfjprog -e
   nrfutil pkg generate --hw-version 52 --application-version 1 --application ble_beacon_pca10040_s132.hex --sd-req 0xCB --key-file private.key app_dfu_package.zip
   ```
 
-**Remark:** The SoftDevice version string is required using `--sd-req`. Use the NRF Connect Programmer and do a `read` to get the version string. Example: `SoftDevice detected, id 0xCB (S132 v7.0.0)`
+If you want to generate a **package containing SD+BL+APP**, use the command line (example):
+
+```
+nrfutil pkg generate --hw-version 52 --application-version 1 --application ble_beacon_pca10040_s132.hex --bootloader-version 1 --bootloader %NRF_BL_PATH%/pca10040_s132_ble/ses/Output/Release/Exe/secure_bootloader_ble_s132_pca10040.hex --sd-req 0xA8,0xAF,0xB7,0xC2,0xCB --sd-id 0xCB --softdevice %NRF_SDK_PATH%/components/softdevice/s132/hex/s132_nrf52_7.0.1_softdevice.hex --key-file private.key app_bl_sd_dfu_package.zip
+```
+
+
+
+Command to create package for the HW NRF52832:
+
+```
+nrfutil pkg generate --hw-version 52
+```
+
+with the arguments
+
+- APP version and HEX file
+
+  ```
+  --application-version 1 --application ble_beacon_pca10040_s132.hex
+  ```
+
+- BL version and HEX file
+
+  ```
+  --bootloader-version 1 --bootloader %NRF_BL_PATH%/.../secure_bootloader_ble_s132_pca10040.hex
+  ```
+
+- SD required and new version, and HEX file
+
+  ```
+  --sd-req 0xA8,0xAF,0xB7,0xC2,0xCB --sd-id 0xCB --softdevice %NRF_SDK_PATH%/.../s132_nrf52_7.0.1_softdevice.hex
+  ```
+
+- Private Key file
+
+  ```
+  --key-file private.key
+  ```
+
+- and the output ZIP file name
+
+  ```
+  app_bl_sd_dfu_package.zip
+  ```
+
+**Remark:** 
+
+- A detailed description can be found in this thread on devzone.nordicsemi.com: [link](https://devzone.nordicsemi.com/f/nordic-q-a/40050/softdevice-update-through-dfu).
+
+* The current SoftDevice version string is required using `--sd-req`. Use the NRF Connect Programmer and do a `read` to get the version string. 
+* If you upgrade the SoftDevice, `--sd-req` should contain both, current and future version(s) in a comma separated list.
+* The future SoftDevice version is given using `--sd-id`.
+* List of recent S132 SoftDevices with version strings:
+
+| SDK Version            | SD Version | SD Version String |
+| ---------------------- | ---------- | ----------------- |
+| SDK 16.0.0             | 7.0.1      | 0xCB              |
+|                        | 7.0.0      | 0xC2              |
+| SDK 15.3.0             | 6.1.1      | 0xB7              |
+| SDK 15.2.0, SDK 15.1.0 | 6.1.0      | 0xAF              |
+| SDK 15.0.0             | 6.0.0      | 0xA8              |
 
 ### Preparation of Bootloader Settings and Merge Settings with Bootloader to one .hex
 
@@ -120,14 +200,13 @@ nrfjprog -e
 - Go to bootloader application build directory with the bootloader already build: 
 
   ```
-  cd ~/nrf52/nRF5_SDK_xyz/projects/
-  cd dfu/secure_bootloader/pca10040_s132_ble/ses/Output/Release/Exe
+  cd %NRF_BL_PATH%/pca10040_s132_ble/ses/Output/Release/Exe
   ```
-
+  
 - Generate the settings:
 
   ```
-  nrfutil settings generate --family NRF52 --application ../../../../../../../ble_peripheral/ble_beacon/pca10040/s132/ses/Output/Release/Exe/ble_beacon_pca10040_s132.hex --application-version 0 --bootloader-version 0 --bl-settings-version 1 bootloader_setting.hex
+  nrfutil settings generate --family NRF52 --application %NRF_APP_PATH%/pca10040/s132/ses/Output/Release/Exe/ble_beacon_pca10040_s132.hex --application-version 0 --bootloader-version 0 --bl-settings-version 2 bootloader_setting.hex
   ```
 
 **Step 3)** Merge the bootloader and settings file to allow flashing the application together with the bootloader/settings during production and without the need to update using DFU
@@ -135,10 +214,9 @@ nrfjprog -e
 - Go to the bootloader application build directory:
 
   ```
-  cd ~/nrf52/nRF5_SDK_xyz/projects/
-  cd dfu/secure_bootloader/pca10040_ble/ses/Output/Release/Exe
+  cd %NRF_BL_PATH%/pca10040_ble/ses/Output/Release/Exe
   ```
-
+  
 - Merge the bootloader and settings file:
 
   ```
@@ -156,7 +234,13 @@ nrfjprog -e
   - Application .hex file generated during application build
 - Press `Erase & Write`
 
-![Alt text](Documentation\program_docu/nRF_Connect_Programmer_Files.PNG?raw=true "Files to upload during programming the device")
+The files are located here:
+
+| File                 | HEX File Path                                                |
+| -------------------- | ------------------------------------------------------------ |
+| SoftDevice           | %NRF_SDK_PATH%/components/softdevice/s132/hex/s132_nrf52_....hex |
+| Merged settings + BL | %NRF_BL_PATH%/pca10040_ble/ses/Output/Release/Exe/output.hex |
+| Application          | %NRF_BL_PATH%/pca10040_ble/ses/Output/Release/Exe/<br />ble_beacon_pca10040_s132.hex |
 
 **Step 5)** (optional) If necessary, write 4 byte UICR with the devices MAJOR and MINOR address
 
@@ -174,7 +258,7 @@ nrfjprog -e
 
 ### Update the Device using DFU
 
-**Step 6)** To update the application use DFU and the application zip file generated as in Step 1) using nRF Connect Bluetooth Low Energy application on Windows (with nrf52832 dongle) or iPhone/Android app.
+**Step 6)** To update the application use DFU and the application zip file generated as in Step 1) using nRF Connect Bluetooth Low Energy application on Windows (with nrf52832 dongle) or iPhone/Android app. The same procedure holds if you want to update APP+BL+SD with one package.
 
 #### Remark: Using without bootloader and DFU
 
@@ -466,6 +550,20 @@ GNU_INSTALL_ROOT := /opt/gcc-arm-none-eabi-8-2018-q4-major-win32/bin/
 GNU_VERSION := 8.2.1
 GNU_PREFIX := arm-none-eabi
 ```
+
+### Set up Nordic Power Profiler Kit
+
+The Nordic Power Profiler Kit (PPK) is configured as follows: See the PPK manual for more information: [link](https://infocenter.nordicsemi.com/pdf/PPK_User_Guide_v2.2.pdf).
+
+The setup is described in section *6.6 Measuring current on custom hardware without nRF5 DK*
+
+- Only the PPK is used, no Nordic Development Kit (DK)
+- The External 5V supply USB connector (J1) of the PPK is used to supply power to the onboard analog measurement circuitry and the onboard regulator with 5 V.
+- Set the Power select switch (SW4) in the "Reg" position.
+- The DUT select switch (SW2) is in the "External" position.
+- The custom hardware (DUT) is connected to the External DUT connector (P16) of the PPK
+- The additional SEGGER J-Link is connected to the Debug in connector (P21) on the PPK using the 10-pin flat cable. The USB cable is plugged into the SEGGER J-Link and connected to a computer running the Power Profiler application.
+- The COM switch (SW3) is in the "EXT" position.
 
 ### Strange Issues
 

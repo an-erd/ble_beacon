@@ -147,7 +147,7 @@
 #define USE_CTS
 #define USE_DIS
 #define USE_DFU
-#undef  USE_BUTTONLESS_DFU
+#define USE_BUTTONLESS_DFU
 
 // App Timer defines
 APP_TIMER_DEF(m_repeated_timer_init);                       /**< Handler for repeated timer for init process (sensor, offline buffer, ...). */
@@ -269,7 +269,7 @@ ret_code_t offline_buffer_update(uint8_t *buffer);
 #define PAYLOAD_OFFSET_BATTERY_INFO     (PAYLOAD_OFFSET_IN_BEACON_INFO_ADV + 10)  /**< Position to write the battery voltage payload to */									
 
 // BLE Services
-#define DEVICE_NAME                     "Beac8"     /**< Name of device. Will be included in the advertising data. */
+uint8_t  m_device_name[16] = "BxFFFF";              /**< Name of device, temporary value if not set. */
 static ble_uuid_t m_adv_uuids[] = 
 {
     { BLE_UUID_OUR_SERVICE, BLE_UUID_TYPE_BLE  },   /**< 16-bit UUID for our service. */
@@ -1273,8 +1273,8 @@ static void gap_params_init(void)
     BLE_GAP_CONN_SEC_MODE_SET_OPEN(&sec_mode);
 
     err_code = sd_ble_gap_device_name_set(&sec_mode,
-                                          (const uint8_t *)DEVICE_NAME,
-                                          strlen(DEVICE_NAME));
+                                          (const uint8_t *)m_device_name,
+                                          strlen(m_device_name));
     APP_ERROR_CHECK(err_code);
 
     memset(&gap_conn_params, 0, sizeof(gap_conn_params));
@@ -1928,6 +1928,7 @@ static void advertising_init()
     ble_advdata_t            advdata;
     ble_advdata_manuf_data_t manuf_data;
     uint8_t                  flags = BLE_GAP_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE; //BLE_GAP_ADV_FLAGS_LE_ONLY_LIMITED_DISC_MODE;
+    ble_gap_conn_sec_mode_t sec_mode;
 
 //    APP_ERROR_CHECK_BOOL(sizeof(flags) == ADV_FLAGS_LEN);  // Assert that these two values of the same.
 
@@ -1960,6 +1961,14 @@ static void advertising_init()
 
     init_manuf_data[index++] = MSB_16(minor_value);
     init_manuf_data[index++] = LSB_16(minor_value);
+
+    // Change the device name to the one determined using UICR values
+    sprintf(m_device_name, "Bx%02X%02X", major_value, minor_value);
+    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&sec_mode);
+    err_code = sd_ble_gap_device_name_set(&sec_mode,
+                                          (const uint8_t *)m_device_name,
+                                          strlen(m_device_name));
+    APP_ERROR_CHECK(err_code);
 #endif
 
     // Build and set advertising data
