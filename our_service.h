@@ -93,6 +93,7 @@ NRF_SDH_BLE_OBSERVER(_name ## _obs,                             \
 #define BLE_OS_MEAS_STATUS_SENSOR_FAULT                 0x0002  /**< Sensor malfunction or faulting at time of measurement */
 #define BLE_OS_MEAS_STATUS_GENERAL_FAULT                0x0004  /**< General device fault has occurred in the sensor */
 #define BLE_OS_MEAS_STATUS_TIME_FAULT                   0x0008  /**< Time fault has occurred in the sensor and time may be inaccurate */
+#define BLE_OS_MEAS_STATUS_TIME_NOT_SET                 0x0010  /**< Time is not set by CTS, thus showing seconds since startup */
 
 
 /**@brief Our Service event type. */
@@ -129,6 +130,16 @@ typedef struct
     ble_os_meas_t   meas;                                       /**< Our Service measurement */
 } ble_os_rec_t;
 
+/**@brief Our service status data and update record. Order and content as in our_service_db record */
+typedef struct
+{
+   uint8_t          flags;                                      /**< flags and update request */
+   uint8_t          sequence_number[2];                         /**< Sequence number, LSB first */
+   uint8_t          time_stamp[4];                              /**< Time stamp, LSB first */
+   uint8_t          available_db_entries[2];                    /**< Number of availalbe DB entries */
+   uint8_t          max_db_entries[2];                          /**< Max. number of DB entries = DB size */
+} ble_os_status_data_update_t;
+
 
 /**@brief Our Service init structure. This contains all options and data needed for
  *        initialization of the service. */
@@ -156,9 +167,11 @@ struct ble_os_s
     ble_gatts_char_handles_t    osf_handles;                    /**< Handles related to the Our Service Feature characteristic. */
     ble_gatts_char_handles_t    racp_handles;                   /**< Handles related to the Record Access Control Point characteristic. */
     ble_gatts_char_handles_t    osa_handles;                    /**< Handles related to the Our Service Annunciation characteristic. */
+    ble_gatts_char_handles_t    ossu_handles;                   /**< Handles related to the Our Service status data and update characteristic. */
     uint16_t                    conn_handle;                    /**< Handle of the current connection (as provided by the BLE stack, is BLE_CONN_HANDLE_INVALID if not in a connection). */
     uint16_t                    feature;                        /**< Features provided by the device. */
     uint16_t                    annunciation;                   /**< Annunciation given by the device. Will be reset if read. (TODO) */
+    ble_os_status_data_update_t status_update;                  /**< Status data and update */
 };
 
 // randomly generated 128-bit base UUID: 612f3d33-37f5-4c4f-9ff2-320c4ba2b73c
@@ -167,6 +180,7 @@ struct ble_os_s
 #define BLE_UUID_OUR_SERVICE_MEASUREMENT_CHAR   0x1401  // 16-bit characteristic UUID for the masurement values
 #define BLE_UUID_OUR_SERVICE_FEATURE_CHAR       0x1402  // 16-bit characteristic UUID for the feature values
 #define BLE_UUID_OUR_SERVICE_ANNUNCIATION_CHAR  0x1403  // 16-bit characteristic UUID for the annunciation values
+#define BLE_UUID_OUR_SERVICE_STATUS_DATA_CHAR   0x1404  // 16-bit characteristic UUID for status data and update
 
 
 /**@brief Function for initializing the Our Service service.
@@ -216,6 +230,9 @@ ret_code_t ble_os_sensor_new_meas(ble_os_t * p_os, ble_os_rec_t * p_rec);
  * @return      NRF_SUCCESS on success, otherwise an error code.
  */
 ret_code_t ble_os_new_annunciation(ble_os_t * p_os, uint16_t new_annunciation);
+
+
+ret_code_t ble_os_new_status_data_update(ble_os_t * p_os, ble_os_status_data_update_t new_status_update);
 
 
 #ifdef __cplusplus

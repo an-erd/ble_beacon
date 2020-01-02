@@ -1,0 +1,53 @@
+C:\msys32\home\AKAEM\nrf52\nRF5_SDK_16.0.0_98a08e2\projects\ble_peripheral\ble_beacon\pca10040\s132\ses\Output\Debug\Exe>dir
+ Volume in Laufwerk C: hat keine Bezeichnung.
+ Volumeseriennummer: C612-2D01
+
+ Verzeichnis von C:\msys32\home\AKAEM\nrf52\nRF5_SDK_16.0.0_98a08e2\projects\ble_peripheral\ble_beacon\pca10040\s132\ses\Output\Debug\Exe
+
+14.12.2019  09:32    <DIR>          .
+14.12.2019  09:32    <DIR>          ..
+14.12.2019  09:32         4.313.120 ble_beacon_pca10040_s132.elf
+14.12.2019  09:32           394.855 ble_beacon_pca10040_s132.hex
+14.12.2019  09:32         2.296.501 ble_beacon_pca10040_s132.map
+25.10.2019  14:30               232 private.key
+               4 Datei(en),      7.004.708 Bytes
+               2 Verzeichnis(se), 43.187.208.192 Bytes frei
+
+C:\msys32\home\AKAEM\nrf52\nRF5_SDK_16.0.0_98a08e2\projects\ble_peripheral\ble_beacon\pca10040\s132\ses\Output\Debug\Exe>nrfutil pkg generate --hw-version 52 --application-version 0 --application ble_beacon_pca10040_s132.hex --bootloader-version 0 --bootloader %NRF_BL_PATH%/pca10040_s132_ble/ses/Output/Release/Exe/secure_bootloader_ble_s132_pca10040.hex --sd-req 0xA8,0xAF,0xB7,0xC2,0xCB --sd-id 0xCB --softdevice %NRF_SDK_PATH%/components/softdevice/s132/hex/s132_nrf52_7.0.1_softdevice.hex --key-file private.key app_bl_sd_dfu_package.zip
+Zip created at app_bl_sd_dfu_package.zip
+
+C:\msys32\home\AKAEM\nrf52\nRF5_SDK_16.0.0_98a08e2\projects\ble_peripheral\ble_beacon\pca10040\s132\ses\Output\Debug\Exe>cd %NRF_BL_PATH%/pca10040_s132_ble/ses/Output/Release/Exe
+
+C:\msys32\home\AKAEM\nrf52\nRF5_SDK_16.0.0_98a08e2\projects\dfu\secure_bootloader\pca10040_s132_ble\ses\Output\Release\Exe>nrfutil settings generate --family NRF52 --application %NRF_APP_PATH%/pca10040/s132/ses/Output/Debug/Exe/ble_beacon_pca10040_s132.hex --application-version 0 --bootloader-version 0 --bl-settings-version 2 bootloader_setting.hex
+
+Note: Generating a DFU settings page with backup page included.
+This is only required for bootloaders from nRF5 SDK 15.1 and newer.
+If you want to skip backup page generation, use --no-backup option.
+
+Generated Bootloader DFU settings .hex file and stored it in: bootloader_setting.hex
+
+Bootloader DFU Settings:
+* File:                     bootloader_setting.hex
+* Family:                   nRF52
+* Start Address:            0x0007F000
+* CRC:                      0x4BA6ED11
+* Settings Version:         0x00000002 (2)
+* App Version:              0x00000000 (0)
+* Bootloader Version:       0x00000000 (0)
+* Bank Layout:              0x00000000
+* Current Bank:             0x00000000
+* Application Size:         0x00022420 (140320 bytes)
+* Application CRC:          0xA87F257B
+* Bank0 Bank Code:          0x00000001
+* Softdevice Size:          0x00000000 (0 bytes)
+* Boot Validation CRC:      0xCB69768F
+* SD Boot Validation Type:  0x00000000 (0)
+* App Boot Validation Type: 0x00000001 (1)
+
+
+C:\msys32\home\AKAEM\nrf52\nRF5_SDK_16.0.0_98a08e2\projects\dfu\secure_bootloader\pca10040_s132_ble\ses\Output\Release\Exe>mergehex -m bootloader_setting.hex secure_bootloader_ble_s132_pca10040.hex --output output.hex
+Parsing input hex files.
+Merging files.
+Storing merged file.
+
+C:

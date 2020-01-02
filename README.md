@@ -308,7 +308,7 @@ After 10 seconds without a keypress (i.e., idle), the configuration mode will be
 
 | Action       | Description       | LED feedback                       |
 | ------------ | ----------------- | ---------------------------------- |
-| Idel timeout | Leave config mode | &#183; &#183; &#183; &#183; &#183; |
+| Idle timeout | Leave config mode | &#183; &#183; &#183; &#183; &#183; |
 
 ## Provided Services by Device
 
@@ -336,7 +336,30 @@ You can connect to the device and use the following additional features:
 
 ### Get Data from Device with respect to RACP
 
-You can retrieve data from the device or delete the device offline buffer memory using the following commands:
+You can retrieve data from the device or delete the device offline buffer memory using the following commands written to UUID `0x2A52`: 
+
+| Command | Description                | Response 2A52                                          | Response 1401                                                |
+| ------- | -------------------------- | ------------------------------------------------------ | ------------------------------------------------------------ |
+| 01 ...  | Report Records             | 06-00-01-01<br />(Response, Operator NULL, ?, Success) | 0..n notifications, one for each database entry to be reported |
+| 01 05   | Report Records, First      | -                                                      |                                                              |
+| 01 06   | Report Records, Last       |                                                        |                                                              |
+| 02 ...  | Delete Records             | 06-00-02-01<br />tbd                                   | none                                                         |
+| 02 01   | Delete Records, All        |                                                        |                                                              |
+| 04 ...  | Report Number Records      | 05-00-0A-00<br />tbd                                   |                                                              |
+| 04 01   | Report Number Records, All |                                                        |                                                              |
+
+
+| Cmd    | Description                | Response 2A52                                          | Response 1401 |
+| ------ | -------------------------- | ------------------------------------------------------ | ------------- |
+| 01 01  | Report Records, All        | 06-00-01-01<br />(Response, Operator NULL, ?, Success) |               |
+| 01 05  | Report Records, First      | (see Report Records, All)                              |               |
+| 01 06  | Report Records, Last       | (see Report Records, All)                              |               |
+|        |                            | -                                                      | -             |
+| 02 01  | Delete Records, All        |                                                        |               |
+|        |                            | -                                                      | -             |
+| 04 01  | Report Number Records, All | 05 00 0A 00<br />tdb                                   |               |
+
+**Remark:** the byte order is LSB-MSB
 
 - **write** to 0x2A52 the following commands:
 
@@ -346,7 +369,7 @@ You can retrieve data from the device or delete the device offline buffer memory
   - `04 01` (Report Number Records, All) -> `2A52: 05 00 01 00` (Number of stored records response, number of records 2 byte  LSB first,  here: 1 record)
   - `02 01` (Delete All Records)
 
-  **Remark:** the byte order is LSB-MSB
+  
 
 #### Decode sequential number/Number of entries
 
@@ -361,6 +384,56 @@ The time stamp can be decoded using an appropriate online calculator, for exampl
 - Unix Epoch time calculator, e.g. https://www.unixtimestamp.com/index.php
 
 If the beacon does not have the correct time, the time stamps are reported since boot time, which is 0. If the correct time is available, this will be used.
+
+#### Example
+
+- Value received, see the console log below
+
+- `0A-00-75-D5-0D-5E-5F-17-57-1C` 
+
+  - Sequence number: 0x000A = 10
+  - Time stamp: 0x5E0DD575 = ‭1577964917‬ = 01/02/2020 @ 11:35am (UTC)
+  - Temperature `60 AD` = 
+  - Humidity `74 15` = 
+
+- Corresponding log file entries from NRF Connect console
+
+  Connecting to the device:
+  
+  ```
+  11:44:19.028	Connecting to device
+  11:44:29.244	Connected to device D7:59:9D:1D:7B:6B
+  11:44:29.521	Attribute value read, handle: 0x03, value (0x): 42-78-30-37-30-38
+  11:44:31.298	Connection parameters updated for device D7:59:9D:1D:7B:6B: interval 200ms, timeout 4000ms, latency: 0
+  11:44:36.107	Security updated, mode:1, level:2
+  ```
+  
+  Change notification for `handle 0x26` `UUID 1401`:
+  
+  ```
+  11:44:40.906	Attribute value changed, handle: 0x26, value (0x): 01-00
+  11:44:40.911	Attribute value written, handle: 0x26, value (0x): 01-00
+  ```
+  
+  Change indication for `handle 0x2B` `UUID 2A52`:
+  
+  ```
+  11:44:42.906	Attribute value changed, handle: 0x2B, value (0x): 02-00
+  11:44:42.910	Attribute value written, handle: 0x2B, value (0x): 02-00
+  ```
+  
+  Retrieve last data set using write `01 06` to  `handle 0x2A` `UUID 2A52`:
+  
+  ```
+  11:44:46.707	Attribute value changed, handle: 0x2A, value (0x): 01-06
+  11:44:46.715	Attribute value written, handle: 0x2A, value (0x): 01-06
+  11:44:46.722	Attribute value changed, handle: 0x25, value (0x): 0A-00-75-D5-0D-5E-5F-17-57-1C
+  11:44:47.107	Attribute value changed, handle: 0x2A, value (0x): 06-00-01-01
+  ```
+
+- Link to the detailed NRF Connect log file: [Link](Documentation/program_docu/2020-01-02_nrf_connect_log.txt)
+
+
 
 ### Get Features provided by the Device
 
@@ -389,6 +462,34 @@ The Bluetooth characteristics 0x1403 can be read to get devices status annunciat
 | BLE_OS_MEAS_STATUS_SENSOR_FAULT  | 0x0002 | Sensor malfunction or faulting at time of measurement        |
 | BLE_OS_MEAS_STATUS_GENERAL_FAULT | 0x0004 | General device fault has occurred in the sensor              |
 | BLE_OS_MEAS_STATUS_TIME_FAULT    | 0x0008 | Time fault has occurred in the sensor and time may be inaccurate |
+| BLE_OS_MEAS_STATUS_TIME_NOT_SET  | 0x0010 | Time is not set by CTS, thus showing and using seconds since startup |
+
+### Status data and update commands
+
+The Bluetooth characteristics 0x1404 can be read to get device status data and written to give commands.
+
+Currently the following status data can be read by reading UUID 0x1404, for example ` 00-05-00-4C-00-00-00-04-00-0A-00`. In this example the time is not set using CTS.
+
+
+
+| Topic                               | Bytes   | Example     | Result            |
+| ----------------------------------- | ------- | ----------- | ----------------- |
+| Flags                               | [0]     | 00          | none yet          |
+| Sequence number                     | [1..2]  | 05 00       | = 0x0005 = 5      |
+| Time stamp                          | [3..6]  | 4C 00 00 00 | = 0x0000004C = 76 |
+| Number of free DB entries           | [7..8]  | 04 00       | = 0x0004 = 4      |
+| Max. number of DB entries (DB size) | [9..10] | 0A 00       | = 0x000A = 10     |
+
+
+
+The following commands can be given to the device by writing to UUID 0x1404:
+
+| Define | Value | Annunciation |
+| ------ | ----- | ------------ |
+| B      |       |              |
+|        |       |              |
+|        |       |              |
+|        |       |              |
 
 ### Battery Information Service (BAS)
 
@@ -543,13 +644,13 @@ The schematics for the beacon I use is available here. The product is available 
 
 For the installed tool chain, use the following `Makefile.windows`
 
-```
+ ```
 AKAEM@PC MINGW32 ~/nrf52/nRF5_SDK_16.0.0_98a08e2
 $ cat ./components/toolchain/gcc/Makefile.windows
 GNU_INSTALL_ROOT := /opt/gcc-arm-none-eabi-8-2018-q4-major-win32/bin/
 GNU_VERSION := 8.2.1
 GNU_PREFIX := arm-none-eabi
-```
+ ```
 
 ### Set up Nordic Power Profiler Kit
 
@@ -591,3 +692,7 @@ Detailed error message:
  0> <error> app: End of error report
 ```
 
+
+```
+
+```

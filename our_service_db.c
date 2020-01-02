@@ -49,7 +49,7 @@ typedef struct
 } database_entry_t;
 
 static database_entry_t m_database[BLE_OS_DB_MAX_RECORDS];
-static uint8_t          m_database_crossref[BLE_OS_DB_MAX_RECORDS];
+static uint16_t          m_database_crossref[BLE_OS_DB_MAX_RECORDS];
 static uint16_t         m_num_records;
 #define TIME_BEFORE_TIME_UPDATE     (2*365*24*60*60)    // 2 years will be sufficient to determine whether it's an not-updated time
 
@@ -93,7 +93,7 @@ uint16_t ble_os_db_num_free_entries_get(void)
 }
 
 
-uint32_t ble_os_db_record_get(uint8_t rec_ndx, ble_os_rec_t * p_rec)
+uint32_t ble_os_db_record_get(uint16_t rec_ndx, ble_os_rec_t * p_rec)
 {
     if (rec_ndx >= m_num_records)
     {
@@ -134,7 +134,7 @@ uint32_t ble_os_db_record_add(ble_os_rec_t * p_rec)
 }
 
 
-uint32_t ble_os_db_record_delete(uint8_t rec_ndx)
+uint32_t ble_os_db_record_delete(uint16_t rec_ndx)
 {
     int i;
 

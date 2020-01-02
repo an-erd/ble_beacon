@@ -74,9 +74,9 @@ static os_state_t       m_os_state;                                     /**< Cur
 static uint16_t         m_next_seq_num;                                 /**< Sequence number of the next database record. */
 static uint8_t          m_racp_proc_operator;                           /**< Operator of current request. */
 static uint16_t         m_racp_proc_seq_num;                            /**< Sequence number of current request. */
-static uint8_t          m_racp_proc_record_ndx;                         /**< Current record index. */
-static uint8_t          m_racp_proc_records_reported;                   /**< Number of reported records. */
-static uint8_t          m_racp_proc_records_reported_since_txcomplete;  /**< Number of reported records since last TX_COMPLETE event. */
+static uint16_t         m_racp_proc_record_ndx;                        /**< Current record index. */
+static uint16_t         m_racp_proc_records_reported;                  /**< Number of reported records. */
+static uint16_t         m_racp_proc_records_reported_since_txcomplete; /**< Number of reported records since last TX_COMPLETE event. */
 static ble_racp_value_t m_pending_racp_response;                        /**< RACP response to be sent. */
 static uint8_t          m_pending_racp_response_operand[2];             /**< Operand of RACP response to be sent. */
 
@@ -290,6 +290,25 @@ uint32_t ble_os_init(ble_os_t * p_os, const ble_os_init_t * p_os_init)
     {
         return err_code;
     }
+
+    // Add Our Service status data and update characteristic
+    memset(&add_char_params, 0, sizeof(add_char_params));
+
+    add_char_params.uuid              = BLE_UUID_OUR_SERVICE_STATUS_DATA_CHAR;
+    add_char_params.max_len           = sizeof (ble_os_status_data_update_t);
+    add_char_params.init_len          = uint16_encode(p_os->annunciation, init_value_encoded);
+    add_char_params.p_init_value      = init_value_encoded;
+    add_char_params.char_props.read   = 1;
+    add_char_params.char_props.write  = 1;
+    add_char_params.read_access       = p_os_init->os_annunciation_rd_sec;
+    add_char_params.write_access      = p_os_init->os_annunciation_wr_sec;
+
+    err_code = characteristic_add(p_os->service_handle, &add_char_params, &p_os->ossu_handles);
+    if (err_code != NRF_SUCCESS)
+    {
+        return err_code;
+    }
+
 
     return NRF_SUCCESS;
 }
@@ -1379,10 +1398,23 @@ void ble_os_on_ble_evt(ble_evt_t const * p_ble_evt, void * p_context)
 ret_code_t ble_os_sensor_new_meas(ble_os_t * p_os, ble_os_rec_t * p_rec)
 {
     ret_code_t err_code;
+    int len = 0;
+    uint16_t free_db_entries = 0;
     
     p_rec->meas.sequence_number = m_next_seq_num++;
     err_code = ble_os_db_record_add(p_rec);
-    
+
+    // TODO
+    ble_os_status_data_update_t status_update;
+    status_update.flags = 0;
+    len += uint16_encode(p_rec->meas.sequence_number, status_update.sequence_number);
+    len += uint32_encode(p_rec->meas.time_stamp, status_update.time_stamp);
+    free_db_entries = ble_os_db_num_free_entries_get();
+    len += uint16_encode(free_db_entries, status_update.available_db_entries);
+    len += uint16_encode(OFFLINE_BUFFER_SIZE, status_update.max_db_entries);
+
+    ble_os_new_status_data_update(p_os, status_update);
+
     return err_code;
 }
 
@@ -1401,6 +1433,24 @@ ret_code_t ble_os_new_annunciation(ble_os_t * p_os, uint16_t new_annunciation)
     gatts_value.p_value = (uint8_t *) &annunciation;
 
     err_code = sd_ble_gatts_value_set(p_os->conn_handle, p_os->osa_handles.value_handle, &gatts_value);
+    
+    return err_code;
+}
+
+ret_code_t ble_os_new_status_data_update(ble_os_t * p_os, ble_os_status_data_update_t new_status_update)
+{
+    ret_code_t err_code;
+    ble_gatts_value_t gatts_value;
+    ble_os_status_data_update_t status_update = new_status_update;
+
+    // Initialize value struct.
+    memset(&gatts_value, 0, sizeof(gatts_value));
+
+    gatts_value.len     = sizeof(status_update);
+    gatts_value.offset  = 0;
+    gatts_value.p_value = (uint8_t *) &status_update;
+
+    err_code = sd_ble_gatts_value_set(p_os->conn_handle, p_os->ossu_handles.value_handle, &gatts_value);
     
     return err_code;
 }
