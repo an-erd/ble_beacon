@@ -149,6 +149,7 @@ typedef struct
     ble_srv_error_handler_t     error_handler;                  /**< Function to be called in case of an error. */
     uint16_t                    feature;                        /**< Feature value indicating supported features. */
     uint16_t                    annunciation;                   /**< Initial annunciation value. */
+    ble_os_status_data_update_t status_update;                  /**< Initial data and update */
     security_req_t              os_meas_cccd_wr_sec;            /**< Security requirement for writing our service measurement characteristic CCCD. */
     security_req_t              os_feature_rd_sec;              /**< Security requirement for reading our service feature characteristic. */
     security_req_t              os_annunciation_rd_sec;         /**< Security requirement for reading our service annunciation characteristic. */
@@ -232,6 +233,16 @@ ret_code_t ble_os_sensor_new_meas(ble_os_t * p_os, ble_os_rec_t * p_rec);
 ret_code_t ble_os_new_annunciation(ble_os_t * p_os, uint16_t new_annunciation);
 
 
+
+/**@brief Function for reporting a new Our Service status data update.
+ *
+ * @details The application calls this function if a new status data is available.
+ *
+ * @param[in]   p_os                    Our Service structure.
+ * @param[in]   new_status_update       Pointer to Our Service status data update record.
+ *
+ * @return      NRF_SUCCESS on success, otherwise an error code.
+ */
 ret_code_t ble_os_new_status_data_update(ble_os_t * p_os, ble_os_status_data_update_t new_status_update);
 
 

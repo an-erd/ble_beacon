@@ -193,6 +193,7 @@ uint32_t ble_os_init(ble_os_t * p_os, const ble_os_init_t * p_os_init)
     p_os->error_handler         = p_os_init->error_handler;
     p_os->feature               = p_os_init->feature;
     p_os->annunciation          = p_os_init->annunciation;
+    p_os->status_update         = p_os_init->status_update;
     p_os->conn_handle           = BLE_CONN_HANDLE_INVALID;
 
     // Initialize global variables
@@ -296,7 +297,8 @@ uint32_t ble_os_init(ble_os_t * p_os, const ble_os_init_t * p_os_init)
 
     add_char_params.uuid              = BLE_UUID_OUR_SERVICE_STATUS_DATA_CHAR;
     add_char_params.max_len           = sizeof (ble_os_status_data_update_t);
-    add_char_params.init_len          = uint16_encode(p_os->annunciation, init_value_encoded);
+    add_char_params.init_len          = 1; // only flags
+    init_value_encoded[0]             = p_os->status_update.flags;
     add_char_params.p_init_value      = init_value_encoded;
     add_char_params.char_props.read   = 1;
     add_char_params.char_props.write  = 1;
@@ -1419,6 +1421,7 @@ ret_code_t ble_os_sensor_new_meas(ble_os_t * p_os, ble_os_rec_t * p_rec)
 }
 
 
+// TODO: use p_os->annunciation to store the annunciation
 ret_code_t ble_os_new_annunciation(ble_os_t * p_os, uint16_t new_annunciation)
 {
     ret_code_t err_code;
@@ -1437,6 +1440,7 @@ ret_code_t ble_os_new_annunciation(ble_os_t * p_os, uint16_t new_annunciation)
     return err_code;
 }
 
+// TODO: use p_os->status_update to store the status update
 ret_code_t ble_os_new_status_data_update(ble_os_t * p_os, ble_os_status_data_update_t new_status_update)
 {
     ret_code_t err_code;

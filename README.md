@@ -4,43 +4,37 @@
 
 ## Overview
 
-**ble_beacon** is a software for the Nordic Semiconductor SOC NRF52832 and similar. It reads sensor data (in our case temperature, humidity and acceleration data) and sends it using Bluetooth Low Energy advertisement packages. Getting a history of data points is available when establishing a BLE connection to the device.
+**ble_beacon** is a software for the Nordic Semiconductor SoC NRF52832 and similar. It reads sensor data (in our case temperature, humidity and acceleration data) and sends it using Bluetooth Low Energy advertisement packages. Getting a history of data points is available when establishing a BLE connection to the device.
 
 The code is power optimized. As of today, the average power consumption during unconnectable undirected advertising is 13.5 &#181;A, and with connectable undirected advertising ~17.4 &#181;A (see below for more detailed figures).
 
 Using the push button, different modes (sensor, advertising, etc.) and deleting Bluetooth bonds can be configured.
 
-### Advertising
+### Advertising 
 
-The following data will be send during advertising:
+The device supports two different advertising modes:
 
-- Address type: `RandomStatic`
+- non-scannable non-connectable advertising
+- scannable connectable advertising
 
-- Advertising type: `Connectable undirected`
+The main target of providing different modes and in particular non-scannable non-connectable advertising is to have a reduced power consumption while sending payload data.
 
-- Services: `1400`
+**Both advertising modes** will provide the following payload:
 
-- Flags: `LeGeneralDiscMode BrEdrNotSupported LeOnlyLimitedDiscMode LeOnlyGeneralDiscMode`
+- Major and Minor ID for Identification of the device
+- Temperature values
+- Humidity values
+- Acceleration X/Y/Z readings
+- Battery voltage
 
-- `BLE_GAP_AD_TYPE_TX_POWER_LEVEL`: TxPowerLevel: 00
+When in **scannable connectable advertising mode** in addition you will receive using the Scan Response:
 
-- `BLE_GAP_AD_TYPE_MANUFACTURER_SPECIFIC_DATA`: ManufacturerSpecificData
+- a string (currently just set to `MyTherResp`) (TDB in future)
+- the devices full name (e.g. `Bx0706` for Beacon with Major ID 0x07 and Minor ID 0x06)
 
-- Example: `59-00-00-07-00-08-5D-B4-73-6F-B8-FC-2C-FK-62-3F-0B-6A`
+and you can connect to the device!
 
-   | Topic              | Bytes    | Example | Result                                   |
-   | ------------------ | -------- | ------- | ---------------------------------------- |
-   | Company Identifier | [0..1]   | 59 00   | = 0x0059, Nordic Semiconductor           |
-   | Major              | [2..3]   | 00 07   | = 0x0007                                 |
-   | Minor              | [4..5]   | 00 08   | = 0x0008                                 |
-   | Temperature        | [6..7]   | 5D B4   | = 19,05 = (0x5DB4 * 175) / 0xFFFF (° C)  |
-   | Humidity           | [8..9]   | 73 6F   | = 45,09 = (0x736F * 100) / 0xFFFF (% RH) |
-   | Acceleration X     | [10..11] | B8 FD   | = 0xFDB8, 2's complement = -248          |
-   | Acceleration Y     | [12..13] | 2C FB   | = 0xFB2C, 2's c = -1236                  |
-   | Acceleration Z     | [14..15] | 62 3F   | = 0x3F62, 2's c = ‭+16542‬                 |
-   | Battery Voltage    | [16..17] | 0B 6A   | = 0x0B6A = 2992 mV                       |
-
-Remark: The temperature and humidity data are sent using the sensors native 2 byte format, with the formula given in the table above. See [SHT03 Data Sheet](Documentation/datasheets/Sensirion_Humidity_Sensors_SHT3x_Datasheet_digital-971521.pdf), section *4.13 Conversion of Signal Output* for more information.
+In sections [Understanding the Advertising Data](#understanding_the_advertising_data) below you will get more information on the Advertising data and how to read it. 
 
 ### Provided Services
 
@@ -310,6 +304,96 @@ After 10 seconds without a keypress (i.e., idle), the configuration mode will be
 | ------------ | ----------------- | ---------------------------------- |
 | Idle timeout | Leave config mode | &#183; &#183; &#183; &#183; &#183; |
 
+
+
+## Understanding the Advertising data
+
+Depending on the configured Advertising Mode (Mode 2 and Mode 3 as discussed in [Change device mode](#change_device_mode)) you will receive non-scannable non-connectable advertising or scannable connectable advertising. Thus we will explain advertising split up in
+
+- the common header
+- the additional data for non-scannable non-connectable advertising (Mode 2) and
+- the additional data for scannable connectable advertising (Mode 3).
+
+I used NRF Connect and the log files provided by the tool to get the detailed logs used below.
+
+**Remark:** For understanding and testing it is necessary to convert between ASCII and numbers. A tool to do the job and convert between hex/binary/decimal numbers and ASCII text can be found [here](https://www.rapidtables.com/convert/number/ascii-hex-bin-dec-converter.html).
+
+#### Non-Scannable non-Connectable Advertising
+
+Received Data as in NRF Connect log file:
+
+```
+2020-01-03T10:38:11.238Z DEBUG    70/ 0 <-  [02 1d 00 ff ff 02 2e 67 ab ba ae db 00 92 fd 03 20 68 fa cc 06 17 01 02 01 06 13 ff 59 00 00 07 00 06 5f 3b 60 00 60 01 22 02 f4 40 0b d0 ] type:     VENDOR_SPECIFIC reliable:yes seq#:1 ack#:7 payload_length:2e data_integrity:1 header_checksum:17 err_code:0x0
+```
+
+```
+2020-01-03T10:38:11.235Z DEBUG GAP_EVT_ADV_REPORT/ADV_NONCONN_IND time:2020-01-03T10:38:11.233Z connHandle:65535 rssi:52 peerAddr:[address:DB:AE:BA:AB:67:2E type:randomStatic addrIdPeer:0] scanRsp:false advType:advNonconnInd gap:[adTypeFlags:[leGeneralDiscMode,brEdrNotSupported,leOnlyLimitedDiscMode,leOnlyGeneralDiscMode] manufacturerSpecificData:89,0,0,7,0,6,95,59,96,0,96,1,34,2,244,64,11,208]
+```
+
+
+
+
+
+#### Scannable Connectable Advertising
+
+Received Data as in NRF Connect log file:
+
+```
+2020-01-03T09:40:17.198Z DEBUG    37/ 0 <-  [02 1d 00 ff ff 02 2e 67 ab ba ae db 00 00 01 00 00 30 82 c2 00 17 01 02 01 06 13 ff 59 00 00 07 00 06 5e db 5b 93 34 01 56 01 d2 40 0b ac ] type:     VENDOR_SPECIFIC reliable:yes seq#:2 ack#:5 payload_length:2e data_integrity:1 header_checksum:26 err_code:0x0
+```
+
+```
+2020-01-03T09:40:17.198Z DEBUG    38/ 0 <-  [02 1d 00 ff ff 02 2e 67 ab ba ae db 00 00 01 00 00 30 82 c3 01 17 01 0e ff 59 00 4d 79 54 68 65 72 52 65 73 70 00 07 09 42 78 30 37 30 36 ] type:     VENDOR_SPECIFIC reliable:yes seq#:3 ack#:5 payload_length:2e data_integrity:1 header_checksum:25 err_code:0x0
+```
+
+```
+2020-01-03T09:40:17.201Z DEBUG GAP_EVT_ADV_REPORT/ADV_IND time:2020-01-03T09:40:17.195Z connHandle:65535 rssi:62 peerAddr:[address:DB:AE:BA:AB:67:2E type:randomStatic addrIdPeer:0] scanRsp:false advType:advInd gap:[adTypeFlags:[leGeneralDiscMode,brEdrNotSupported,leOnlyLimitedDiscMode,leOnlyGeneralDiscMode] manufacturerSpecificData:89,0,0,7,0,6,94,219,91,147,52,1,86,1,210,64,11,172]
+```
+
+```
+2020-01-03T09:40:17.207Z DEBUG GAP_EVT_ADV_REPORT time:2020-01-03T09:40:17.198Z connHandle:65535 rssi:61 peerAddr:[address:DB:AE:BA:AB:67:2E type:randomStatic addrIdPeer:0] scanRsp:true gap:[manufacturerSpecificData:89,0,77,121,84,104,101,114,82,101,115,112,0 completeLocalName:Bx0706]
+```
+
+
+
+#### Common Header of Advertising Package
+
+
+
+
+
+The following data will be send during advertising:
+
+- Address type: `RandomStatic`
+
+- Advertising type: `Connectable undirected`
+
+- Services: `1400`
+
+- Flags: `LeGeneralDiscMode` `BrEdrNotSupported` `LeOnlyLimitedDiscMode` `LeOnlyGeneralDiscMode`
+
+- `BLE_GAP_AD_TYPE_TX_POWER_LEVEL`: TxPowerLevel: 00
+
+- `BLE_GAP_AD_TYPE_MANUFACTURER_SPECIFIC_DATA`: ManufacturerSpecificData
+
+- Example: `59-00-00-07-00-08-5D-B4-73-6F-B8-FC-2C-FK-62-3F-0B-6A`
+
+  | Topic              | Bytes    | Example | Result                                        |
+  | ------------------ | -------- | ------- | --------------------------------------------- |
+  | Company Identifier | [0..1]   | 59 00   | = 0x0059, Nordic Semiconductor                |
+  | Major              | [2..3]   | 00 07   | = 0x0007                                      |
+  | Minor              | [4..5]   | 00 08   | = 0x0008                                      |
+  | Temperature        | [6..7]   | 5D B4   | = 19,05 = -45 + (0x5DB4 * 175) / 0xFFFF (° C) |
+  | Humidity           | [8..9]   | 73 6F   | = 45,09 = (0x736F * 100) / 0xFFFF (% RH)      |
+  | Acceleration X     | [10..11] | B8 FD   | = 0xFDB8, 2's complement = -248               |
+  | Acceleration Y     | [12..13] | 2C FB   | = 0xFB2C, 2's c = -1236                       |
+  | Acceleration Z     | [14..15] | 62 3F   | = 0x3F62, 2's c = ‭+16542‬                      |
+  | Battery Voltage    | [16..17] | 0B 6A   | = 0x0B6A = 2992 mV                            |
+
+Remark: The temperature and humidity data are sent using the sensors native 2 byte format, with the formula given in the table above. See [SHT03 Data Sheet](Documentation/datasheets/Sensirion_Humidity_Sensors_SHT3x_Datasheet_digital-971521.pdf), section *4.13 Conversion of Signal Output* for more information. See 
+
+
+
 ## Provided Services by Device
 
 You can connect to the device and use the following additional features:
@@ -341,23 +425,13 @@ You can retrieve data from the device or delete the device offline buffer memory
 | Command | Description                | Response 2A52                                          | Response 1401                                                |
 | ------- | -------------------------- | ------------------------------------------------------ | ------------------------------------------------------------ |
 | 01 ...  | Report Records             | 06-00-01-01<br />(Response, Operator NULL, ?, Success) | 0..n notifications, one for each database entry to be reported |
+| 01 01   | Report Records, All        | 06-00-01-01<br />(Response, Operator NULL, ?, Success) |                                                              |
 | 01 05   | Report Records, First      | -                                                      |                                                              |
 | 01 06   | Report Records, Last       |                                                        |                                                              |
 | 02 ...  | Delete Records             | 06-00-02-01<br />tbd                                   | none                                                         |
 | 02 01   | Delete Records, All        |                                                        |                                                              |
 | 04 ...  | Report Number Records      | 05-00-0A-00<br />tbd                                   |                                                              |
 | 04 01   | Report Number Records, All |                                                        |                                                              |
-
-
-| Cmd    | Description                | Response 2A52                                          | Response 1401 |
-| ------ | -------------------------- | ------------------------------------------------------ | ------------- |
-| 01 01  | Report Records, All        | 06-00-01-01<br />(Response, Operator NULL, ?, Success) |               |
-| 01 05  | Report Records, First      | (see Report Records, All)                              |               |
-| 01 06  | Report Records, Last       | (see Report Records, All)                              |               |
-|        |                            | -                                                      | -             |
-| 02 01  | Delete Records, All        |                                                        |               |
-|        |                            | -                                                      | -             |
-| 04 01  | Report Number Records, All | 05 00 0A 00<br />tdb                                   |               |
 
 **Remark:** the byte order is LSB-MSB
 
@@ -385,21 +459,33 @@ The time stamp can be decoded using an appropriate online calculator, for exampl
 
 If the beacon does not have the correct time, the time stamps are reported since boot time, which is 0. If the correct time is available, this will be used.
 
+#### Decode Temperature and Humidity
+
+Temperature and Humidity are given in 2 byte MSB-LSB ordering and are calculated using the sensors native 2 byte format. See [SHT03 Data Sheet](Documentation/datasheets/Sensirion_Humidity_Sensors_SHT3x_Datasheet_digital-971521.pdf), section *4.13 Conversion of Signal Output* for more information.
+
+- Temperature T in ° C where ST denotes the raw sensor output for temperature in decimal representation:
+$$
+T [° C] = - 45 + 175 \cdot \frac{S{T}}{2^{16}-1}
+$$
+
+- Humidity RH in % RH where SRH denotes the raw sensor output for humidity in decimal representation:
+$$
+RH = 100 \cdot \frac{S{RH}}{2^{16}-1}
+$$
+
 #### Example
 
-- Value received, see the console log below
-
-- `0A-00-75-D5-0D-5E-5F-17-57-1C` 
+- Value `0A-00-75-D5-0D-5E-5F-17-57-1C` received, see the console log below:
 
   - Sequence number: 0x000A = 10
   - Time stamp: 0x5E0DD575 = ‭1577964917‬ = 01/02/2020 @ 11:35am (UTC)
-  - Temperature `60 AD` = 
-  - Humidity `74 15` = 
-
-- Corresponding log file entries from NRF Connect console
-
-  Connecting to the device:
+  - Temperature `0x5F17` = 24.343; results in T = -45 + (24.343  * 175) / 65535 = 20,00 ° C
+  - Humidity `0x751C` = 29.980; results in RH = 45,75 % RH
   
+#### Corresponding log file entries from NRF Connect console
+
+- Connecting to the device:
+
   ```
   11:44:19.028	Connecting to device
   11:44:29.244	Connected to device D7:59:9D:1D:7B:6B
@@ -407,23 +493,23 @@ If the beacon does not have the correct time, the time stamps are reported since
   11:44:31.298	Connection parameters updated for device D7:59:9D:1D:7B:6B: interval 200ms, timeout 4000ms, latency: 0
   11:44:36.107	Security updated, mode:1, level:2
   ```
-  
-  Change notification for `handle 0x26` `UUID 1401`:
-  
+
+- Change notification for `handle 0x26` `UUID 1401`:
+
   ```
   11:44:40.906	Attribute value changed, handle: 0x26, value (0x): 01-00
   11:44:40.911	Attribute value written, handle: 0x26, value (0x): 01-00
   ```
-  
-  Change indication for `handle 0x2B` `UUID 2A52`:
-  
+
+- Change indication for `handle 0x2B` `UUID 2A52`:
+
   ```
   11:44:42.906	Attribute value changed, handle: 0x2B, value (0x): 02-00
   11:44:42.910	Attribute value written, handle: 0x2B, value (0x): 02-00
   ```
-  
-  Retrieve last data set using write `01 06` to  `handle 0x2A` `UUID 2A52`:
-  
+
+- Retrieve last data set using write `01 06` to  `handle 0x2A` `UUID 2A52`:
+
   ```
   11:44:46.707	Attribute value changed, handle: 0x2A, value (0x): 01-06
   11:44:46.715	Attribute value written, handle: 0x2A, value (0x): 01-06
@@ -431,7 +517,8 @@ If the beacon does not have the correct time, the time stamps are reported since
   11:44:47.107	Attribute value changed, handle: 0x2A, value (0x): 06-00-01-01
   ```
 
-- Link to the detailed NRF Connect log file: [Link](Documentation/program_docu/2020-01-02_nrf_connect_log.txt)
+**Remark:** Link to the detailed NRF Connect log file: [Link](Documentation/program_docu/2020-01-02_nrf_connect_log.txt)
+
 
 
 
@@ -484,12 +571,12 @@ Currently the following status data can be read by reading UUID 0x1404, for exam
 
 The following commands can be given to the device by writing to UUID 0x1404:
 
-| Define | Value | Annunciation |
-| ------ | ----- | ------------ |
-| B      |       |              |
-|        |       |              |
-|        |       |              |
-|        |       |              |
+| Command | Description                                                  | xxx  |
+| ------- | ------------------------------------------------------------ | ---- |
+| 01 01   | (Re-)Read time and update DB entries, take no drift into account |      |
+|         |                                                              |      |
+|         |                                                              |      |
+|         |                                                              |      |
 
 ### Battery Information Service (BAS)
 
