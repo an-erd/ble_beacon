@@ -147,7 +147,7 @@
 #define USE_CTS
 #define USE_DIS
 #define USE_DFU
-#define USE_BUTTONLESS_DFU
+#undef USE_BUTTONLESS_DFU
 
 // App Timer defines
 APP_TIMER_DEF(m_repeated_timer_init);                       /**< Handler for repeated timer for init process (sensor, offline buffer, ...). */

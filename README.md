@@ -34,16 +34,16 @@ When in **scannable connectable advertising mode** in addition you will receive 
 
 and you can connect to the device!
 
-In sections [Understanding the Advertising Data](#understanding_the_advertising_data) below you will get more information on the Advertising data and how to read it. 
+In section [Understanding the Advertising Data](#understanding-the-advertising-data) below you will get more information on the Advertising data and how to read it. 
 
 ### Provided Services
 
 
-In addition you can connect to the device and use additional features such as download and deletion of data points or DFU device update. See below for additional information.
+In addition you can connect to the device and use additional features such as download and deletion of data points or DFU device update. See below in section [Provided Services by Device](#provided-services-by-device) for additional information.
 
 ### Offline Buffer Functionality
 
-Beside the advertising of the sensor measurements the beacon can store the measurements in an offline buffer. The offline buffer is located  in RAM, i.e. with a reboot the values will be reset, too. Currently 20.000 bytes are reserved for the offline buffer, with an size of 16 bytes for one entry, this gives 20.000/16 bytes = 1.250 entries. With an interval of 15 min/entry the beacon will store data for around 13 days. If the buffer is full, the oldest value will be deleted (i.e. a ring buffer is used). The data of the offline buffer can be accessed and downloaded when connecting to the device.
+Beside the advertising of the sensor measurements the beacon can store the measurements in an offline buffer. The offline buffer is located  in RAM, i.e. with a reboot the values will be reset, too. Currently 20.000 bytes are reserved for the offline buffer, with an size of 16 bytes for one entry, this gives 20.000/16 bytes = 1.250 entries. With an interval of 15 min/entry the beacon will store data for around 13 days. If the buffer is full, the oldest value will be deleted (i.e. a ring buffer is used). The data of the offline buffer can be accessed, downloaded and cleared when connected to the device.
 
 ### Available Sensors on Board
 
@@ -308,7 +308,7 @@ After 10 seconds without a keypress (i.e., idle), the configuration mode will be
 
 ## Understanding the Advertising data
 
-Depending on the configured Advertising Mode (Mode 2 and Mode 3 as discussed in [Change device mode](#change_device_mode)) you will receive non-scannable non-connectable advertising or scannable connectable advertising. Thus we will explain advertising split up in
+Depending on the configured Advertising Mode (Mode 2 and Mode 3 as discussed in [Change device mode](#change-device-mode)) you will receive non-scannable non-connectable advertising or scannable connectable advertising. Thus we will explain advertising split up in
 
 - the common header
 - the additional data for non-scannable non-connectable advertising (Mode 2) and
@@ -316,7 +316,49 @@ Depending on the configured Advertising Mode (Mode 2 and Mode 3 as discussed in 
 
 I used NRF Connect and the log files provided by the tool to get the detailed logs used below.
 
-**Remark:** For understanding and testing it is necessary to convert between ASCII and numbers. A tool to do the job and convert between hex/binary/decimal numbers and ASCII text can be found [here](https://www.rapidtables.com/convert/number/ascii-hex-bin-dec-converter.html).
+**Remark:** 
+
+- For understanding and testing it is necessary to convert between ASCII and numbers. A tool to do the job and convert between hex/binary/decimal numbers and ASCII text can be found [here](https://www.rapidtables.com/convert/number/ascii-hex-bin-dec-converter.html).
+- All relevant information on Bluetooth and Advertising can be found in the following documents/links:
+  - [Bluetooth Core Specification](https://www.bluetooth.com/specifications/bluetooth-core-specification/)
+    - Document "CS Core Specification", Chapter 11 "ADVERTISING AND SCAN RESPONSE DATA FORMAT" 
+    - Document "CSS Core Specification Supplement"
+  - [List of AD Types](https://www.bluetooth.com/specifications/assigned-numbers/generic-access-profile/)
+  - [KBA_BT_0201: Bluetooth advertising data basics](https://www.silabs.com/community/wireless/bluetooth/knowledge-base.entry.html/2017/02/10/bluetooth_advertisin-hGsf)
+  - [KBA_BT_0202: Bluetooth advertising using manufacturer specific data](https://www.silabs.com/community/wireless/bluetooth/knowledge-base.entry.html/2017/11/14/bluetooth_advertisin-zCHh)
+  - [One minute to understand BLE advertising data package](https://github.com/greatscottgadgets/ubertooth/wiki/One-minute-to-understand-BLE-advertising-data-package)
+
+#### Common Header of Advertising Package
+
+The address for the device used in this example is `DB:AE:BA:AB:67:2E` and will appear in the detailed logs in reverse order as `2e 67 ab ba ae db`) or in the ADV Report as `DB:AE:BA:AB:67:2E`.
+
+The header in our example contains for non-scannable non-connectable advertising:
+
+```
+02 1d 00 ff ff 02 2e 67 ab ba ae db 00 92 fd 03 20 68 fa cc 06 17 01 02 01 06 13 ff
+```
+
+- 02 1d 00: Length 2, Type 1d ()
+- 
+
+and for scannable connectable advertising:
+
+```
+02 1d 00 ff ff 02 2e 67 ab ba ae db 00 00 01 00 00 30 82 c2 00 17 01 02 01 06 13 ff
+```
+
+and
+
+```
+02 1d 00 ff ff 02 2e 67 ab ba ae db 00 00 01 00 00 30 82 c3 01 17 01 0e ff
+```
+
+
+
+The following relevant information is given:
+
+- `rssi:52`
+- `adTypeFlags:[leGeneralDiscMode,brEdrNotSupported,leOnlyLimitedDiscMode,leOnlyGeneralDiscMode`
 
 #### Non-Scannable non-Connectable Advertising
 
@@ -330,33 +372,39 @@ Received Data as in NRF Connect log file:
 2020-01-03T10:38:11.235Z DEBUG GAP_EVT_ADV_REPORT/ADV_NONCONN_IND time:2020-01-03T10:38:11.233Z connHandle:65535 rssi:52 peerAddr:[address:DB:AE:BA:AB:67:2E type:randomStatic addrIdPeer:0] scanRsp:false advType:advNonconnInd gap:[adTypeFlags:[leGeneralDiscMode,brEdrNotSupported,leOnlyLimitedDiscMode,leOnlyGeneralDiscMode] manufacturerSpecificData:89,0,0,7,0,6,95,59,96,0,96,1,34,2,244,64,11,208]
 ```
 
+The relevant information are given:
 
+- scanRsp:false
+- advType:advNonconnInd
+- 
+
+```
+manufacturerSpecificData:89,0,0,7,0,6,95,59,96,0,96,1,34,2,244,64,11,208
+```
 
 
 
 #### Scannable Connectable Advertising
 
-Received Data as in NRF Connect log file:
+Received Data as in NRF Connect log file for the advertising packet
 
 ```
 2020-01-03T09:40:17.198Z DEBUG    37/ 0 <-  [02 1d 00 ff ff 02 2e 67 ab ba ae db 00 00 01 00 00 30 82 c2 00 17 01 02 01 06 13 ff 59 00 00 07 00 06 5e db 5b 93 34 01 56 01 d2 40 0b ac ] type:     VENDOR_SPECIFIC reliable:yes seq#:2 ack#:5 payload_length:2e data_integrity:1 header_checksum:26 err_code:0x0
 ```
 
 ```
-2020-01-03T09:40:17.198Z DEBUG    38/ 0 <-  [02 1d 00 ff ff 02 2e 67 ab ba ae db 00 00 01 00 00 30 82 c3 01 17 01 0e ff 59 00 4d 79 54 68 65 72 52 65 73 70 00 07 09 42 78 30 37 30 36 ] type:     VENDOR_SPECIFIC reliable:yes seq#:3 ack#:5 payload_length:2e data_integrity:1 header_checksum:25 err_code:0x0
+2020-01-03T09:40:17.201Z DEBUG GAP_EVT_ADV_REPORT/ADV_IND time:2020-01-03T09:40:17.195Z connHandle:65535 rssi:62 peerAddr:[address:DB:AE:BA:AB:67:2E type:randomStatic addrIdPeer:0] scanRsp:false advType:advInd gap:[adTypeFlags:[leGeneralDiscMode,brEdrNotSupported,leOnlyLimitedDiscMode,leOnlyGeneralDiscMode] manufacturerSpecificData:89,0,0,7,0,6,94,219,91,147,52,1,86,1,210,64,11,172]
 ```
 
+and the scan response 
+
 ```
-2020-01-03T09:40:17.201Z DEBUG GAP_EVT_ADV_REPORT/ADV_IND time:2020-01-03T09:40:17.195Z connHandle:65535 rssi:62 peerAddr:[address:DB:AE:BA:AB:67:2E type:randomStatic addrIdPeer:0] scanRsp:false advType:advInd gap:[adTypeFlags:[leGeneralDiscMode,brEdrNotSupported,leOnlyLimitedDiscMode,leOnlyGeneralDiscMode] manufacturerSpecificData:89,0,0,7,0,6,94,219,91,147,52,1,86,1,210,64,11,172]
+2020-01-03T09:40:17.198Z DEBUG    38/ 0 <-  [02 1d 00 ff ff 02 2e 67 ab ba ae db 00 00 01 00 00 30 82 c3 01 17 01 0e ff 59 00 4d 79 54 68 65 72 52 65 73 70 00 07 09 42 78 30 37 30 36 ] type:     VENDOR_SPECIFIC reliable:yes seq#:3 ack#:5 payload_length:2e data_integrity:1 header_checksum:25 err_code:0x0
 ```
 
 ```
 2020-01-03T09:40:17.207Z DEBUG GAP_EVT_ADV_REPORT time:2020-01-03T09:40:17.198Z connHandle:65535 rssi:61 peerAddr:[address:DB:AE:BA:AB:67:2E type:randomStatic addrIdPeer:0] scanRsp:true gap:[manufacturerSpecificData:89,0,77,121,84,104,101,114,82,101,115,112,0 completeLocalName:Bx0706]
 ```
-
-
-
-#### Common Header of Advertising Package
 
 
 
