@@ -743,6 +743,12 @@ During the first 2 seconds the connection interval is set to 7.5 ms. Then, by a 
 
 ![Alt text](Documentation/power_consumption/sensor_retrieval.PNG?raw=true "Power Consumption single sensor retrieval")
 
+### Long Term Visualization
+
+![Alt text](Documentation/power_consumption/Sensor_data_20190415-20191221.png?raw=true "Long Term Visualization")
+
+
+
 ## Programming JIG
 
 There is a separate Readme for the programming jig, see [here](Documentation/JIG/README.md)
