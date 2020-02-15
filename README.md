@@ -447,10 +447,40 @@ Remark: The temperature and humidity data are sent using the sensors native 2 by
 You can connect to the device and use the following additional features:
 
 - Download the stored data point from the device
+
 - Get number of data points available
+
 - Delete data points
+
 - Get provided features
+
 - Update software using DFU
+
+### List of Bluetooth Services provided
+
+| Service                     | UUID   | Handle | Comment |
+| --------------------------- | ------ | ------ | ------- |
+| Generic Access              | 0x1800 | 0x01   | &horbar; |
+| &horbar; Device Name     | 0x2A00 | 0x03   | Read Write |
+| &horbar; Appearance  | 0x2A01 | 0x05   | Read |
+| &horbar; Peripheral Preferred Connection Parameters | 0x2A04 | 0x07   | Read |
+| &horbar; Central Address Resolution | 0x2AA6 | 0x09   | Read |
+| Generic Attribute           | 0x1801 | 0x0A | &horbar; |
+| &horbar; Service Changed | 0x2A05 | 0x0C | Indicate |
+| &horbar; &horbar; CCCD | 0x2902 | 0x0D | &horbar; |
+| Device Information Service  | 0x180A | 0x0E       | &horbar; |
+| Secure DFU                  | 0xFE59 | 0x1B | &horbar; |
+| Battery Information Service | 0x180F | 0x1F | &horbar; |
+| &horbar; Battery Level | 0x2A19 | 0x21 | Read Notify |
+| &horbar; &horbar; CCCD | 0x2902 | 0x22 | &horbar; |
+| Own Beacon Service          | 0x1400 | 0x23 | &horbar; |
+| &horbar; RACP Measurement Values | 0x1401 | 0x25 | Notify |
+| &horbar; &horbar; CCCD | 0x2902 | 0x26 | &horbar; |
+| Features provided by the Device | 0x1402 | 0x28 | Read |
+| Random Access Control Point (RACP) | 0x2A52 | 0x2A | Write Indicate |
+| &horbar; &horbar; CCCD | 0x2902 | 0x2B | &horbar; |
+| Sensor Status Annunciation | 0x1403 | 0x2D | Read Write |
+| Status data and update commands | 0x1404 | 0x2F | Read Write |
 
 ### Connect to the Device using nRF Connect 
 
@@ -512,15 +542,11 @@ If the beacon does not have the correct time, the time stamps are reported since
 Temperature and Humidity are given in 2 byte MSB-LSB ordering and are calculated using the sensors native 2 byte format. See [SHT03 Data Sheet](Documentation/datasheets/Sensirion_Humidity_Sensors_SHT3x_Datasheet_digital-971521.pdf), section *4.13 Conversion of Signal Output* for more information.
 
 - Temperature T in ° C where ST denotes the raw sensor output for temperature in decimal representation:
-$$
-T [° C] = - 45 + 175 \cdot \frac{S{T}}{2^{16}-1}
-$$
+  <a href="https://www.codecogs.com/eqnedit.php?latex=T&space;[^{\circ}&space;C]&space;=&space;-&space;45&space;&plus;&space;175&space;\cdot&space;\frac{S_{T}}{2^{16}-1}" target="_blank"><img src="https://latex.codecogs.com/gif.latex?T&space;[^{\circ}&space;C]&space;=&space;-&space;45&space;&plus;&space;175&space;\cdot&space;\frac{S_{T}}{2^{16}-1}" title="T [^{\circ} C] = - 45 + 175 \cdot \frac{S_{T}}{2^{16}-1}" /></a>
+
 
 - Humidity RH in % RH where SRH denotes the raw sensor output for humidity in decimal representation:
-$$
-RH = 100 \cdot \frac{S{RH}}{2^{16}-1}
-$$
-
+  <a href="https://www.codecogs.com/eqnedit.php?latex=RH&space;=&space;100&space;\cdot&space;\frac{S_{RH}}{2^{16}-1}" target="_blank"><img src="https://latex.codecogs.com/gif.latex?RH&space;=&space;100&space;\cdot&space;\frac{S_{RH}}{2^{16}-1}" title="RH = 100 \cdot \frac{S_{RH}}{2^{16}-1}" /></a>
 #### Example
 
 - Value `0A-00-75-D5-0D-5E-5F-17-57-1C` received, see the console log below:
@@ -566,8 +592,6 @@ $$
   ```
 
 **Remark:** Link to the detailed NRF Connect log file: [Link](Documentation/program_docu/2020-01-02_nrf_connect_log.txt)
-
-
 
 
 ### Get Features provided by the Device
@@ -834,6 +858,33 @@ Detailed error message:
 ```
 
 
+#### GATT Client not able to pair, error code = 0x52
+
+On the GATT Client, in this case an ESP32 running esp-idf, shows a `pair status = fail`.  The error code `0x52` corresponds to `BTA_DM_AUTH_SMP_PAIR_NOT_SUPPORT`.
+
+On the GATT Client the log file reads:
+
+```
+I (6690) GATTC_DEMO: remote BD_ADDR: dbaebaab672e
+I (6700) GATTC_DEMO: address type = 1
+I (6700) GATTC_DEMO: pair status = fail
+I (6710) GATTC_DEMO: fail reason = 0x52
 ```
 
+
+On the NRF52 Beacon device is shown:
+
+```
+00> <info> peer_manager_handler: Connection security failed: role: Peripheral, conn_handle: 0x1, procedure: Bonding, error: 133
+```
+
+**Deleting bonds** on the beacon should correct the problem, see [Delete Bluetooth Bonds](#delete_bluetooth_bonds). 
+
+On the NRF52 Beacon device is then shown:
+
+```
+I (7850) GATTC_DEMO: remote BD_ADDR: dbaebaab672e
+I (7860) GATTC_DEMO: address type = 1
+I (7860) GATTC_DEMO: pair status = success
+I (7870) GATTC_DEMO: auth mode = ESP_LE_AUTH_BOND
 ```
