@@ -888,3 +888,32 @@ I (7860) GATTC_DEMO: address type = 1
 I (7860) GATTC_DEMO: pair status = success
 I (7870) GATTC_DEMO: auth mode = ESP_LE_AUTH_BOND
 ```
+
+#### GATT Client SMP_ENC_FAIL, error code = 0x61
+
+On the GATT Client, in this case an ESP32 running esp-idf, shows a `pair status = fail`.  The error code `0x61` corresponds to `SMP_ENC_FAIL` (=smp_api.h, SMP_ENC_FAIL).
+
+On the GATT Client the log file reads:
+
+```
+I (147769) BLEMQTTPROXY: remote BD_ADDR: dbaebaab672e
+I (147769) BLEMQTTPROXY: address type = 1
+I (147769) BLEMQTTPROXY: pair status = fail
+I (147779) BLEMQTTPROXY: fail reason = 0x61
+```
+
+The problem appears to happen if the distance is to high or the connection is disturbed and thus the authentication cannot be completed.
+
+#### ESP_GATTC_DISCONNECT_EVT, reason = 8
+
+On the GATT Client, in this case a disconnect w/reason 8 occurs. Again, if the distance is to high or connection disturbed this error occurs.
+
+```
+W (3547729) BT_APPL: bta_gattc_conn_cback() - cif=3 connected=0 conn_id=3 reason=0x0008
+D (3547729) BLEMQTTPROXY: ESP_GATTC_DISCONNECT_EVT
+I (3547729) BLEMQTTPROXY: ESP_GATTC_DISCONNECT_EVT, reason = 8
+```
+
+#### Reference: GATT Client error codes
+
+See `esp-idf\components\bt\bluedroid\bta\include\bta\bta_api.h` and [List of error codes](https://github.com/chegewara/esp32-ble-wiki/issues/5).
