@@ -4,7 +4,7 @@
 
 ## Overview
 
-**ble_beacon** is a software for the Nordic Semiconductor SoC NRF52832 and similar. It reads sensor data (in our case temperature, humidity and acceleration data) and sends it using Bluetooth Low Energy advertisement packages. Getting a history of data points is available when establishing a BLE connection to the device.
+**ble_beacon** is a software for the Nordic Semiconductor SoC NRF52832 and similar. It reads sensor data (in our case temperature, humidity and acceleration data) and sends it using Bluetooth Low Energy advertisement packet. Getting a history of data points is available when establishing a BLE connection to the device.
 
 The code is power optimized. As of today, the average power consumption during unconnectable undirected advertising is 13.5 &#181;A, and with connectable undirected advertising ~17.4 &#181;A (see below for more detailed figures).
 
@@ -30,7 +30,7 @@ The main target of providing different modes and in particular non-scannable non
 When in **scannable connectable advertising mode** in addition you will receive using the Scan Response:
 
 - a string (currently just set to `MyTherResp`) (TDB in future)
-- the devices full name (e.g. `Bx0706` for Beacon with Major ID 0x07 and Minor ID 0x06)
+- the devices full name (e.g. `Bx0708` for Beacon with Major ID 0x07 and Minor ID 0x08)
 
 and you can connect to the device!
 
@@ -67,6 +67,10 @@ An additional NFC (Near field communication) antenna can be attached to allow fo
 **Important:** If NFC is to be used, you must remove the preprocessor define  `CONFIG_NFCT_PINS_AS_GPIOS` to not use the NFC pins as GPIO pins but for NFC. If it is defined, pins P0.09 and P0.10 serve as GPIO pins.
 
 **Remark:** NFC functionality is not yet implemented but planned for a future release. The board already provides the points to attach the antenna with.
+
+### Example Data and Beacon used throughout this Document
+
+In this Readme we use a single BLE beacon device with the following address `D7:59:9D:1D:7B:6B`. In the different log files it may also appear in in reverse order without delimiter and in lower case as `6b 7b 1d 9d 59 d7`. The device name for this Beacon is set to `Bx0708` and will be constructed using its major and minor id which will be set to: Major ID `0x07` and Minor ID `0x08`, preceded by `Bx` (as in Beacon).
 
 ## Programming the Device
 
@@ -250,6 +254,8 @@ The files are located here:
   nrfjprog -f NRF52 --memrd 0x10001080 --n 4
   ```
 
+Example: For the test device used throughout this Readme the value `0x00070008` would be used.
+
 ### Update the Device using DFU
 
 **Step 6)** To update the application use DFU and the application zip file generated as in Step 1) using nRF Connect Bluetooth Low Energy application on Windows (with nrf52832 dongle) or iPhone/Android app. The same procedure holds if you want to update APP+BL+SD with one package.
@@ -310,135 +316,148 @@ After 10 seconds without a keypress (i.e., idle), the configuration mode will be
 
 Depending on the configured Advertising Mode (Mode 2 and Mode 3 as discussed in [Change device mode](#change-device-mode)) you will receive non-scannable non-connectable advertising or scannable connectable advertising. Thus we will explain advertising split up in
 
-- the common header
-- the additional data for non-scannable non-connectable advertising (Mode 2) and
-- the additional data for scannable connectable advertising (Mode 3).
+- the header
+- the data retrieved for non-scannable non-connectable advertising mode (Mode 2) and
+- the data retrieved for scannable connectable advertising (Mode 3).
 
 I used NRF Connect and the log files provided by the tool to get the detailed logs used below.
 
 **Remark:** 
 
 - For understanding and testing it is necessary to convert between ASCII and numbers. A tool to do the job and convert between hex/binary/decimal numbers and ASCII text can be found [here](https://www.rapidtables.com/convert/number/ascii-hex-bin-dec-converter.html).
+- A calculator for 2s complement can be found [here](tototo). (TODO)
 - All relevant information on Bluetooth and Advertising can be found in the following documents/links:
   - [Bluetooth Core Specification](https://www.bluetooth.com/specifications/bluetooth-core-specification/)
     - Document "CS Core Specification", Chapter 11 "ADVERTISING AND SCAN RESPONSE DATA FORMAT" 
     - Document "CSS Core Specification Supplement"
+    - [BT4 Core Spec, Adv data reference, Chapter 11 and 18](https://www.libelium.com/forum/libelium_files/bt4_core_spec_adv_data_reference.pdf)
   - [List of AD Types](https://www.bluetooth.com/specifications/assigned-numbers/generic-access-profile/)
   - [KBA_BT_0201: Bluetooth advertising data basics](https://www.silabs.com/community/wireless/bluetooth/knowledge-base.entry.html/2017/02/10/bluetooth_advertisin-hGsf)
   - [KBA_BT_0202: Bluetooth advertising using manufacturer specific data](https://www.silabs.com/community/wireless/bluetooth/knowledge-base.entry.html/2017/11/14/bluetooth_advertisin-zCHh)
   - [One minute to understand BLE advertising data package](https://github.com/greatscottgadgets/ubertooth/wiki/One-minute-to-understand-BLE-advertising-data-package)
 
-#### Common Header of Advertising Package
+#### BLE Beacon used throughout in this example
 
-The address for the device used in this example is `DB:AE:BA:AB:67:2E` and will appear in the detailed logs in reverse order as `2e 67 ab ba ae db`) or in the ADV Report as `DB:AE:BA:AB:67:2E`.
+See above in section [Example Data and Beacon used throughout this Document](#example-data-and-beacon-used-throughout-this-document) on the address and name used throughout with document and example.
 
-The header in our example contains for non-scannable non-connectable advertising:
+#### Header of Advertising Packet
 
-```
-02 1d 00 ff ff 02 2e 67 ab ba ae db 00 92 fd 03 20 68 fa cc 06 17 01 02 01 06 13 ff
-```
+In our example the header of the advertising packet received is:
 
-- 02 1d 00: Length 2, Type 1d ()
-- 
+- Non-scannable non-connectable advertising (Mode 2):
 
-and for scannable connectable advertising:
-
-```
-02 1d 00 ff ff 02 2e 67 ab ba ae db 00 00 01 00 00 30 82 c2 00 17 01 02 01 06 13 ff
-```
-
-and
-
-```
-02 1d 00 ff ff 02 2e 67 ab ba ae db 00 00 01 00 00 30 82 c3 01 17 01 0e ff
-```
+    ```
+    02 1d 00 ff ff 02 6b 7b 1d 9d 59 d7 00 04 99 42 19 eb 84 ce 06 17 01 02 01 06 13 ff
+    ```
+    | Length  | Type                     | Data              | Result                                                   |
+    | ------- | ------------------------ | ----------------- | -------------------------------------------------------- |
+    |         |                          | 02 1d 00 ff ff 02 |                                                          |
+    | Address | [6..11]                  | 6b 7b 1d 9d 59 d7 | D7:59:9D:1D:7B:6B                                        |
+    |         |                          |                   |                                                          |
+    |         |                          |                   |                                                          |
+    | 0x02    | 0x1 (Flags)              | 0x06              | LE General Discoverable Mode, <br />BR/EDR Not Supported |
+    | 0x13    | 0xFF (Manufacturer data) | (see below)       |                                                          |
 
 
+- Mode 3, advertising packet and scan response:
 
-The following relevant information is given:
+  ```
+  02 1d 00 ff ff 02 6b 7b 1d 9d 59 d7 20 04 99 42 19 eb 84 ca 00 17 01 02 01 06 13 ff 
+  02 1d 00 ff ff 02 6b 7b 1d 9d 59 d7 20 04 99 42 19 eb 84 cb 01 17 01 0e ff
+  ```
 
-- `rssi:52`
-- `adTypeFlags:[leGeneralDiscMode,brEdrNotSupported,leOnlyLimitedDiscMode,leOnlyGeneralDiscMode`
+For the further explanation we split up the packets into the following parts:
 
-#### Non-Scannable non-Connectable Advertising
+- Common header
+  ``` 
+  02 1d 00 ff ff 02 6b 7b 1d 9d 59 d7
+  ```
+
+
+
+#### Non-Scannable Non-Connectable Advertising (Mode 2)
 
 Received Data as in NRF Connect log file:
 
 ```
-2020-01-03T10:38:11.238Z DEBUG    70/ 0 <-  [02 1d 00 ff ff 02 2e 67 ab ba ae db 00 92 fd 03 20 68 fa cc 06 17 01 02 01 06 13 ff 59 00 00 07 00 06 5f 3b 60 00 60 01 22 02 f4 40 0b d0 ] type:     VENDOR_SPECIFIC reliable:yes seq#:1 ack#:7 payload_length:2e data_integrity:1 header_checksum:17 err_code:0x0
+2020-03-07T11:21:07.708Z DEBUG   110/ 0 <-  [02 1d 00 ff ff 02 6b 7b 1d 9d 59 d7 00 04 99 42 19 eb 84 ce 06 17 01 02 01 06 13 ff 59 00 00 07 00 08 5d 9a 66 6a f4 ff 3e ff 60 3f 0b a6 ] type:     VENDOR_SPECIFIC reliable:yes seq#:3 ack#:5 payload_length:2e data_integrity:1 header_checksum:25 err_code:0x0
 ```
 
 ```
-2020-01-03T10:38:11.235Z DEBUG GAP_EVT_ADV_REPORT/ADV_NONCONN_IND time:2020-01-03T10:38:11.233Z connHandle:65535 rssi:52 peerAddr:[address:DB:AE:BA:AB:67:2E type:randomStatic addrIdPeer:0] scanRsp:false advType:advNonconnInd gap:[adTypeFlags:[leGeneralDiscMode,brEdrNotSupported,leOnlyLimitedDiscMode,leOnlyGeneralDiscMode] manufacturerSpecificData:89,0,0,7,0,6,95,59,96,0,96,1,34,2,244,64,11,208]
+2020-03-07T11:21:07.715Z DEBUG GAP_EVT_ADV_REPORT/ADV_NONCONN_IND time:2020-03-07T11:21:07.707Z connHandle:65535 rssi:50 peerAddr:[address:D7:59:9D:1D:7B:6B type:randomStatic addrIdPeer:0] scanRsp:false advType:advNonconnInd gap:[adTypeFlags:[leGeneralDiscMode,brEdrNotSupported,leOnlyLimitedDiscMode,leOnlyGeneralDiscMode] manufacturerSpecificData:89,0,0,7,0,8,93,154,102,106,244,255,62,255,96,63,11,166]
 ```
 
-The relevant information are given:
+##### Manufacturer Specific Data Mode 2 (Advertising packet)
 
-- scanRsp:false
-- advType:advNonconnInd
-- 
+In our example the manufacturer specific data contained in the advertising packet received is:
 
 ```
-manufacturerSpecificData:89,0,0,7,0,6,95,59,96,0,96,1,34,2,244,64,11,208
+59 00 00 07 00 08 5d 9a 66 6a f4 ff 3e ff 60 3f 0b a6 (hex numbers)
+89,0,0,7,0,8,93,154,102,106,244,255,62,255,96,63,11,166 (decimal numbers)
 ```
 
+The following table gives information on how to interpret the payload:
 
+| Topic              | Bytes    | Example | Result                                        |
+| ------------------ | -------- | ------- | --------------------------------------------- |
+| Company Identifier | [0..1]   | 59 00   | = 0x0059, Nordic Semiconductor                |
+| Major              | [2..3]   | 00 07   | = 0x0007                                      |
+| Minor              | [4..5]   | 00 08   | = 0x0008                                      |
+| Temperature        | [6..7]   | 5D 9A   | = 18,99 = -45 + (0x5D9A * 175) / 0xFFFF (° C) |
+| Humidity           | [8..9]   | 66 6A   | = 40,01 = (0x666A * 100) / 0xFFFF (% RH)      |
+| Acceleration X     | [10..11] | F4 FF   | = 0xFFF4, 2's complement = -11                |
+| Acceleration Y     | [12..13] | 3E FF   | = 0xFF3E, 2's c = -193                        |
+| Acceleration Z     | [14..15] | 60 3F   | = 0x3F60, 2's c = ‭+16224‬                      |
+| Battery Voltage    | [16..17] | 0B A6   | = 0x0B6A = 2922 mV                            |
 
-#### Scannable Connectable Advertising
+Remark: The temperature and humidity data are sent using the sensors native 2 byte format, with the formula given in the table above. See [SHT03 Data Sheet](Documentation/datasheets/Sensirion_Humidity_Sensors_SHT3x_Datasheet_digital-971521.pdf), section *4.13 Conversion of Signal Output* for more information. 
 
-Received Data as in NRF Connect log file for the advertising packet
+#### Scannable Connectable Advertising (Mode 3)
+
+Received Data as in NRF Connect log file for the advertising packet:
 
 ```
-2020-01-03T09:40:17.198Z DEBUG    37/ 0 <-  [02 1d 00 ff ff 02 2e 67 ab ba ae db 00 00 01 00 00 30 82 c2 00 17 01 02 01 06 13 ff 59 00 00 07 00 06 5e db 5b 93 34 01 56 01 d2 40 0b ac ] type:     VENDOR_SPECIFIC reliable:yes seq#:2 ack#:5 payload_length:2e data_integrity:1 header_checksum:26 err_code:0x0
+2020-03-07T11:03:19.388Z DEBUG    49/ 0 <-  [02 1d 00 ff ff 02 6b 7b 1d 9d 59 d7 20 04 99 42 19 eb 84 ca 00 17 01 02 01 06 13 ff 59 00 00 07 00 08 5d 65 65 c8 b4 ff 2a ff 26 3f 0b 94 ] type:     VENDOR_SPECIFIC reliable:yes seq#:6 ack#:5 payload_length:2e data_integrity:1 header_checksum:22 err_code:0x0
 ```
 
 ```
-2020-01-03T09:40:17.201Z DEBUG GAP_EVT_ADV_REPORT/ADV_IND time:2020-01-03T09:40:17.195Z connHandle:65535 rssi:62 peerAddr:[address:DB:AE:BA:AB:67:2E type:randomStatic addrIdPeer:0] scanRsp:false advType:advInd gap:[adTypeFlags:[leGeneralDiscMode,brEdrNotSupported,leOnlyLimitedDiscMode,leOnlyGeneralDiscMode] manufacturerSpecificData:89,0,0,7,0,6,94,219,91,147,52,1,86,1,210,64,11,172]
+2020-03-07T11:03:19.396Z DEBUG GAP_EVT_ADV_REPORT/ADV_IND time:2020-03-07T11:03:19.388Z connHandle:65535 rssi:54 peerAddr:[address:D7:59:9D:1D:7B:6B type:randomStatic addrIdPeer:0] scanRsp:false advType:advInd gap:[adTypeFlags:[leGeneralDiscMode,brEdrNotSupported,leOnlyLimitedDiscMode,leOnlyGeneralDiscMode] manufacturerSpecificData:89,0,0,7,0,8,93,101,101,200,180,255,42,255,38,63,11,148]
 ```
 
-and the scan response 
+and the scan response:
 
 ```
-2020-01-03T09:40:17.198Z DEBUG    38/ 0 <-  [02 1d 00 ff ff 02 2e 67 ab ba ae db 00 00 01 00 00 30 82 c3 01 17 01 0e ff 59 00 4d 79 54 68 65 72 52 65 73 70 00 07 09 42 78 30 37 30 36 ] type:     VENDOR_SPECIFIC reliable:yes seq#:3 ack#:5 payload_length:2e data_integrity:1 header_checksum:25 err_code:0x0
+2020-03-07T11:03:19.401Z DEBUG    50/ 0 <-  [02 1d 00 ff ff 02 6b 7b 1d 9d 59 d7 20 04 99 42 19 eb 84 cb 01 17 01 0e ff 59 00 4d 79 54 68 65 72 52 65 73 70 00 07 09 42 78 30 37 30 38 ] type:     VENDOR_SPECIFIC reliable:yes seq#:7 ack#:5 payload_length:2e data_integrity:1 header_checksum:21 err_code:0x0
 ```
 
 ```
-2020-01-03T09:40:17.207Z DEBUG GAP_EVT_ADV_REPORT time:2020-01-03T09:40:17.198Z connHandle:65535 rssi:61 peerAddr:[address:DB:AE:BA:AB:67:2E type:randomStatic addrIdPeer:0] scanRsp:true gap:[manufacturerSpecificData:89,0,77,121,84,104,101,114,82,101,115,112,0 completeLocalName:Bx0706]
+2020-03-07T11:03:19.402Z DEBUG GAP_EVT_ADV_REPORT time:2020-03-07T11:03:19.391Z connHandle:65535 rssi:53 peerAddr:[address:D7:59:9D:1D:7B:6B type:randomStatic addrIdPeer:0] scanRsp:true gap:[manufacturerSpecificData:89,0,77,121,84,104,101,114,82,101,115,112,0 completeLocalName:Bx0708]
 ```
 
+##### Manufacturer Specific Data Mode 3 (Advertising packet)
 
+The manufacturer specific data is the same as for the Non-Scannable Non-Connectable Advertising (Mode 2), thus see [Manufacturer Specific Data Mode 2 (Advertising packet)](#manufacturer-specific-data-mode-2-(advertising-packet)).
 
+##### Manufacturer Specific Data Mode 3 (Scan Response)
 
+In our example the manufacturer specific data contained in the scan response received is: 
 
-The following data will be send during advertising:
+```
+59 00 4d 79 54 68 65 72 52 65 73 70 00 07 09 42 78 30 37 30 38 (hex numbers)
+89,0,77,121,84,104,101,114,82,101,115,112,0 (decimal numbers)
+```
 
-- Address type: `RandomStatic`
+The following table gives information on how to interpret the payload:
 
-- Advertising type: `Connectable undirected`
-
-- Services: `1400`
-
-- Flags: `LeGeneralDiscMode` `BrEdrNotSupported` `LeOnlyLimitedDiscMode` `LeOnlyGeneralDiscMode`
-
-- `BLE_GAP_AD_TYPE_TX_POWER_LEVEL`: TxPowerLevel: 00
-
-- `BLE_GAP_AD_TYPE_MANUFACTURER_SPECIFIC_DATA`: ManufacturerSpecificData
-
-- Example: `59-00-00-07-00-08-5D-B4-73-6F-B8-FC-2C-FK-62-3F-0B-6A`
-
-  | Topic              | Bytes    | Example | Result                                        |
-  | ------------------ | -------- | ------- | --------------------------------------------- |
-  | Company Identifier | [0..1]   | 59 00   | = 0x0059, Nordic Semiconductor                |
-  | Major              | [2..3]   | 00 07   | = 0x0007                                      |
-  | Minor              | [4..5]   | 00 08   | = 0x0008                                      |
-  | Temperature        | [6..7]   | 5D B4   | = 19,05 = -45 + (0x5DB4 * 175) / 0xFFFF (° C) |
-  | Humidity           | [8..9]   | 73 6F   | = 45,09 = (0x736F * 100) / 0xFFFF (% RH)      |
-  | Acceleration X     | [10..11] | B8 FD   | = 0xFDB8, 2's complement = -248               |
-  | Acceleration Y     | [12..13] | 2C FB   | = 0xFB2C, 2's c = -1236                       |
-  | Acceleration Z     | [14..15] | 62 3F   | = 0x3F62, 2's c = ‭+16542‬                      |
-  | Battery Voltage    | [16..17] | 0B 6A   | = 0x0B6A = 2992 mV                            |
-
-Remark: The temperature and humidity data are sent using the sensors native 2 byte format, with the formula given in the table above. See [SHT03 Data Sheet](Documentation/datasheets/Sensirion_Humidity_Sensors_SHT3x_Datasheet_digital-971521.pdf), section *4.13 Conversion of Signal Output* for more information. See 
+| Topic              | Bytes    | Example                       | Result                                      |
+| ------------------ | -------- | ----------------------------- | ------------------------------------------- |
+| Company Identifier | [0..1]   | 59 00                         | = 0x0059, Nordic Semiconductor              |
+| Data response      | [2..11]  | 4d 79 54 68 65 72 52 65 73 70 | = "MyTherResp" <br />(hex-ascii conversion) |
+| Separator          | [12]     | 00                            |                                             |
+| Length             | [13]     | 07                            |                                             |
+| Type               | [14]     | 09                            | Complete local name                         |
+| Device Name        | [15..20] | 42 78 30 37 30 38             | = "Bx0708"                                  |
+| Separator          | [21]     | 00                            |                                             |
 
 
 
@@ -912,6 +931,14 @@ On the GATT Client, in this case a disconnect w/reason 8 occurs. Again, if the d
 W (3547729) BT_APPL: bta_gattc_conn_cback() - cif=3 connected=0 conn_id=3 reason=0x0008
 D (3547729) BLEMQTTPROXY: ESP_GATTC_DISCONNECT_EVT
 I (3547729) BLEMQTTPROXY: ESP_GATTC_DISCONNECT_EVT, reason = 8
+```
+
+#### SEGGER RTT VIEWER Debug output broken 
+
+If you have additional empty lines or a non-working debug log in RTT Viewer you can work around this by adding/setting in `sdk_config.h`, see [nrf_log-not-working-on-segger-embedded-studio](https://devzone.nordicsemi.com/f/nordic-q-a/45985/nrf_log-not-working-on-segger-embedded-studio/182742#182742):
+
+```
+#define NRF_FPRINTF_FLAG_AUTOMATIC_CR_ON_LF_ENABLED 0
 ```
 
 #### Reference: GATT Client error codes
