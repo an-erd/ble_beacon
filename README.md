@@ -850,6 +850,16 @@ The setup is described in section *6.6 Measuring current on custom hardware with
 - The additional SEGGER J-Link is connected to the Debug in connector (P21) on the PPK using the 10-pin flat cable. The USB cable is plugged into the SEGGER J-Link and connected to a computer running the Power Profiler application.
 - The COM switch (SW3) is in the "EXT" position.
 
+### Reset device with nrfjprog
+
+To reset a device with a J-Link attached, use
+
+```
+nrfjprog --reset
+```
+
+
+
 ### Strange Issues
 
 #### ERROR 33281 [NRF_ERROR_DRV_TWI_ERR_ANACK] 

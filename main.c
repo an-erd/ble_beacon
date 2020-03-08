@@ -2276,6 +2276,8 @@ static void pm_evt_handler(pm_evt_t const * p_evt)
 #ifdef USE_CONNPARAMS_PEERMGR
         case PM_EVT_PEER_DATA_UPDATE_SUCCEEDED:
         {
+            bool already_added = false;
+
             // Note: You should check on what kind of white list policy your application should use.
             if (     p_evt->params.peer_data_update_succeeded.flash_changed
                  && (p_evt->params.peer_data_update_succeeded.data_id == PM_PEER_DATA_ID_BONDING))
@@ -2285,7 +2287,17 @@ static void pm_evt_handler(pm_evt_t const * p_evt)
                                m_whitelist_peer_cnt + 1,
                                BLE_GAP_WHITELIST_ADDR_MAX_COUNT);
 
-                if (m_whitelist_peer_cnt < BLE_GAP_WHITELIST_ADDR_MAX_COUNT)
+                for (uint8_t i = 0; i<m_whitelist_peer_cnt; i++)
+                {
+                    if (m_whitelist_peers[i] == m_peer_id)
+                    {
+                        already_added= true; 
+                        NRF_LOG_DEBUG("Peer is already in whitelist");
+                        break;
+                    }
+                }
+        
+                if ((!already_added) && (m_whitelist_peer_cnt < BLE_GAP_WHITELIST_ADDR_MAX_COUNT) )
                 {
                     // Bonded to a new peer, add it to the whitelist.
                     m_whitelist_peers[m_whitelist_peer_cnt++] = m_peer_id;
