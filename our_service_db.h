@@ -107,7 +107,7 @@ uint16_t ble_os_db_num_free_entries_get(void);
  *
  * @return      NRF_SUCCESS on success.
  */
-uint32_t ble_os_db_record_get(uint8_t record_num, ble_os_rec_t * p_rec);
+uint32_t ble_os_db_record_get(uint16_t record_num, ble_os_rec_t * p_rec);
 
 /**@brief Function for adding a record at the end of the database.
  *
@@ -127,7 +127,7 @@ uint32_t ble_os_db_record_add(ble_os_rec_t * p_rec);
  *
  * @return      NRF_SUCCESS on success.
  */
-uint32_t ble_os_db_record_delete(uint8_t record_num);
+uint32_t ble_os_db_record_delete(uint16_t record_num);
 
 
 #ifdef __cplusplus

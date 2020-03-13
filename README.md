@@ -4,52 +4,46 @@
 
 ## Overview
 
-**ble_beacon** is a software for the Nordic Semiconductor SOC NRF52832 and similar. It reads sensor data (in our case temperature, humidity and acceleration data) and sends it using Bluetooth Low Energy advertisement packages. Getting a history of data points is available when establishing a BLE connection to the device.
+**ble_beacon** is a software for the Nordic Semiconductor SoC NRF52832 and similar. It reads sensor data (in our case temperature, humidity and acceleration data) and sends it using Bluetooth Low Energy advertisement packet. Getting a history of data points is available when establishing a BLE connection to the device.
 
 The code is power optimized. As of today, the average power consumption during unconnectable undirected advertising is 13.5 &#181;A, and with connectable undirected advertising ~17.4 &#181;A (see below for more detailed figures).
 
 Using the push button, different modes (sensor, advertising, etc.) and deleting Bluetooth bonds can be configured.
 
-### Advertising
+### Advertising 
 
-The following data will be send during advertising:
+The device supports two different advertising modes:
 
-- Address type: `RandomStatic`
+- non-scannable non-connectable advertising
+- scannable connectable advertising
 
-- Advertising type: `Connectable undirected`
+The main target of providing different modes and in particular non-scannable non-connectable advertising is to have a reduced power consumption while sending payload data.
 
-- Services: `1400`
+**Both advertising modes** will provide the following payload:
 
-- Flags: `LeGeneralDiscMode BrEdrNotSupported LeOnlyLimitedDiscMode LeOnlyGeneralDiscMode`
+- Major and Minor ID for Identification of the device
+- Temperature values
+- Humidity values
+- Acceleration X/Y/Z readings
+- Battery voltage
 
-- `BLE_GAP_AD_TYPE_TX_POWER_LEVEL`: TxPowerLevel: 00
+When in **scannable connectable advertising mode** in addition you will receive using the Scan Response:
 
-- `BLE_GAP_AD_TYPE_MANUFACTURER_SPECIFIC_DATA`: ManufacturerSpecificData
+- a string (currently just set to `MyTherResp`) (TDB in future)
+- the devices full name (e.g. `Bx0708` for Beacon with Major ID 0x07 and Minor ID 0x08)
 
-- Example: `59-00-00-07-00-08-5D-B4-73-6F-B8-FC-2C-FK-62-3F-0B-6A`
+and you can connect to the device!
 
-   | Topic              | Bytes    | Example | Result                                   |
-   | ------------------ | -------- | ------- | ---------------------------------------- |
-   | Company Identifier | [0..1]   | 59 00   | = 0x0059, Nordic Semiconductor           |
-   | Major              | [2..3]   | 00 07   | = 0x0007                                 |
-   | Minor              | [4..5]   | 00 08   | = 0x0008                                 |
-   | Temperature        | [6..7]   | 5D B4   | = 19,05 = (0x5DB4 * 175) / 0xFFFF (° C)  |
-   | Humidity           | [8..9]   | 73 6F   | = 45,09 = (0x736F * 100) / 0xFFFF (% RH) |
-   | Acceleration X     | [10..11] | B8 FD   | = 0xFDB8, 2's complement = -248          |
-   | Acceleration Y     | [12..13] | 2C FB   | = 0xFB2C, 2's c = -1236                  |
-   | Acceleration Z     | [14..15] | 62 3F   | = 0x3F62, 2's c = ‭+16542‬                 |
-   | Battery Voltage    | [16..17] | 0B 6A   | = 0x0B6A = 2992 mV                       |
-
-Remark: The temperature and humidity data are sent using the sensors native 2 byte format, with the formula given in the table above. See [SHT03 Data Sheet](Documentation/datasheets/Sensirion_Humidity_Sensors_SHT3x_Datasheet_digital-971521.pdf), section *4.13 Conversion of Signal Output* for more information.
+In section [Understanding the Advertising Data](#understanding-the-advertising-data) below you will get more information on the Advertising data and how to read it. 
 
 ### Provided Services
 
 
-In addition you can connect to the device and use additional features such as download and deletion of data points or DFU device update. See below for additional information.
+In addition you can connect to the device and use additional features such as download and deletion of data points or DFU device update. See below in section [Provided Services by Device](#provided-services-by-device) for additional information.
 
 ### Offline Buffer Functionality
 
-Beside the advertising of the sensor measurements the beacon can store the measurements in an offline buffer. The offline buffer is located  in RAM, i.e. with a reboot the values will be reset, too. Currently 20.000 bytes are reserved for the offline buffer, with an size of 16 bytes for one entry, this gives 20.000/16 bytes = 1.250 entries. With an interval of 15 min/entry the beacon will store data for around 13 days. If the buffer is full, the oldest value will be deleted (i.e. a ring buffer is used). The data of the offline buffer can be accessed and downloaded when connecting to the device.
+Beside the advertising of the sensor measurements the beacon can store the measurements in an offline buffer. The offline buffer is located  in RAM, i.e. with a reboot the values will be reset, too. Currently 20.000 bytes are reserved for the offline buffer, with an size of 16 bytes for one entry, this gives 20.000/16 bytes = 1.250 entries. With an interval of 15 min/entry the beacon will store data for around 13 days. If the buffer is full, the oldest value will be deleted (i.e. a ring buffer is used). The data of the offline buffer can be accessed, downloaded and cleared when connected to the device.
 
 ### Available Sensors on Board
 
@@ -73,6 +67,10 @@ An additional NFC (Near field communication) antenna can be attached to allow fo
 **Important:** If NFC is to be used, you must remove the preprocessor define  `CONFIG_NFCT_PINS_AS_GPIOS` to not use the NFC pins as GPIO pins but for NFC. If it is defined, pins P0.09 and P0.10 serve as GPIO pins.
 
 **Remark:** NFC functionality is not yet implemented but planned for a future release. The board already provides the points to attach the antenna with.
+
+### Example Data and Beacon used throughout this Document
+
+In this Readme we use a single BLE beacon device with the following address `D7:59:9D:1D:7B:6B`. In the different log files it may also appear in in reverse order without delimiter and in lower case as `6b 7b 1d 9d 59 d7`. The device name for this Beacon is set to `Bx0708` and will be constructed using its major and minor id which will be set to: Major ID `0x07` and Minor ID `0x08`, preceded by `Bx` (as in Beacon).
 
 ## Programming the Device
 
@@ -256,6 +254,8 @@ The files are located here:
   nrfjprog -f NRF52 --memrd 0x10001080 --n 4
   ```
 
+Example: For the test device used throughout this Readme the value `0x00070008` would be used.
+
 ### Update the Device using DFU
 
 **Step 6)** To update the application use DFU and the application zip file generated as in Step 1) using nRF Connect Bluetooth Low Energy application on Windows (with nrf52832 dongle) or iPhone/Android app. The same procedure holds if you want to update APP+BL+SD with one package.
@@ -308,17 +308,198 @@ After 10 seconds without a keypress (i.e., idle), the configuration mode will be
 
 | Action       | Description       | LED feedback                       |
 | ------------ | ----------------- | ---------------------------------- |
-| Idel timeout | Leave config mode | &#183; &#183; &#183; &#183; &#183; |
+| Idle timeout | Leave config mode | &#183; &#183; &#183; &#183; &#183; |
+
+
+
+## Understanding the Advertising data
+
+Depending on the configured Advertising Mode (Mode 2 and Mode 3 as discussed in [Change device mode](#change-device-mode)) you will receive non-scannable non-connectable advertising or scannable connectable advertising. Thus we will explain advertising split up in
+
+- the header
+- the data retrieved for non-scannable non-connectable advertising mode (Mode 2) and
+- the data retrieved for scannable connectable advertising (Mode 3).
+
+I used NRF Connect and the log files provided by the tool to get the detailed logs used below.
+
+**Remark:** 
+
+- For understanding and testing it is necessary to convert between ASCII and numbers. A tool to do the job and convert between hex/binary/decimal numbers and ASCII text can be found [here](https://www.rapidtables.com/convert/number/ascii-hex-bin-dec-converter.html).
+- A calculator for 2s complement can be found [here](tototo). (TODO)
+- All relevant information on Bluetooth and Advertising can be found in the following documents/links:
+  - [Bluetooth Core Specification](https://www.bluetooth.com/specifications/bluetooth-core-specification/)
+    - Document "CS Core Specification", Chapter 11 "ADVERTISING AND SCAN RESPONSE DATA FORMAT" 
+    - Document "CSS Core Specification Supplement"
+    - [BT4 Core Spec, Adv data reference, Chapter 11 and 18](https://www.libelium.com/forum/libelium_files/bt4_core_spec_adv_data_reference.pdf)
+  - [List of AD Types](https://www.bluetooth.com/specifications/assigned-numbers/generic-access-profile/)
+  - [KBA_BT_0201: Bluetooth advertising data basics](https://www.silabs.com/community/wireless/bluetooth/knowledge-base.entry.html/2017/02/10/bluetooth_advertisin-hGsf)
+  - [KBA_BT_0202: Bluetooth advertising using manufacturer specific data](https://www.silabs.com/community/wireless/bluetooth/knowledge-base.entry.html/2017/11/14/bluetooth_advertisin-zCHh)
+  - [One minute to understand BLE advertising data package](https://github.com/greatscottgadgets/ubertooth/wiki/One-minute-to-understand-BLE-advertising-data-package)
+
+#### BLE Beacon used throughout in this example
+
+See above in section [Example Data and Beacon used throughout this Document](#example-data-and-beacon-used-throughout-this-document) on the address and name used throughout with document and example.
+
+#### Header of Advertising Packet
+
+In our example the header of the advertising packet received is:
+
+- Non-scannable non-connectable advertising (Mode 2):
+
+    ```
+    02 1d 00 ff ff 02 6b 7b 1d 9d 59 d7 00 04 99 42 19 eb 84 ce 06 17 01 02 01 06 13 ff
+    ```
+    | Length  | Type                     | Data              | Result                                                   |
+    | ------- | ------------------------ | ----------------- | -------------------------------------------------------- |
+    |         |                          | 02 1d 00 ff ff 02 |                                                          |
+    | Address | [6..11]                  | 6b 7b 1d 9d 59 d7 | D7:59:9D:1D:7B:6B                                        |
+    |         |                          |                   |                                                          |
+    |         |                          |                   |                                                          |
+    | 0x02    | 0x1 (Flags)              | 0x06              | LE General Discoverable Mode, <br />BR/EDR Not Supported |
+    | 0x13    | 0xFF (Manufacturer data) | (see below)       |                                                          |
+
+
+- Mode 3, advertising packet and scan response:
+
+  ```
+  02 1d 00 ff ff 02 6b 7b 1d 9d 59 d7 20 04 99 42 19 eb 84 ca 00 17 01 02 01 06 13 ff 
+  02 1d 00 ff ff 02 6b 7b 1d 9d 59 d7 20 04 99 42 19 eb 84 cb 01 17 01 0e ff
+  ```
+
+For the further explanation we split up the packets into the following parts:
+
+- Common header
+  ``` 
+  02 1d 00 ff ff 02 6b 7b 1d 9d 59 d7
+  ```
+
+
+
+#### Non-Scannable Non-Connectable Advertising (Mode 2)
+
+Received Data as in NRF Connect log file:
+
+```
+2020-03-07T11:21:07.708Z DEBUG   110/ 0 <-  [02 1d 00 ff ff 02 6b 7b 1d 9d 59 d7 00 04 99 42 19 eb 84 ce 06 17 01 02 01 06 13 ff 59 00 00 07 00 08 5d 9a 66 6a f4 ff 3e ff 60 3f 0b a6 ] type:     VENDOR_SPECIFIC reliable:yes seq#:3 ack#:5 payload_length:2e data_integrity:1 header_checksum:25 err_code:0x0
+```
+
+```
+2020-03-07T11:21:07.715Z DEBUG GAP_EVT_ADV_REPORT/ADV_NONCONN_IND time:2020-03-07T11:21:07.707Z connHandle:65535 rssi:50 peerAddr:[address:D7:59:9D:1D:7B:6B type:randomStatic addrIdPeer:0] scanRsp:false advType:advNonconnInd gap:[adTypeFlags:[leGeneralDiscMode,brEdrNotSupported,leOnlyLimitedDiscMode,leOnlyGeneralDiscMode] manufacturerSpecificData:89,0,0,7,0,8,93,154,102,106,244,255,62,255,96,63,11,166]
+```
+
+##### Manufacturer Specific Data Mode 2 (Advertising packet)
+
+In our example the manufacturer specific data contained in the advertising packet received is:
+
+```
+59 00 00 07 00 08 5d 9a 66 6a f4 ff 3e ff 60 3f 0b a6 (hex numbers)
+89,0,0,7,0,8,93,154,102,106,244,255,62,255,96,63,11,166 (decimal numbers)
+```
+
+The following table gives information on how to interpret the payload:
+
+| Topic              | Bytes    | Example | Result                                        |
+| ------------------ | -------- | ------- | --------------------------------------------- |
+| Company Identifier | [0..1]   | 59 00   | = 0x0059, Nordic Semiconductor                |
+| Major              | [2..3]   | 00 07   | = 0x0007                                      |
+| Minor              | [4..5]   | 00 08   | = 0x0008                                      |
+| Temperature        | [6..7]   | 5D 9A   | = 18,99 = -45 + (0x5D9A * 175) / 0xFFFF (° C) |
+| Humidity           | [8..9]   | 66 6A   | = 40,01 = (0x666A * 100) / 0xFFFF (% RH)      |
+| Acceleration X     | [10..11] | F4 FF   | = 0xFFF4, 2's complement = -11                |
+| Acceleration Y     | [12..13] | 3E FF   | = 0xFF3E, 2's c = -193                        |
+| Acceleration Z     | [14..15] | 60 3F   | = 0x3F60, 2's c = ‭+16224‬                      |
+| Battery Voltage    | [16..17] | 0B A6   | = 0x0B6A = 2922 mV                            |
+
+Remark: The temperature and humidity data are sent using the sensors native 2 byte format, with the formula given in the table above. See [SHT03 Data Sheet](Documentation/datasheets/Sensirion_Humidity_Sensors_SHT3x_Datasheet_digital-971521.pdf), section *4.13 Conversion of Signal Output* for more information. 
+
+#### Scannable Connectable Advertising (Mode 3)
+
+Received Data as in NRF Connect log file for the advertising packet:
+
+```
+2020-03-07T11:03:19.388Z DEBUG    49/ 0 <-  [02 1d 00 ff ff 02 6b 7b 1d 9d 59 d7 20 04 99 42 19 eb 84 ca 00 17 01 02 01 06 13 ff 59 00 00 07 00 08 5d 65 65 c8 b4 ff 2a ff 26 3f 0b 94 ] type:     VENDOR_SPECIFIC reliable:yes seq#:6 ack#:5 payload_length:2e data_integrity:1 header_checksum:22 err_code:0x0
+```
+
+```
+2020-03-07T11:03:19.396Z DEBUG GAP_EVT_ADV_REPORT/ADV_IND time:2020-03-07T11:03:19.388Z connHandle:65535 rssi:54 peerAddr:[address:D7:59:9D:1D:7B:6B type:randomStatic addrIdPeer:0] scanRsp:false advType:advInd gap:[adTypeFlags:[leGeneralDiscMode,brEdrNotSupported,leOnlyLimitedDiscMode,leOnlyGeneralDiscMode] manufacturerSpecificData:89,0,0,7,0,8,93,101,101,200,180,255,42,255,38,63,11,148]
+```
+
+and the scan response:
+
+```
+2020-03-07T11:03:19.401Z DEBUG    50/ 0 <-  [02 1d 00 ff ff 02 6b 7b 1d 9d 59 d7 20 04 99 42 19 eb 84 cb 01 17 01 0e ff 59 00 4d 79 54 68 65 72 52 65 73 70 00 07 09 42 78 30 37 30 38 ] type:     VENDOR_SPECIFIC reliable:yes seq#:7 ack#:5 payload_length:2e data_integrity:1 header_checksum:21 err_code:0x0
+```
+
+```
+2020-03-07T11:03:19.402Z DEBUG GAP_EVT_ADV_REPORT time:2020-03-07T11:03:19.391Z connHandle:65535 rssi:53 peerAddr:[address:D7:59:9D:1D:7B:6B type:randomStatic addrIdPeer:0] scanRsp:true gap:[manufacturerSpecificData:89,0,77,121,84,104,101,114,82,101,115,112,0 completeLocalName:Bx0708]
+```
+
+##### Manufacturer Specific Data Mode 3 (Advertising packet)
+
+The manufacturer specific data is the same as for the Non-Scannable Non-Connectable Advertising (Mode 2), thus see [Manufacturer Specific Data Mode 2 (Advertising packet)](#manufacturer-specific-data-mode-2-(advertising-packet)).
+
+##### Manufacturer Specific Data Mode 3 (Scan Response)
+
+In our example the manufacturer specific data contained in the scan response received is: 
+
+```
+59 00 4d 79 54 68 65 72 52 65 73 70 00 07 09 42 78 30 37 30 38 (hex numbers)
+89,0,77,121,84,104,101,114,82,101,115,112,0 (decimal numbers)
+```
+
+The following table gives information on how to interpret the payload:
+
+| Topic              | Bytes    | Example                       | Result                                      |
+| ------------------ | -------- | ----------------------------- | ------------------------------------------- |
+| Company Identifier | [0..1]   | 59 00                         | = 0x0059, Nordic Semiconductor              |
+| Data response      | [2..11]  | 4d 79 54 68 65 72 52 65 73 70 | = "MyTherResp" <br />(hex-ascii conversion) |
+| Separator          | [12]     | 00                            |                                             |
+| Length             | [13]     | 07                            |                                             |
+| Type               | [14]     | 09                            | Complete local name                         |
+| Device Name        | [15..20] | 42 78 30 37 30 38             | = "Bx0708"                                  |
+| Separator          | [21]     | 00                            |                                             |
+
+
 
 ## Provided Services by Device
 
 You can connect to the device and use the following additional features:
 
 - Download the stored data point from the device
+
 - Get number of data points available
+
 - Delete data points
+
 - Get provided features
+
 - Update software using DFU
+
+### List of Bluetooth Services provided
+
+| Service                     | UUID   | Handle | Comment |
+| --------------------------- | ------ | ------ | ------- |
+| Generic Access              | 0x1800 | 0x01   | &horbar; |
+| &horbar; Device Name     | 0x2A00 | 0x03   | Read Write |
+| &horbar; Appearance  | 0x2A01 | 0x05   | Read |
+| &horbar; Peripheral Preferred Connection Parameters | 0x2A04 | 0x07   | Read |
+| &horbar; Central Address Resolution | 0x2AA6 | 0x09   | Read |
+| Generic Attribute           | 0x1801 | 0x0A | &horbar; |
+| &horbar; Service Changed | 0x2A05 | 0x0C | Indicate |
+| &horbar; &horbar; CCCD | 0x2902 | 0x0D | &horbar; |
+| Device Information Service  | 0x180A | 0x0E       | &horbar; |
+| Secure DFU                  | 0xFE59 | 0x1B | &horbar; |
+| Battery Information Service | 0x180F | 0x1F | &horbar; |
+| &horbar; Battery Level | 0x2A19 | 0x21 | Read Notify |
+| &horbar; &horbar; CCCD | 0x2902 | 0x22 | &horbar; |
+| Own Beacon Service          | 0x1400 | 0x23 | &horbar; |
+| &horbar; RACP Measurement Values | 0x1401 | 0x25 | Notify |
+| &horbar; &horbar; CCCD | 0x2902 | 0x26 | &horbar; |
+| Features provided by the Device | 0x1402 | 0x28 | Read |
+| Random Access Control Point (RACP) | 0x2A52 | 0x2A | Write Indicate |
+| &horbar; &horbar; CCCD | 0x2902 | 0x2B | &horbar; |
+| Sensor Status Annunciation | 0x1403 | 0x2D | Read Write |
+| Status data and update commands | 0x1404 | 0x2F | Read Write |
 
 ### Connect to the Device using nRF Connect 
 
@@ -336,7 +517,20 @@ You can connect to the device and use the following additional features:
 
 ### Get Data from Device with respect to RACP
 
-You can retrieve data from the device or delete the device offline buffer memory using the following commands:
+You can retrieve data from the device or delete the device offline buffer memory using the following commands written to UUID `0x2A52`: 
+
+| Command | Description                | Response 2A52                                          | Response 1401                                                |
+| ------- | -------------------------- | ------------------------------------------------------ | ------------------------------------------------------------ |
+| 01 ...  | Report Records             | 06-00-01-01<br />(Response, Operator NULL, ?, Success) | 0..n notifications, one for each database entry to be reported |
+| 01 01   | Report Records, All        | 06-00-01-01<br />(Response, Operator NULL, ?, Success) |                                                              |
+| 01 05   | Report Records, First      | -                                                      |                                                              |
+| 01 06   | Report Records, Last       |                                                        |                                                              |
+| 02 ...  | Delete Records             | 06-00-02-01<br />tbd                                   | none                                                         |
+| 02 01   | Delete Records, All        |                                                        |                                                              |
+| 04 ...  | Report Number Records      | 05-00-0A-00<br />tbd                                   |                                                              |
+| 04 01   | Report Number Records, All |                                                        |                                                              |
+
+**Remark:** the byte order is LSB-MSB
 
 - **write** to 0x2A52 the following commands:
 
@@ -346,7 +540,7 @@ You can retrieve data from the device or delete the device offline buffer memory
   - `04 01` (Report Number Records, All) -> `2A52: 05 00 01 00` (Number of stored records response, number of records 2 byte  LSB first,  here: 1 record)
   - `02 01` (Delete All Records)
 
-  **Remark:** the byte order is LSB-MSB
+  
 
 #### Decode sequential number/Number of entries
 
@@ -361,6 +555,63 @@ The time stamp can be decoded using an appropriate online calculator, for exampl
 - Unix Epoch time calculator, e.g. https://www.unixtimestamp.com/index.php
 
 If the beacon does not have the correct time, the time stamps are reported since boot time, which is 0. If the correct time is available, this will be used.
+
+#### Decode Temperature and Humidity
+
+Temperature and Humidity are given in 2 byte MSB-LSB ordering and are calculated using the sensors native 2 byte format. See [SHT03 Data Sheet](Documentation/datasheets/Sensirion_Humidity_Sensors_SHT3x_Datasheet_digital-971521.pdf), section *4.13 Conversion of Signal Output* for more information.
+
+- Temperature T in ° C where ST denotes the raw sensor output for temperature in decimal representation:
+  <a href="https://www.codecogs.com/eqnedit.php?latex=T&space;[^{\circ}&space;C]&space;=&space;-&space;45&space;&plus;&space;175&space;\cdot&space;\frac{S_{T}}{2^{16}-1}" target="_blank"><img src="https://latex.codecogs.com/gif.latex?T&space;[^{\circ}&space;C]&space;=&space;-&space;45&space;&plus;&space;175&space;\cdot&space;\frac{S_{T}}{2^{16}-1}" title="T [^{\circ} C] = - 45 + 175 \cdot \frac{S_{T}}{2^{16}-1}" /></a>
+
+
+- Humidity RH in % RH where SRH denotes the raw sensor output for humidity in decimal representation:
+  <a href="https://www.codecogs.com/eqnedit.php?latex=RH&space;=&space;100&space;\cdot&space;\frac{S_{RH}}{2^{16}-1}" target="_blank"><img src="https://latex.codecogs.com/gif.latex?RH&space;=&space;100&space;\cdot&space;\frac{S_{RH}}{2^{16}-1}" title="RH = 100 \cdot \frac{S_{RH}}{2^{16}-1}" /></a>
+#### Example
+
+- Value `0A-00-75-D5-0D-5E-5F-17-57-1C` received, see the console log below:
+
+  - Sequence number: 0x000A = 10
+  - Time stamp: 0x5E0DD575 = ‭1577964917‬ = 01/02/2020 @ 11:35am (UTC)
+  - Temperature `0x5F17` = 24.343; results in T = -45 + (24.343  * 175) / 65535 = 20,00 ° C
+  - Humidity `0x751C` = 29.980; results in RH = 45,75 % RH
+  
+#### Corresponding log file entries from NRF Connect console
+
+- Connecting to the device:
+
+  ```
+  11:44:19.028	Connecting to device
+  11:44:29.244	Connected to device D7:59:9D:1D:7B:6B
+  11:44:29.521	Attribute value read, handle: 0x03, value (0x): 42-78-30-37-30-38
+  11:44:31.298	Connection parameters updated for device D7:59:9D:1D:7B:6B: interval 200ms, timeout 4000ms, latency: 0
+  11:44:36.107	Security updated, mode:1, level:2
+  ```
+
+- Change notification for `handle 0x26` `UUID 1401`:
+
+  ```
+  11:44:40.906	Attribute value changed, handle: 0x26, value (0x): 01-00
+  11:44:40.911	Attribute value written, handle: 0x26, value (0x): 01-00
+  ```
+
+- Change indication for `handle 0x2B` `UUID 2A52`:
+
+  ```
+  11:44:42.906	Attribute value changed, handle: 0x2B, value (0x): 02-00
+  11:44:42.910	Attribute value written, handle: 0x2B, value (0x): 02-00
+  ```
+
+- Retrieve last data set using write `01 06` to  `handle 0x2A` `UUID 2A52`:
+
+  ```
+  11:44:46.707	Attribute value changed, handle: 0x2A, value (0x): 01-06
+  11:44:46.715	Attribute value written, handle: 0x2A, value (0x): 01-06
+  11:44:46.722	Attribute value changed, handle: 0x25, value (0x): 0A-00-75-D5-0D-5E-5F-17-57-1C
+  11:44:47.107	Attribute value changed, handle: 0x2A, value (0x): 06-00-01-01
+  ```
+
+**Remark:** Link to the detailed NRF Connect log file: [Link](Documentation/program_docu/2020-01-02_nrf_connect_log.txt)
+
 
 ### Get Features provided by the Device
 
@@ -389,6 +640,34 @@ The Bluetooth characteristics 0x1403 can be read to get devices status annunciat
 | BLE_OS_MEAS_STATUS_SENSOR_FAULT  | 0x0002 | Sensor malfunction or faulting at time of measurement        |
 | BLE_OS_MEAS_STATUS_GENERAL_FAULT | 0x0004 | General device fault has occurred in the sensor              |
 | BLE_OS_MEAS_STATUS_TIME_FAULT    | 0x0008 | Time fault has occurred in the sensor and time may be inaccurate |
+| BLE_OS_MEAS_STATUS_TIME_NOT_SET  | 0x0010 | Time is not set by CTS, thus showing and using seconds since startup |
+
+### Status data and update commands
+
+The Bluetooth characteristics 0x1404 can be read to get device status data and written to give commands.
+
+Currently the following status data can be read by reading UUID 0x1404, for example ` 00-05-00-4C-00-00-00-04-00-0A-00`. In this example the time is not set using CTS.
+
+
+
+| Topic                               | Bytes   | Example     | Result            |
+| ----------------------------------- | ------- | ----------- | ----------------- |
+| Flags                               | [0]     | 00          | none yet          |
+| Sequence number                     | [1..2]  | 05 00       | = 0x0005 = 5      |
+| Time stamp                          | [3..6]  | 4C 00 00 00 | = 0x0000004C = 76 |
+| Number of free DB entries           | [7..8]  | 04 00       | = 0x0004 = 4      |
+| Max. number of DB entries (DB size) | [9..10] | 0A 00       | = 0x000A = 10     |
+
+
+
+The following commands can be given to the device by writing to UUID 0x1404:
+
+| Command | Description                                                  | xxx  |
+| ------- | ------------------------------------------------------------ | ---- |
+| 01 01   | (Re-)Read time and update DB entries, take no drift into account |      |
+|         |                                                              |      |
+|         |                                                              |      |
+|         |                                                              |      |
 
 ### Battery Information Service (BAS)
 
@@ -507,6 +786,12 @@ During the first 2 seconds the connection interval is set to 7.5 ms. Then, by a 
 
 ![Alt text](Documentation/power_consumption/sensor_retrieval.PNG?raw=true "Power Consumption single sensor retrieval")
 
+### Long Term Visualization
+
+![Alt text](Documentation/power_consumption/Sensor_data_20190415-20191221.png?raw=true "Long Term Visualization")
+
+
+
 ## Programming JIG
 
 There is a separate Readme for the programming jig, see [here](Documentation/JIG/README.md)
@@ -543,13 +828,13 @@ The schematics for the beacon I use is available here. The product is available 
 
 For the installed tool chain, use the following `Makefile.windows`
 
-```
+ ```
 AKAEM@PC MINGW32 ~/nrf52/nRF5_SDK_16.0.0_98a08e2
 $ cat ./components/toolchain/gcc/Makefile.windows
 GNU_INSTALL_ROOT := /opt/gcc-arm-none-eabi-8-2018-q4-major-win32/bin/
 GNU_VERSION := 8.2.1
 GNU_PREFIX := arm-none-eabi
-```
+ ```
 
 ### Set up Nordic Power Profiler Kit
 
@@ -564,6 +849,16 @@ The setup is described in section *6.6 Measuring current on custom hardware with
 - The custom hardware (DUT) is connected to the External DUT connector (P16) of the PPK
 - The additional SEGGER J-Link is connected to the Debug in connector (P21) on the PPK using the 10-pin flat cable. The USB cable is plugged into the SEGGER J-Link and connected to a computer running the Power Profiler application.
 - The COM switch (SW3) is in the "EXT" position.
+
+### Reset device with nrfjprog
+
+To reset a device with a J-Link attached, use
+
+```
+nrfjprog --reset
+```
+
+
 
 ### Strange Issues
 
@@ -591,3 +886,71 @@ Detailed error message:
  0> <error> app: End of error report
 ```
 
+
+#### GATT Client not able to pair, error code = 0x52
+
+On the GATT Client, in this case an ESP32 running esp-idf, shows a `pair status = fail`.  The error code `0x52` corresponds to `BTA_DM_AUTH_SMP_PAIR_NOT_SUPPORT`.
+
+On the GATT Client the log file reads:
+
+```
+I (6690) GATTC_DEMO: remote BD_ADDR: dbaebaab672e
+I (6700) GATTC_DEMO: address type = 1
+I (6700) GATTC_DEMO: pair status = fail
+I (6710) GATTC_DEMO: fail reason = 0x52
+```
+
+
+On the NRF52 Beacon device is shown:
+
+```
+00> <info> peer_manager_handler: Connection security failed: role: Peripheral, conn_handle: 0x1, procedure: Bonding, error: 133
+```
+
+**Deleting bonds** on the beacon should correct the problem, see [Delete Bluetooth Bonds](#delete_bluetooth_bonds). 
+
+On the NRF52 Beacon device is then shown:
+
+```
+I (7850) GATTC_DEMO: remote BD_ADDR: dbaebaab672e
+I (7860) GATTC_DEMO: address type = 1
+I (7860) GATTC_DEMO: pair status = success
+I (7870) GATTC_DEMO: auth mode = ESP_LE_AUTH_BOND
+```
+
+#### GATT Client SMP_ENC_FAIL, error code = 0x61
+
+On the GATT Client, in this case an ESP32 running esp-idf, shows a `pair status = fail`.  The error code `0x61` corresponds to `SMP_ENC_FAIL` (=smp_api.h, SMP_ENC_FAIL).
+
+On the GATT Client the log file reads:
+
+```
+I (147769) BLEMQTTPROXY: remote BD_ADDR: dbaebaab672e
+I (147769) BLEMQTTPROXY: address type = 1
+I (147769) BLEMQTTPROXY: pair status = fail
+I (147779) BLEMQTTPROXY: fail reason = 0x61
+```
+
+The problem appears to happen if the distance is to high or the connection is disturbed and thus the authentication cannot be completed.
+
+#### ESP_GATTC_DISCONNECT_EVT, reason = 8
+
+On the GATT Client, in this case a disconnect w/reason 8 occurs. Again, if the distance is to high or connection disturbed this error occurs.
+
+```
+W (3547729) BT_APPL: bta_gattc_conn_cback() - cif=3 connected=0 conn_id=3 reason=0x0008
+D (3547729) BLEMQTTPROXY: ESP_GATTC_DISCONNECT_EVT
+I (3547729) BLEMQTTPROXY: ESP_GATTC_DISCONNECT_EVT, reason = 8
+```
+
+#### SEGGER RTT VIEWER Debug output broken 
+
+If you have additional empty lines or a non-working debug log in RTT Viewer you can work around this by adding/setting in `sdk_config.h`, see [nrf_log-not-working-on-segger-embedded-studio](https://devzone.nordicsemi.com/f/nordic-q-a/45985/nrf_log-not-working-on-segger-embedded-studio/182742#182742):
+
+```
+#define NRF_FPRINTF_FLAG_AUTOMATIC_CR_ON_LF_ENABLED 0
+```
+
+#### Reference: GATT Client error codes
+
+See `esp-idf\components\bt\bluedroid\bta\include\bta\bta_api.h` and [List of error codes](https://github.com/chegewara/esp32-ble-wiki/issues/5).

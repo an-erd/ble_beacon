@@ -1,0 +1,273 @@
+2020-01-02T10:44:19.028Z INFO Connecting to device
+2020-01-02T10:44:19.031Z DEBUG     1114 ->  [00 8c 01 02 6b 7b 1d 9d 59 d7 01 01 a0 00 50 00 14 00 01 06 00 06 00 00 00 90 01 ] type:     VENDOR_SPECIFIC reliable:yes seq#:0 ack#:1 payload_length:1b data_integrity:1 header_checksum:79 err_code:0x0
+2020-01-02T10:44:19.032Z DEBUG  1111/ 0 <-  [N/A] type:                 ACK reliable: no seq#:0 ack#:1 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:19.032Z DEBUG  1112/ 0 <-  [01 8c 00 00 00 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:1 ack#:1 payload_length:6 data_integrity:1 header_checksum:c9 err_code:0x0
+2020-01-02T10:44:19.032Z DEBUG     1115 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:2 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:29.242Z DEBUG  1113/ 0 <-  [02 10 00 01 00 02 6b 7b 1d 9d 59 d7 02 06 00 06 00 00 00 90 01 ] type:     VENDOR_SPECIFIC reliable:yes seq#:2 ack#:1 payload_length:15 data_integrity:1 header_checksum:d7 err_code:0x0
+2020-01-02T10:44:29.242Z DEBUG     1116 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:3 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:29.243Z DEBUG GAP_EVT_CONNECTED time:2020-01-02T10:44:29.242Z connHandle:1 peerAddr:[address:D7:59:9D:1D:7B:6B type:randomStatic addrIdPeer:0] role:central connParams:[minConnInterval:7_5 maxConnInterval:7_5 slaveLatency:0 connSupTimeout:4000]
+2020-01-02T10:44:29.244Z INFO Connected to device D7:59:9D:1D:7B:6B
+2020-01-02T10:44:29.257Z DEBUG     1117 ->  [00 94 01 00 01 00 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:1 ack#:3 payload_length:7 data_integrity:1 header_checksum:a9 err_code:0x0
+2020-01-02T10:44:29.257Z DEBUG  1114/ 0 <-  [N/A] type:                 ACK reliable: no seq#:0 ack#:2 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:29.257Z DEBUG  1115/ 0 <-  [01 94 00 00 00 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:3 ack#:2 payload_length:6 data_integrity:1 header_checksum:bf err_code:0x0
+2020-01-02T10:44:29.257Z DEBUG     1118 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:4 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:29.265Z DEBUG  1116/ 0 <-  [02 30 00 01 00 00 00 00 00 03 00 00 18 01 01 00 09 00 01 18 01 0a 00 0d 00 0a 18 01 0e 00 1a 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:4 ack#:2 payload_length:20 data_integrity:1 header_checksum:1c err_code:0x0
+2020-01-02T10:44:29.265Z DEBUG     1119 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:5 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:29.267Z DEBUG GATTC_EVT_PRIM_SRVC_DISC_RSP time:2020-01-02T10:44:29.265Z connHandle:1 gattStatus:0 gattStatusName:success errorHandle:0 count:3 services:[[uuid:[uuid:6144 type:1 typeString:bleUuidTypeBle],handleRange:[startHandle:1 endHandle:9]],[uuid:[uuid:6145 type:1 typeString:bleUuidTypeBle],handleRange:[startHandle:10 endHandle:13]],[uuid:[uuid:6154 type:1 typeString:bleUuidTypeBle],handleRange:[startHandle:14 endHandle:26]]]
+2020-01-02T10:44:29.268Z DEBUG     1120 ->  [00 94 01 00 1b 00 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:2 ack#:5 payload_length:7 data_integrity:1 header_checksum:98 err_code:0x0
+2020-01-02T10:44:29.271Z DEBUG  1117/ 0 <-  [N/A] type:                 ACK reliable: no seq#:0 ack#:3 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:29.272Z DEBUG  1118/ 0 <-  [01 94 00 00 00 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:5 ack#:3 payload_length:6 data_integrity:1 header_checksum:b5 err_code:0x0
+2020-01-02T10:44:29.272Z DEBUG     1121 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:6 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:29.281Z DEBUG  1119/ 0 <-  [02 30 00 01 00 00 00 00 00 02 00 59 fe 01 1b 00 1e 00 0f 18 01 1f 00 22 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:6 ack#:3 payload_length:19 data_integrity:1 header_checksum:83 err_code:0x0
+2020-01-02T10:44:29.281Z DEBUG     1122 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:7 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:29.282Z DEBUG GATTC_EVT_PRIM_SRVC_DISC_RSP time:2020-01-02T10:44:29.281Z connHandle:1 gattStatus:0 gattStatusName:success errorHandle:0 count:2 services:[[uuid:[uuid:65113 type:1 typeString:bleUuidTypeBle],handleRange:[startHandle:27 endHandle:30]],[uuid:[uuid:6159 type:1 typeString:bleUuidTypeBle],handleRange:[startHandle:31 endHandle:34]]]
+2020-01-02T10:44:29.282Z DEBUG     1123 ->  [00 94 01 00 23 00 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:3 ack#:7 payload_length:7 data_integrity:1 header_checksum:87 err_code:0x0
+2020-01-02T10:44:29.285Z DEBUG  1120/ 0 <-  [N/A] type:                 ACK reliable: no seq#:0 ack#:4 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:29.285Z DEBUG  1121/ 0 <-  [01 94 00 00 00 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:7 ack#:4 payload_length:6 data_integrity:1 header_checksum:ab err_code:0x0
+2020-01-02T10:44:29.285Z DEBUG     1124 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:0 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:29.295Z DEBUG  1122/ 0 <-  [02 30 00 01 00 00 00 00 00 01 00 00 00 00 23 00 ff ff ] type:     VENDOR_SPECIFIC reliable:yes seq#:0 ack#:4 payload_length:12 data_integrity:1 header_checksum:f1 err_code:0x0
+2020-01-02T10:44:29.295Z DEBUG     1125 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:1 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:29.295Z DEBUG GATTC_EVT_PRIM_SRVC_DISC_RSP time:2020-01-02T10:44:29.295Z connHandle:1 gattStatus:0 gattStatusName:success errorHandle:0 count:1 services:[[uuid:[uuid:0 type:0 typeString:bleUuidTypeUnknown],handleRange:[startHandle:35 endHandle:65535]]]
+2020-01-02T10:44:29.296Z DEBUG     1126 ->  [00 9a 01 00 23 00 00 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:4 ack#:1 payload_length:8 data_integrity:1 header_checksum:a6 err_code:0x0
+2020-01-02T10:44:29.299Z DEBUG  1123/ 0 <-  [N/A] type:                 ACK reliable: no seq#:0 ack#:5 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:29.299Z DEBUG  1124/ 0 <-  [01 9a 00 00 00 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:1 ack#:5 payload_length:6 data_integrity:1 header_checksum:a9 err_code:0x0
+2020-01-02T10:44:29.299Z DEBUG     1127 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:2 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:29.311Z DEBUG  1125/ 0 <-  [02 36 00 01 00 00 00 00 00 23 00 00 00 10 00 3c b7 a2 4b 0c 32 f2 9f 4f 4c f5 37 00 14 2f 61 ] type:     VENDOR_SPECIFIC reliable:yes seq#:2 ack#:5 payload_length:1f data_integrity:1 header_checksum:17 err_code:0x0
+2020-01-02T10:44:29.311Z DEBUG     1128 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:3 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:29.312Z DEBUG GATTC_EVT_READ_RSP time:2020-01-02T10:44:29.311Z connHandle:1 gattStatus:0 gattStatusName:success errorHandle:0 handle:35 offset:0 len:16
+2020-01-02T10:44:29.328Z DEBUG     1129 ->  [00 96 01 00 01 01 00 09 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:5 ack#:3 payload_length:9 data_integrity:1 header_checksum:85 err_code:0x0
+2020-01-02T10:44:29.338Z DEBUG  1126/ 0 <-  [N/A] type:                 ACK reliable: no seq#:0 ack#:6 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:29.338Z DEBUG  1127/ 0 <-  [01 96 00 00 00 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:3 ack#:6 payload_length:6 data_integrity:1 header_checksum:9f err_code:0x0
+2020-01-02T10:44:29.338Z DEBUG     1130 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:4 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:29.341Z DEBUG  1128/ 0 <-  [02 32 00 01 00 00 00 00 00 03 00 00 2a 01 0a 00 02 00 03 00 01 2a 01 02 00 04 00 05 00 04 2a 01 02 00 06 00 07 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:4 ack#:6 payload_length:26 data_integrity:1 header_checksum:9c err_code:0x0
+2020-01-02T10:44:29.341Z DEBUG     1131 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:5 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:29.342Z DEBUG GATTC_EVT_CHAR_DISC_RSP time:2020-01-02T10:44:29.341Z connHandle:1 gattStatus:0 gattStatusName:success errorHandle:0 count:3 chars:[[uuid:[uuid:10752 type:1 typeString:bleUuidTypeBle],charProps:[broadcast:false read:true writeWoResp:false write:true notify:false indicate:false authSignedWr:false],charExtProps:0,handleDecl:2,handleValue:3],[uuid:[uuid:10753 type:1 typeString:bleUuidTypeBle],charProps:[broadcast:false read:true writeWoResp:false write:false notify:false indicate:false authSignedWr:false],charExtProps:0,handleDecl:4,handleValue:5],[uuid:[uuid:10756 type:1 typeString:bleUuidTypeBle],charProps:[broadcast:false read:true writeWoResp:false write:false notify:false indicate:false authSignedWr:false],charExtProps:0,handleDecl:6,handleValue:7]]
+2020-01-02T10:44:29.342Z DEBUG     1132 ->  [00 96 01 00 01 07 00 09 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:6 ack#:5 payload_length:9 data_integrity:1 header_checksum:74 err_code:0x0
+2020-01-02T10:44:29.346Z DEBUG  1129/ 0 <-  [N/A] type:                 ACK reliable: no seq#:0 ack#:7 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:29.346Z DEBUG  1130/ 0 <-  [01 96 00 00 00 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:5 ack#:7 payload_length:6 data_integrity:1 header_checksum:95 err_code:0x0
+2020-01-02T10:44:29.346Z DEBUG     1133 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:6 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:29.356Z DEBUG  1131/ 0 <-  [02 32 00 01 00 00 00 00 00 01 00 a6 2a 01 02 00 08 00 09 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:6 ack#:7 payload_length:14 data_integrity:1 header_checksum:b3 err_code:0x0
+2020-01-02T10:44:29.356Z DEBUG     1134 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:7 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:29.357Z DEBUG GATTC_EVT_CHAR_DISC_RSP time:2020-01-02T10:44:29.356Z connHandle:1 gattStatus:0 gattStatusName:success errorHandle:0 count:1 chars:[[uuid:[uuid:10918 type:1 typeString:bleUuidTypeBle],charProps:[broadcast:false read:true writeWoResp:false write:false notify:false indicate:false authSignedWr:false],charExtProps:0,handleDecl:8,handleValue:9]]
+2020-01-02T10:44:29.357Z DEBUG     1135 ->  [00 9a 01 00 03 00 00 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:7 ack#:7 payload_length:8 data_integrity:1 header_checksum:73 err_code:0x0
+2020-01-02T10:44:29.360Z DEBUG  1132/ 0 <-  [N/A] type:                 ACK reliable: no seq#:0 ack#:0 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:29.360Z DEBUG  1133/ 0 <-  [01 9a 00 00 00 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:7 ack#:0 payload_length:6 data_integrity:1 header_checksum:cb err_code:0x0
+2020-01-02T10:44:29.360Z DEBUG     1136 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:0 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:29.371Z DEBUG  1134/ 0 <-  [02 36 00 01 00 00 00 00 00 03 00 00 00 06 00 42 78 30 37 30 38 ] type:     VENDOR_SPECIFIC reliable:yes seq#:0 ack#:0 payload_length:15 data_integrity:1 header_checksum:e1 err_code:0x0
+2020-01-02T10:44:29.371Z DEBUG     1137 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:1 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:29.372Z DEBUG GATTC_EVT_READ_RSP time:2020-01-02T10:44:29.371Z connHandle:1 gattStatus:0 gattStatusName:success errorHandle:0 handle:3 offset:0 len:6
+2020-01-02T10:44:29.372Z DEBUG     1138 ->  [00 9a 01 00 05 00 00 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:0 ack#:1 payload_length:8 data_integrity:1 header_checksum:aa err_code:0x0
+2020-01-02T10:44:29.375Z DEBUG  1135/ 0 <-  [N/A] type:                 ACK reliable: no seq#:0 ack#:1 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:29.375Z DEBUG  1136/ 0 <-  [01 9a 00 00 00 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:1 ack#:1 payload_length:6 data_integrity:1 header_checksum:c9 err_code:0x0
+2020-01-02T10:44:29.375Z DEBUG     1139 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:2 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:29.386Z DEBUG  1137/ 0 <-  [02 36 00 01 00 00 00 00 00 05 00 00 00 02 00 00 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:2 ack#:1 payload_length:11 data_integrity:1 header_checksum:17 err_code:0x0
+2020-01-02T10:44:29.386Z DEBUG     1140 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:3 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:29.387Z DEBUG GATTC_EVT_READ_RSP time:2020-01-02T10:44:29.386Z connHandle:1 gattStatus:0 gattStatusName:success errorHandle:0 handle:5 offset:0 len:2
+2020-01-02T10:44:29.387Z DEBUG     1141 ->  [00 9a 01 00 07 00 00 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:1 ack#:3 payload_length:8 data_integrity:1 header_checksum:99 err_code:0x0
+2020-01-02T10:44:29.390Z DEBUG  1138/ 0 <-  [N/A] type:                 ACK reliable: no seq#:0 ack#:2 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:29.390Z DEBUG  1139/ 0 <-  [01 9a 00 00 00 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:3 ack#:2 payload_length:6 data_integrity:1 header_checksum:bf err_code:0x0
+2020-01-02T10:44:29.390Z DEBUG     1142 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:4 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:29.400Z DEBUG  1140/ 0 <-  [02 36 00 01 00 00 00 00 00 07 00 00 00 08 00 a0 00 a0 00 00 00 90 01 ] type:     VENDOR_SPECIFIC reliable:yes seq#:4 ack#:2 payload_length:17 data_integrity:1 header_checksum:ad err_code:0x0
+2020-01-02T10:44:29.400Z DEBUG     1143 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:5 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:29.400Z DEBUG GATTC_EVT_READ_RSP time:2020-01-02T10:44:29.400Z connHandle:1 gattStatus:0 gattStatusName:success errorHandle:0 handle:7 offset:0 len:8
+2020-01-02T10:44:29.401Z DEBUG     1144 ->  [00 9a 01 00 09 00 00 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:2 ack#:5 payload_length:8 data_integrity:1 header_checksum:88 err_code:0x0
+2020-01-02T10:44:29.404Z DEBUG  1141/ 0 <-  [N/A] type:                 ACK reliable: no seq#:0 ack#:3 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:29.404Z DEBUG  1142/ 0 <-  [01 9a 00 00 00 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:5 ack#:3 payload_length:6 data_integrity:1 header_checksum:b5 err_code:0x0
+2020-01-02T10:44:29.404Z DEBUG     1145 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:6 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:29.416Z DEBUG  1143/ 0 <-  [02 36 00 01 00 00 00 00 00 09 00 00 00 01 00 01 ] type:     VENDOR_SPECIFIC reliable:yes seq#:6 ack#:3 payload_length:10 data_integrity:1 header_checksum:13 err_code:0x0
+2020-01-02T10:44:29.416Z DEBUG     1146 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:7 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:29.416Z DEBUG GATTC_EVT_READ_RSP time:2020-01-02T10:44:29.416Z connHandle:1 gattStatus:0 gattStatusName:success errorHandle:0 handle:9 offset:0 len:1
+2020-01-02T10:44:29.422Z DEBUG     1147 ->  [00 97 01 00 01 04 00 09 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:3 ack#:7 payload_length:9 data_integrity:1 header_checksum:67 err_code:0x0
+2020-01-02T10:44:29.425Z DEBUG  1144/ 0 <-  [N/A] type:                 ACK reliable: no seq#:0 ack#:4 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:29.425Z DEBUG  1145/ 0 <-  [01 97 00 00 00 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:7 ack#:4 payload_length:6 data_integrity:1 header_checksum:ab err_code:0x0
+2020-01-02T10:44:29.425Z DEBUG     1148 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:0 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:29.439Z DEBUG  1146/ 0 <-  [02 33 00 01 00 00 00 00 00 05 00 04 00 03 28 01 05 00 01 2a 01 06 00 03 28 01 07 00 04 2a 01 08 00 03 28 01 ] type:     VENDOR_SPECIFIC reliable:yes seq#:0 ack#:4 payload_length:24 data_integrity:1 header_checksum:d0 err_code:0x0
+2020-01-02T10:44:29.439Z DEBUG     1149 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:1 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:29.440Z DEBUG GATTC_EVT_DESC_DISC_RSP time:2020-01-02T10:44:29.439Z connHandle:1 gattStatus:0 gattStatusName:success errorHandle:0 count:5 descs:[[handle:4,uuid:[uuid:10243 type:1 typeString:bleUuidTypeBle]],[handle:5,uuid:[uuid:10753 type:1 typeString:bleUuidTypeBle]],[handle:6,uuid:[uuid:10243 type:1 typeString:bleUuidTypeBle]],[handle:7,uuid:[uuid:10756 type:1 typeString:bleUuidTypeBle]],[handle:8,uuid:[uuid:10243 type:1 typeString:bleUuidTypeBle]]]
+2020-01-02T10:44:29.443Z DEBUG     1150 ->  [00 97 01 00 01 06 00 09 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:4 ack#:1 payload_length:9 data_integrity:1 header_checksum:96 err_code:0x0
+2020-01-02T10:44:29.446Z DEBUG  1147/ 0 <-  [N/A] type:                 ACK reliable: no seq#:0 ack#:5 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:29.446Z DEBUG  1148/ 0 <-  [01 97 00 00 00 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:1 ack#:5 payload_length:6 data_integrity:1 header_checksum:a9 err_code:0x0
+2020-01-02T10:44:29.446Z DEBUG     1151 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:2 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:29.461Z DEBUG  1149/ 0 <-  [02 33 00 01 00 00 00 00 00 04 00 06 00 03 28 01 07 00 04 2a 01 08 00 03 28 01 09 00 a6 2a 01 ] type:     VENDOR_SPECIFIC reliable:yes seq#:2 ack#:5 payload_length:1f data_integrity:1 header_checksum:17 err_code:0x0
+2020-01-02T10:44:29.461Z DEBUG     1152 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:3 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:29.462Z DEBUG GATTC_EVT_DESC_DISC_RSP time:2020-01-02T10:44:29.461Z connHandle:1 gattStatus:0 gattStatusName:success errorHandle:0 count:4 descs:[[handle:6,uuid:[uuid:10243 type:1 typeString:bleUuidTypeBle]],[handle:7,uuid:[uuid:10756 type:1 typeString:bleUuidTypeBle]],[handle:8,uuid:[uuid:10243 type:1 typeString:bleUuidTypeBle]],[handle:9,uuid:[uuid:10918 type:1 typeString:bleUuidTypeBle]]]
+2020-01-02T10:44:29.465Z DEBUG     1153 ->  [00 97 01 00 01 08 00 09 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:5 ack#:3 payload_length:9 data_integrity:1 header_checksum:85 err_code:0x0
+2020-01-02T10:44:29.468Z DEBUG  1150/ 0 <-  [N/A] type:                 ACK reliable: no seq#:0 ack#:6 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:29.468Z DEBUG  1151/ 0 <-  [01 97 00 00 00 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:3 ack#:6 payload_length:6 data_integrity:1 header_checksum:9f err_code:0x0
+2020-01-02T10:44:29.468Z DEBUG     1154 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:4 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:29.484Z DEBUG  1152/ 0 <-  [02 33 00 01 00 00 00 00 00 02 00 08 00 03 28 01 09 00 a6 2a 01 ] type:     VENDOR_SPECIFIC reliable:yes seq#:4 ack#:6 payload_length:15 data_integrity:1 header_checksum:ad err_code:0x0
+2020-01-02T10:44:29.484Z DEBUG     1155 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:5 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:29.484Z DEBUG GATTC_EVT_DESC_DISC_RSP time:2020-01-02T10:44:29.484Z connHandle:1 gattStatus:0 gattStatusName:success errorHandle:0 count:2 descs:[[handle:8,uuid:[uuid:10243 type:1 typeString:bleUuidTypeBle]],[handle:9,uuid:[uuid:10918 type:1 typeString:bleUuidTypeBle]]]
+2020-01-02T10:44:29.487Z DEBUG     1156 ->  [00 97 01 00 01 0a 00 09 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:6 ack#:5 payload_length:9 data_integrity:1 header_checksum:74 err_code:0x0
+2020-01-02T10:44:29.490Z DEBUG  1153/ 0 <-  [N/A] type:                 ACK reliable: no seq#:0 ack#:7 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:29.490Z DEBUG  1154/ 0 <-  [01 97 00 00 00 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:5 ack#:7 payload_length:6 data_integrity:1 header_checksum:95 err_code:0x0
+2020-01-02T10:44:29.490Z DEBUG     1157 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:6 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:29.506Z DEBUG  1155/ 0 <-  [02 33 00 01 00 01 01 0a 00 00 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:6 ack#:7 payload_length:b data_integrity:1 header_checksum:44 err_code:0x0
+2020-01-02T10:44:29.506Z DEBUG     1158 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:7 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:29.506Z DEBUG GATTC_EVT_DESC_DISC_RSP time:2020-01-02T10:44:29.506Z connHandle:1 gattStatus:257 gattStatusName:atterrInvalidHandle errorHandle:10 count:0 descs:[]
+2020-01-02T10:44:29.508Z DEBUG     1159 ->  [00 9a 01 00 03 00 00 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:7 ack#:7 payload_length:8 data_integrity:1 header_checksum:73 err_code:0x0
+2020-01-02T10:44:29.511Z DEBUG  1156/ 0 <-  [N/A] type:                 ACK reliable: no seq#:0 ack#:0 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:29.511Z DEBUG  1157/ 0 <-  [01 9a 00 00 00 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:7 ack#:0 payload_length:6 data_integrity:1 header_checksum:cb err_code:0x0
+2020-01-02T10:44:29.511Z DEBUG     1160 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:0 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:29.521Z DEBUG  1158/ 0 <-  [02 36 00 01 00 00 00 00 00 03 00 00 00 06 00 42 78 30 37 30 38 ] type:     VENDOR_SPECIFIC reliable:yes seq#:0 ack#:0 payload_length:15 data_integrity:1 header_checksum:e1 err_code:0x0
+2020-01-02T10:44:29.521Z DEBUG     1161 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:1 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:29.521Z DEBUG GATTC_EVT_READ_RSP time:2020-01-02T10:44:29.521Z connHandle:1 gattStatus:0 gattStatusName:success errorHandle:0 handle:3 offset:0 len:6
+2020-01-02T10:44:29.521Z INFO Attribute value read, handle: 0x03, value (0x): 42-78-30-37-30-38
+2020-01-02T10:44:31.246Z DEBUG  1159/ 0 <-  [02 1f 00 01 00 a0 00 a0 00 00 00 90 01 ] type:     VENDOR_SPECIFIC reliable:yes seq#:1 ack#:0 payload_length:d data_integrity:1 header_checksum:61 err_code:0x0
+2020-01-02T10:44:31.246Z DEBUG     1162 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:2 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:31.246Z DEBUG GAP_EVT_CONN_PARAM_UPDATE_REQUEST time:2020-01-02T10:44:31.246Z connHandle:1 connParams:[minConnInterval:200 maxConnInterval:200 slaveLatency:0 connSupTimeout:4000]
+2020-01-02T10:44:31.247Z DEBUG     1163 ->  [00 75 01 00 01 a0 00 a0 00 00 00 90 01 ] type:     VENDOR_SPECIFIC reliable:yes seq#:0 ack#:2 payload_length:d data_integrity:1 header_checksum:52 err_code:0x0
+2020-01-02T10:44:31.250Z DEBUG  1160/ 0 <-  [N/A] type:                 ACK reliable: no seq#:0 ack#:1 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:31.250Z DEBUG  1161/ 0 <-  [01 75 00 00 00 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:2 ack#:1 payload_length:6 data_integrity:1 header_checksum:c8 err_code:0x0
+2020-01-02T10:44:31.250Z DEBUG     1164 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:3 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:31.298Z DEBUG  1162/ 0 <-  [02 12 00 01 00 a0 00 a0 00 00 00 90 01 ] type:     VENDOR_SPECIFIC reliable:yes seq#:3 ack#:1 payload_length:d data_integrity:1 header_checksum:57 err_code:0x0
+2020-01-02T10:44:31.298Z DEBUG     1165 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:4 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:31.298Z DEBUG GAP_EVT_CONN_PARAM_UPDATE time:2020-01-02T10:44:31.298Z connHandle:1 connParams:[minConnInterval:200 maxConnInterval:200 slaveLatency:0 connSupTimeout:4000]
+2020-01-02T10:44:31.298Z INFO Connection parameters updated for device D7:59:9D:1D:7B:6B: interval 200ms, timeout 4000ms, latency: 0
+2020-01-02T10:44:33.305Z DEBUG GAP_EVT_SEC_REQUEST time:2020-01-02T10:44:33.305Z connHandle:1 bond:true mitm:false lesc:false keypress:false
+2020-01-02T10:44:33.305Z DEBUG  1163/ 0 <-  [02 1e 00 01 00 01 ] type:     VENDOR_SPECIFIC reliable:yes seq#:4 ack#:1 payload_length:6 data_integrity:1 header_checksum:c6 err_code:0x0
+2020-01-02T10:44:33.305Z DEBUG     1166 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:5 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:33.305Z DEBUG     1167 ->  [00 7e 01 00 01 40 07 10 01 01 ] type:     VENDOR_SPECIFIC reliable:yes seq#:1 ack#:5 payload_length:a data_integrity:1 header_checksum:69 err_code:0x0
+2020-01-02T10:44:33.308Z DEBUG  1164/ 0 <-  [N/A] type:                 ACK reliable: no seq#:0 ack#:2 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:33.309Z DEBUG  1165/ 0 <-  [01 7e 00 00 00 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:5 ack#:2 payload_length:6 data_integrity:1 header_checksum:bd err_code:0x0
+2020-01-02T10:44:33.309Z DEBUG     1168 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:6 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:33.906Z DEBUG  1166/ 0 <-  [02 13 00 01 00 30 00 10 00 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:6 ack#:2 payload_length:a data_integrity:1 header_checksum:7c err_code:0x0
+2020-01-02T10:44:33.906Z DEBUG     1169 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:7 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:33.908Z DEBUG GAP_EVT_SEC_PARAMS_REQUEST time:2020-01-02T10:44:33.906Z connHandle:1 peerParams:[bond:false mitm:false lesc:false keypress:false ioCaps:bleGapIoCapsNone oob:false minKeySize:0 maxKeySize:16 kdistOwn:[enc:false sign:false link:false] kdistPeer:[enc:false sign:false link:false]]
+2020-01-02T10:44:33.912Z DEBUG     1170 ->  [00 7f 01 00 00 00 01 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 35 cb 10 8a 13 30 96 90 43 d5 e4 2f fb da ef e7 a0 d2 c7 c9 19 7d 2e 80 7d c1 c7 9d d3 04 c8 ea b5 b2 c3 ad bb 24 88 f4 bb ae c5 9a 9b 14 42 4d 2e aa 8e fa fc 54 91 29 c3 8a 53 e8 b3 86 67 44 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:2 ack#:7 payload_length:113 data_integrity:1 header_checksum:b7 err_code:0x0
+2020-01-02T10:44:33.918Z DEBUG  1167/ 0 <-  [N/A] type:                 ACK reliable: no seq#:0 ack#:3 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:33.918Z DEBUG  1168/ 0 <-  [01 7f 00 00 00 00 01 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 35 cb 10 8a 13 30 96 90 43 d5 e4 2f fb da ef e7 a0 d2 c7 c9 19 7d 2e 80 7d c1 c7 9d d3 04 c8 ea b5 b2 c3 ad bb 24 88 f4 bb ae c5 9a 9b 14 42 4d 2e aa 8e fa fc 54 91 29 c3 8a 53 e8 b3 86 67 44 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:7 ack#:3 payload_length:113 data_integrity:1 header_checksum:d2 err_code:0x0
+2020-01-02T10:44:33.918Z DEBUG     1171 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:0 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:33.919Z DEBUG ReplySecParams, secParams: null
+2020-01-02T10:44:36.106Z DEBUG  1169/ 0 <-  [02 1a 00 01 00 21 10 ] type:     VENDOR_SPECIFIC reliable:yes seq#:0 ack#:3 payload_length:7 data_integrity:1 header_checksum:aa err_code:0x0
+2020-01-02T10:44:36.106Z DEBUG     1172 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:1 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:36.106Z DEBUG GAP_EVT_CONN_SEC_UPDATE time:2020-01-02T10:44:36.106Z connHandle:1 connSec:[secMode:[sm:1 lv:2] encrKeySize:16]
+2020-01-02T10:44:36.107Z INFO Security updated, mode:1, level:2 
+2020-01-02T10:44:36.110Z DEBUG  1170/ 0 <-  [02 19 00 01 00 00 00 03 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 35 cb 10 8a 13 30 96 90 43 d5 e4 2f fb da ef e7 a0 d2 c7 c9 19 7d 2e 80 7d c1 c7 9d d3 04 c8 ea b5 b2 c3 ad bb 24 88 f4 bb ae c5 9a 9b 14 42 4d 2e aa 8e fa fc 54 91 29 c3 8a 53 e8 b3 86 67 44 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:1 ack#:3 payload_length:117 data_integrity:1 header_checksum:98 err_code:0x0
+2020-01-02T10:44:36.110Z DEBUG     1173 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:2 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:36.113Z DEBUG GAP_EVT_AUTH_STATUS time:2020-01-02T10:44:36.110Z connHandle:1 authStatus:0 authStatusName:bleGapSecStatusSuccess errorSrc:0 errorSrcName:bleGapSecStatusSourceLocal bonded:false sm1Levels:[lv1:true lv2:true lv3:false lv4:false] sm2Levels:[lv1:false lv2:false lv3:false lv4:false] kdistOwn:[enc:false sign:false link:false] kdistPeer:[enc:false sign:false link:false] keyset:[keysOwn:[encKey:[encInfo:[ltk:[[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]] auth:false ltkLen:0 lesc:false] masterId:[ediv:0 rand:[[],[],[],[],[],[],[],[]]]] idKey:[idInfo:[irk:[[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]]] idAddrInfo:[address:00:00:00:00:00:00 type:public addrIdPeer:0]] signKey:[csrk:[[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]]] pk:[pk:[[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]]]] keysPeer:[encKey:[encInfo:[ltk:[[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]] auth:false ltkLen:0 lesc:false] masterId:[ediv:0 rand:[[],[],[],[],[],[],[],[]]]] idKey:[idInfo:[irk:[[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]]] idAddrInfo:[address:00:00:00:00:00:00 type:public addrIdPeer:0]] signKey:[csrk:[[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]]] pk:[pk:[[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]]]]]
+2020-01-02T10:44:36.113Z DEBUG No bonding performed, do not store keys
+2020-01-02T10:44:36.219Z DEBUG     1174 ->  [00 96 01 00 01 23 00 ff ff ] type:     VENDOR_SPECIFIC reliable:yes seq#:3 ack#:2 payload_length:9 data_integrity:1 header_checksum:8f err_code:0x0
+2020-01-02T10:44:36.219Z DEBUG  1171/ 0 <-  [N/A] type:                 ACK reliable: no seq#:0 ack#:4 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:36.219Z DEBUG  1172/ 0 <-  [01 96 00 00 00 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:2 ack#:4 payload_length:6 data_integrity:1 header_checksum:b0 err_code:0x0
+2020-01-02T10:44:36.219Z DEBUG     1175 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:3 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:36.507Z DEBUG  1173/ 0 <-  [02 32 00 01 00 00 00 00 00 03 00 01 14 01 10 00 24 00 25 00 02 14 01 02 00 27 00 28 00 52 2a 01 28 00 29 00 2a 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:3 ack#:4 payload_length:26 data_integrity:1 header_checksum:ad err_code:0x0
+2020-01-02T10:44:36.507Z DEBUG     1176 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:4 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:36.508Z DEBUG GATTC_EVT_CHAR_DISC_RSP time:2020-01-02T10:44:36.507Z connHandle:1 gattStatus:0 gattStatusName:success errorHandle:0 count:3 chars:[[uuid:[uuid:5121 type:1 typeString:bleUuidTypeBle],charProps:[broadcast:false read:false writeWoResp:false write:false notify:true indicate:false authSignedWr:false],charExtProps:0,handleDecl:36,handleValue:37],[uuid:[uuid:5122 type:1 typeString:bleUuidTypeBle],charProps:[broadcast:false read:true writeWoResp:false write:false notify:false indicate:false authSignedWr:false],charExtProps:0,handleDecl:39,handleValue:40],[uuid:[uuid:10834 type:1 typeString:bleUuidTypeBle],charProps:[broadcast:false read:false writeWoResp:false write:true notify:false indicate:true authSignedWr:false],charExtProps:0,handleDecl:41,handleValue:42]]
+2020-01-02T10:44:36.508Z DEBUG     1177 ->  [00 96 01 00 01 2a 00 ff ff ] type:     VENDOR_SPECIFIC reliable:yes seq#:4 ack#:4 payload_length:9 data_integrity:1 header_checksum:7e err_code:0x0
+2020-01-02T10:44:36.511Z DEBUG  1174/ 0 <-  [N/A] type:                 ACK reliable: no seq#:0 ack#:5 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:36.511Z DEBUG  1175/ 0 <-  [01 96 00 00 00 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:4 ack#:5 payload_length:6 data_integrity:1 header_checksum:a6 err_code:0x0
+2020-01-02T10:44:36.512Z DEBUG     1178 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:5 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:36.906Z DEBUG  1176/ 0 <-  [02 32 00 01 00 00 00 00 00 01 00 03 14 01 0a 00 2c 00 2d 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:5 ack#:5 payload_length:14 data_integrity:1 header_checksum:c4 err_code:0x0
+2020-01-02T10:44:36.906Z DEBUG     1179 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:6 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:36.907Z DEBUG GATTC_EVT_CHAR_DISC_RSP time:2020-01-02T10:44:36.906Z connHandle:1 gattStatus:0 gattStatusName:success errorHandle:0 count:1 chars:[[uuid:[uuid:5123 type:1 typeString:bleUuidTypeBle],charProps:[broadcast:false read:true writeWoResp:false write:true notify:false indicate:false authSignedWr:false],charExtProps:0,handleDecl:44,handleValue:45]]
+2020-01-02T10:44:36.907Z DEBUG     1180 ->  [00 96 01 00 01 2d 00 ff ff ] type:     VENDOR_SPECIFIC reliable:yes seq#:5 ack#:6 payload_length:9 data_integrity:1 header_checksum:6d err_code:0x0
+2020-01-02T10:44:36.910Z DEBUG  1177/ 0 <-  [N/A] type:                 ACK reliable: no seq#:0 ack#:6 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:36.910Z DEBUG  1178/ 0 <-  [01 96 00 00 00 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:6 ack#:6 payload_length:6 data_integrity:1 header_checksum:9c err_code:0x0
+2020-01-02T10:44:36.910Z DEBUG     1181 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:7 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:37.306Z DEBUG  1179/ 0 <-  [02 32 00 01 00 0a 01 2d 00 00 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:7 ack#:6 payload_length:b data_integrity:1 header_checksum:4b err_code:0x0
+2020-01-02T10:44:37.306Z DEBUG     1182 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:0 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:37.307Z DEBUG GATTC_EVT_CHAR_DISC_RSP time:2020-01-02T10:44:37.306Z connHandle:1 gattStatus:266 gattStatusName:atterrAttributeNotFound errorHandle:45 count:0 chars:[]
+2020-01-02T10:44:37.308Z DEBUG     1183 ->  [00 9a 01 00 28 00 00 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:6 ack#:0 payload_length:8 data_integrity:1 header_checksum:ac err_code:0x0
+2020-01-02T10:44:37.311Z DEBUG  1180/ 0 <-  [N/A] type:                 ACK reliable: no seq#:0 ack#:7 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:37.311Z DEBUG  1181/ 0 <-  [01 9a 00 00 00 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:0 ack#:7 payload_length:6 data_integrity:1 header_checksum:9a err_code:0x0
+2020-01-02T10:44:37.311Z DEBUG     1184 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:1 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:37.706Z DEBUG  1182/ 0 <-  [02 36 00 01 00 00 00 00 00 28 00 00 00 02 00 0a 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:1 ack#:7 payload_length:11 data_integrity:1 header_checksum:e8 err_code:0x0
+2020-01-02T10:44:37.706Z DEBUG     1185 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:2 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:37.706Z DEBUG GATTC_EVT_READ_RSP time:2020-01-02T10:44:37.706Z connHandle:1 gattStatus:0 gattStatusName:success errorHandle:0 handle:40 offset:0 len:2
+2020-01-02T10:44:37.707Z DEBUG     1186 ->  [00 9a 01 00 2d 00 00 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:7 ack#:2 payload_length:8 data_integrity:1 header_checksum:9b err_code:0x0
+2020-01-02T10:44:37.710Z DEBUG  1183/ 0 <-  [N/A] type:                 ACK reliable: no seq#:0 ack#:0 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:37.710Z DEBUG  1184/ 0 <-  [01 9a 00 00 00 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:2 ack#:0 payload_length:6 data_integrity:1 header_checksum:d0 err_code:0x0
+2020-01-02T10:44:37.710Z DEBUG     1187 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:3 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:38.106Z DEBUG  1185/ 0 <-  [02 36 00 01 00 00 00 00 00 2d 00 00 00 02 00 00 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:3 ack#:0 payload_length:11 data_integrity:1 header_checksum:1e err_code:0x0
+2020-01-02T10:44:38.106Z DEBUG     1188 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:4 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:38.106Z DEBUG GATTC_EVT_READ_RSP time:2020-01-02T10:44:38.106Z connHandle:1 gattStatus:0 gattStatusName:success errorHandle:0 handle:45 offset:0 len:2
+2020-01-02T10:44:38.120Z DEBUG     1189 ->  [00 97 01 00 01 26 00 ff ff ] type:     VENDOR_SPECIFIC reliable:yes seq#:0 ack#:4 payload_length:9 data_integrity:1 header_checksum:82 err_code:0x0
+2020-01-02T10:44:38.122Z DEBUG  1186/ 0 <-  [N/A] type:                 ACK reliable: no seq#:0 ack#:1 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:38.123Z DEBUG  1187/ 0 <-  [01 97 00 00 00 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:4 ack#:1 payload_length:6 data_integrity:1 header_checksum:c6 err_code:0x0
+2020-01-02T10:44:38.123Z DEBUG     1190 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:5 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:38.506Z DEBUG  1188/ 0 <-  [02 33 00 01 00 00 00 00 00 05 00 26 00 02 29 01 27 00 03 28 01 28 00 02 14 01 29 00 03 28 01 2a 00 52 2a 01 ] type:     VENDOR_SPECIFIC reliable:yes seq#:5 ack#:1 payload_length:24 data_integrity:1 header_checksum:e3 err_code:0x0
+2020-01-02T10:44:38.507Z DEBUG     1191 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:6 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:38.507Z DEBUG GATTC_EVT_DESC_DISC_RSP time:2020-01-02T10:44:38.506Z connHandle:1 gattStatus:0 gattStatusName:success errorHandle:0 count:5 descs:[[handle:38,uuid:[uuid:10498 type:1 typeString:bleUuidTypeBle]],[handle:39,uuid:[uuid:10243 type:1 typeString:bleUuidTypeBle]],[handle:40,uuid:[uuid:5122 type:1 typeString:bleUuidTypeBle]],[handle:41,uuid:[uuid:10243 type:1 typeString:bleUuidTypeBle]],[handle:42,uuid:[uuid:10834 type:1 typeString:bleUuidTypeBle]]]
+2020-01-02T10:44:38.508Z DEBUG     1192 ->  [00 9a 01 00 26 00 00 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:1 ack#:6 payload_length:8 data_integrity:1 header_checksum:81 err_code:0x0
+2020-01-02T10:44:38.511Z DEBUG  1189/ 0 <-  [N/A] type:                 ACK reliable: no seq#:0 ack#:2 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:38.511Z DEBUG  1190/ 0 <-  [01 9a 00 00 00 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:6 ack#:2 payload_length:6 data_integrity:1 header_checksum:bc err_code:0x0
+2020-01-02T10:44:38.511Z DEBUG     1193 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:7 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:38.906Z DEBUG  1191/ 0 <-  [02 36 00 01 00 00 00 00 00 26 00 00 00 02 00 00 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:7 ack#:2 payload_length:11 data_integrity:1 header_checksum:a err_code:0x0
+2020-01-02T10:44:38.906Z DEBUG     1194 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:0 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:38.907Z DEBUG GATTC_EVT_READ_RSP time:2020-01-02T10:44:38.906Z connHandle:1 gattStatus:0 gattStatusName:success errorHandle:0 handle:38 offset:0 len:2
+2020-01-02T10:44:38.919Z DEBUG     1195 ->  [00 97 01 00 01 29 00 ff ff ] type:     VENDOR_SPECIFIC reliable:yes seq#:2 ack#:0 payload_length:9 data_integrity:1 header_checksum:a0 err_code:0x0
+2020-01-02T10:44:38.920Z DEBUG  1192/ 0 <-  [N/A] type:                 ACK reliable: no seq#:0 ack#:3 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:38.920Z DEBUG  1193/ 0 <-  [01 97 00 00 00 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:0 ack#:3 payload_length:6 data_integrity:1 header_checksum:ba err_code:0x0
+2020-01-02T10:44:38.920Z DEBUG     1196 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:1 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:39.308Z DEBUG GATTC_EVT_DESC_DISC_RSP time:2020-01-02T10:44:39.306Z connHandle:1 gattStatus:0 gattStatusName:success errorHandle:0 count:5 descs:[[handle:41,uuid:[uuid:10243 type:1 typeString:bleUuidTypeBle]],[handle:42,uuid:[uuid:10834 type:1 typeString:bleUuidTypeBle]],[handle:43,uuid:[uuid:10498 type:1 typeString:bleUuidTypeBle]],[handle:44,uuid:[uuid:10243 type:1 typeString:bleUuidTypeBle]],[handle:45,uuid:[uuid:5123 type:1 typeString:bleUuidTypeBle]]]
+2020-01-02T10:44:39.318Z DEBUG  1194/ 0 <-  [02 33 00 01 00 00 00 00 00 05 00 29 00 03 28 01 2a 00 52 2a 01 2b 00 02 29 01 2c 00 03 28 01 2d 00 03 14 01 ] type:     VENDOR_SPECIFIC reliable:yes seq#:1 ack#:3 payload_length:24 data_integrity:1 header_checksum:d7 err_code:0x0
+2020-01-02T10:44:39.318Z DEBUG     1197 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:2 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:39.318Z DEBUG     1198 ->  [00 97 01 00 01 2b 00 ff ff ] type:     VENDOR_SPECIFIC reliable:yes seq#:3 ack#:2 payload_length:9 data_integrity:1 header_checksum:8f err_code:0x0
+2020-01-02T10:44:39.321Z DEBUG  1195/ 0 <-  [N/A] type:                 ACK reliable: no seq#:0 ack#:4 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:39.321Z DEBUG  1196/ 0 <-  [01 97 00 00 00 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:2 ack#:4 payload_length:6 data_integrity:1 header_checksum:b0 err_code:0x0
+2020-01-02T10:44:39.321Z DEBUG     1199 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:3 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:39.706Z DEBUG  1197/ 0 <-  [02 33 00 01 00 00 00 00 00 03 00 2b 00 02 29 01 2c 00 03 28 01 2d 00 03 14 01 ] type:     VENDOR_SPECIFIC reliable:yes seq#:3 ack#:4 payload_length:1a data_integrity:1 header_checksum:6e err_code:0x0
+2020-01-02T10:44:39.707Z DEBUG     1200 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:4 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:39.707Z DEBUG GATTC_EVT_DESC_DISC_RSP time:2020-01-02T10:44:39.706Z connHandle:1 gattStatus:0 gattStatusName:success errorHandle:0 count:3 descs:[[handle:43,uuid:[uuid:10498 type:1 typeString:bleUuidTypeBle]],[handle:44,uuid:[uuid:10243 type:1 typeString:bleUuidTypeBle]],[handle:45,uuid:[uuid:5123 type:1 typeString:bleUuidTypeBle]]]
+2020-01-02T10:44:39.708Z DEBUG     1201 ->  [00 9a 01 00 2b 00 00 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:4 ack#:4 payload_length:8 data_integrity:1 header_checksum:8e err_code:0x0
+2020-01-02T10:44:39.711Z DEBUG  1198/ 0 <-  [N/A] type:                 ACK reliable: no seq#:0 ack#:5 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:39.711Z DEBUG  1199/ 0 <-  [01 9a 00 00 00 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:4 ack#:5 payload_length:6 data_integrity:1 header_checksum:a6 err_code:0x0
+2020-01-02T10:44:39.711Z DEBUG     1202 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:5 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:40.106Z DEBUG  1200/ 0 <-  [02 36 00 01 00 00 00 00 00 2b 00 00 00 02 00 00 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:5 ack#:5 payload_length:11 data_integrity:1 header_checksum:f4 err_code:0x0
+2020-01-02T10:44:40.106Z DEBUG     1203 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:6 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:40.107Z DEBUG GATTC_EVT_READ_RSP time:2020-01-02T10:44:40.106Z connHandle:1 gattStatus:0 gattStatusName:success errorHandle:0 handle:43 offset:0 len:2
+2020-01-02T10:44:40.116Z DEBUG     1204 ->  [00 97 01 00 01 2e 00 ff ff ] type:     VENDOR_SPECIFIC reliable:yes seq#:5 ack#:6 payload_length:9 data_integrity:1 header_checksum:6d err_code:0x0
+2020-01-02T10:44:40.119Z DEBUG  1201/ 0 <-  [N/A] type:                 ACK reliable: no seq#:0 ack#:6 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:40.119Z DEBUG  1202/ 0 <-  [01 97 00 00 00 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:6 ack#:6 payload_length:6 data_integrity:1 header_checksum:9c err_code:0x0
+2020-01-02T10:44:40.119Z DEBUG     1205 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:7 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:40.506Z DEBUG GATTC_EVT_DESC_DISC_RSP time:2020-01-02T10:44:40.506Z connHandle:1 gattStatus:266 gattStatusName:atterrAttributeNotFound errorHandle:46 count:0 descs:[]
+2020-01-02T10:44:40.512Z DEBUG  1203/ 0 <-  [02 33 00 01 00 0a 01 2e 00 00 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:7 ack#:6 payload_length:b data_integrity:1 header_checksum:4b err_code:0x0
+2020-01-02T10:44:40.512Z DEBUG     1206 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:0 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:40.623Z DEBUG     1207 ->  [00 9c 01 00 01 01 00 26 00 00 00 02 00 01 01 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:6 ack#:0 payload_length:10 data_integrity:1 header_checksum:2b err_code:0x0
+2020-01-02T10:44:40.624Z DEBUG  1204/ 0 <-  [N/A] type:                 ACK reliable: no seq#:0 ack#:7 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:40.624Z DEBUG  1205/ 0 <-  [01 9c 00 00 00 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:0 ack#:7 payload_length:6 data_integrity:1 header_checksum:9a err_code:0x0
+2020-01-02T10:44:40.624Z DEBUG     1208 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:1 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:40.906Z DEBUG  1206/ 0 <-  [02 38 00 01 00 00 00 00 00 26 00 01 00 00 00 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:1 ack#:7 payload_length:10 data_integrity:1 header_checksum:f8 err_code:0x0
+2020-01-02T10:44:40.906Z DEBUG     1209 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:2 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:40.906Z DEBUG GATTC_EVT_WRITE_RSP time:2020-01-02T10:44:40.906Z connHandle:1 gattStatus:0 gattStatusName:success errorHandle:0 handle:38 writeOp:1 offset:0 len:0
+2020-01-02T10:44:40.906Z INFO Attribute value changed, handle: 0x26, value (0x): 01-00
+2020-01-02T10:44:40.911Z INFO Attribute value written, handle: 0x26, value (0x): 01-00
+2020-01-02T10:44:42.604Z DEBUG     1210 ->  [00 9c 01 00 01 01 00 2b 00 00 00 02 00 01 02 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:7 ack#:2 payload_length:10 data_integrity:1 header_checksum:1a err_code:0x0
+2020-01-02T10:44:42.608Z DEBUG  1207/ 0 <-  [N/A] type:                 ACK reliable: no seq#:0 ack#:0 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:42.608Z DEBUG  1208/ 0 <-  [01 9c 00 00 00 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:2 ack#:0 payload_length:6 data_integrity:1 header_checksum:d0 err_code:0x0
+2020-01-02T10:44:42.608Z DEBUG     1211 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:3 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:42.906Z DEBUG GATTC_EVT_WRITE_RSP time:2020-01-02T10:44:42.906Z connHandle:1 gattStatus:0 gattStatusName:success errorHandle:0 handle:43 writeOp:1 offset:0 len:0
+2020-01-02T10:44:42.906Z INFO Attribute value changed, handle: 0x2B, value (0x): 02-00
+2020-01-02T10:44:42.910Z INFO Attribute value written, handle: 0x2B, value (0x): 02-00
+2020-01-02T10:44:42.915Z DEBUG  1209/ 0 <-  [02 38 00 01 00 00 00 00 00 2b 00 01 00 00 00 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:3 ack#:0 payload_length:10 data_integrity:1 header_checksum:2e err_code:0x0
+2020-01-02T10:44:42.915Z DEBUG     1212 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:4 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:46.208Z DEBUG     1213 ->  [00 9c 01 00 01 01 00 2a 00 00 00 02 00 01 01 06 ] type:     VENDOR_SPECIFIC reliable:yes seq#:0 ack#:4 payload_length:10 data_integrity:1 header_checksum:11 err_code:0x0
+2020-01-02T10:44:46.210Z DEBUG  1210/ 0 <-  [N/A] type:                 ACK reliable: no seq#:0 ack#:1 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:46.211Z DEBUG  1211/ 0 <-  [01 9c 00 00 00 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:4 ack#:1 payload_length:6 data_integrity:1 header_checksum:c6 err_code:0x0
+2020-01-02T10:44:46.211Z DEBUG     1214 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:5 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:46.707Z DEBUG GATTC_EVT_WRITE_RSP time:2020-01-02T10:44:46.706Z connHandle:1 gattStatus:0 gattStatusName:success errorHandle:0 handle:42 writeOp:1 offset:0 len:0
+2020-01-02T10:44:46.707Z INFO Attribute value changed, handle: 0x2A, value (0x): 01-06
+2020-01-02T10:44:46.715Z INFO Attribute value written, handle: 0x2A, value (0x): 01-06
+2020-01-02T10:44:46.720Z DEBUG  1212/ 0 <-  [02 38 00 01 00 00 00 00 00 2a 00 01 00 00 00 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:5 ack#:1 payload_length:10 data_integrity:1 header_checksum:24 err_code:0x0
+2020-01-02T10:44:46.720Z DEBUG     1215 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:6 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:46.720Z DEBUG  1213/ 0 <-  [02 39 00 01 00 00 00 00 00 25 00 01 0a 00 0a 00 75 d5 0d 5e 5f 17 57 1c ] type:     VENDOR_SPECIFIC reliable:yes seq#:6 ack#:1 payload_length:18 data_integrity:1 header_checksum:a3 err_code:0x0
+2020-01-02T10:44:46.720Z DEBUG     1216 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:7 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:46.722Z DEBUG GATTC_EVT_HVX time:2020-01-02T10:44:46.709Z connHandle:1 gattStatus:0 gattStatusName:success errorHandle:0 handle:37 type:1 len:10
+2020-01-02T10:44:46.722Z INFO Attribute value changed, handle: 0x25, value (0x): 0A-00-75-D5-0D-5E-5F-17-57-1C
+2020-01-02T10:44:47.107Z DEBUG GATTC_EVT_HVX time:2020-01-02T10:44:47.106Z connHandle:1 gattStatus:0 gattStatusName:success errorHandle:0 handle:42 type:2 len:4
+2020-01-02T10:44:47.107Z INFO Attribute value changed, handle: 0x2A, value (0x): 06-00-01-01
+2020-01-02T10:44:47.107Z DEBUG  1214/ 0 <-  [02 39 00 01 00 00 00 00 00 2a 00 02 04 00 06 00 01 01 ] type:     VENDOR_SPECIFIC reliable:yes seq#:7 ack#:1 payload_length:12 data_integrity:1 header_checksum:2 err_code:0x0
+2020-01-02T10:44:47.107Z DEBUG     1217 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:0 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:47.107Z DEBUG     1218 ->  [00 9d 01 00 2a 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:1 ack#:0 payload_length:6 data_integrity:1 header_checksum:d1 err_code:0x0
+2020-01-02T10:44:47.110Z DEBUG  1215/ 0 <-  [N/A] type:                 ACK reliable: no seq#:0 ack#:2 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:44:47.110Z DEBUG  1216/ 0 <-  [01 9d 00 00 00 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:0 ack#:2 payload_length:6 data_integrity:1 header_checksum:c2 err_code:0x0
+2020-01-02T10:44:47.110Z DEBUG     1219 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:1 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:59:20.281Z DEBUG     1220 ->  [00 76 01 00 13 ] type:     VENDOR_SPECIFIC reliable:yes seq#:2 ack#:1 payload_length:5 data_integrity:1 header_checksum:d8 err_code:0x0
+2020-01-02T10:59:20.281Z DEBUG  1217/ 0 <-  [N/A] type:                 ACK reliable: no seq#:0 ack#:3 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:59:20.281Z DEBUG  1218/ 0 <-  [01 76 00 00 00 00 ] type:     VENDOR_SPECIFIC reliable:yes seq#:1 ack#:3 payload_length:6 data_integrity:1 header_checksum:b9 err_code:0x0
+2020-01-02T10:59:20.281Z DEBUG     1221 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:2 payload_length:0 data_integrity:0 err_code:0x0
+2020-01-02T10:59:20.503Z DEBUG GAP_EVT_DISCONNECTED time:2020-01-02T10:59:20.502Z connHandle:1 reason:22 reasonName:localHostTerminatedConnection
+2020-01-02T10:59:20.503Z INFO Disconnected from device D7:59:9D:1D:7B:6B, reason: BLE_HCI_LOCAL_HOST_TERMINATED_CONNECTION
+2020-01-02T10:59:20.509Z DEBUG  1219/ 0 <-  [02 11 00 01 00 16 ] type:     VENDOR_SPECIFIC reliable:yes seq#:2 ack#:3 payload_length:6 data_integrity:1 header_checksum:b8 err_code:0x0
+2020-01-02T10:59:20.509Z DEBUG     1222 ->  [N/A] type:                 ACK reliable: no seq#:0 ack#:3 payload_length:0 data_integrity:0 err_code:0x0

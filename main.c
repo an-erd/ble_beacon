@@ -161,7 +161,7 @@ APP_TIMER_DEF(m_singleshot_timer_delete_bonds);             /**< Handler for sin
 #define APP_TIMER_TICKS_SAADC                   APP_TIMER_TICKS(60000)      // every 1 min
 #define APP_TIMER_TICKS_SENSOR                  APP_TIMER_TICKS(15000)      // every 15 secs
 #define APP_TIMER_TICKS_UPDATE_OFFLINEBUFFER    APP_TIMER_TICKS(300000)     // every 5 min, overall with interval every 15 min
-#define OFFLINE_BUFFER_SAMPLE_INTERVAL          3                           // in multiples of APP_TIMER_TICKS_UPDATE_OFFLINEBUFFER
+#define OFFLINE_BUFFER_SAMPLE_INTERVAL          1                           // in multiples of APP_TIMER_TICKS_UPDATE_OFFLINEBUFFER
 #define APP_TIMER_TICKS_CONFIG_MODE             APP_TIMER_TICKS(10000)      // inactivity timer for config mode
 #define APP_TIMER_TICKS_WAIT_DELETE_BONDS       APP_TIMER_TICKS(3000)       // wait X secs
 
@@ -1772,6 +1772,7 @@ static void os_init(void)
     os_init.feature                 |= BLE_OS_FEATURE_TEMPERATURE;
     os_init.feature                 |= BLE_OS_FEATURE_HUMIDITY;
     os_init.annunciation            = 0;
+    os_init.status_update.flags     = 0;
 
     // Here the sec level for the Our Service can be changed/increased.
     os_init.os_meas_cccd_wr_sec     = SEC_JUST_WORKS;
@@ -2225,7 +2226,7 @@ static void pm_evt_handler(pm_evt_t const * p_evt)
         case PM_EVT_CONN_SEC_CONFIG_REQ:
         {
             // Reject pairing request from an already bonded peer.
-            pm_conn_sec_config_t conn_sec_config = {.allow_repairing = false};
+            pm_conn_sec_config_t conn_sec_config = {.allow_repairing = true};
             pm_conn_sec_config_reply(p_evt->conn_handle, &conn_sec_config);
         } break;
 
@@ -2275,6 +2276,8 @@ static void pm_evt_handler(pm_evt_t const * p_evt)
 #ifdef USE_CONNPARAMS_PEERMGR
         case PM_EVT_PEER_DATA_UPDATE_SUCCEEDED:
         {
+            bool already_added = false;
+
             // Note: You should check on what kind of white list policy your application should use.
             if (     p_evt->params.peer_data_update_succeeded.flash_changed
                  && (p_evt->params.peer_data_update_succeeded.data_id == PM_PEER_DATA_ID_BONDING))
@@ -2284,7 +2287,17 @@ static void pm_evt_handler(pm_evt_t const * p_evt)
                                m_whitelist_peer_cnt + 1,
                                BLE_GAP_WHITELIST_ADDR_MAX_COUNT);
 
-                if (m_whitelist_peer_cnt < BLE_GAP_WHITELIST_ADDR_MAX_COUNT)
+                for (uint8_t i = 0; i<m_whitelist_peer_cnt; i++)
+                {
+                    if (m_whitelist_peers[i] == m_peer_id)
+                    {
+                        already_added= true; 
+                        NRF_LOG_DEBUG("Peer is already in whitelist");
+                        break;
+                    }
+                }
+        
+                if ((!already_added) && (m_whitelist_peer_cnt < BLE_GAP_WHITELIST_ADDR_MAX_COUNT) )
                 {
                     // Bonded to a new peer, add it to the whitelist.
                     m_whitelist_peers[m_whitelist_peer_cnt++] = m_peer_id;

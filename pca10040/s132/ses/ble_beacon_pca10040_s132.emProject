@@ -163,6 +163,7 @@
     <folder Name="nRF_SVC">
       <file file_name="../../../../../../components/libraries/bootloader/dfu/nrf_dfu_svci.c" />
     </folder>
+    <configuration Name="Debug" c_preprocessor_definitions="" />
   </project>
   <configuration
     Name="Release"
