@@ -786,9 +786,17 @@ During the first 2 seconds the connection interval is set to 7.5 ms. Then, by a 
 
 ![Alt text](Documentation/power_consumption/sensor_retrieval.PNG?raw=true "Power Consumption single sensor retrieval")
 
-### Long Term Visualization
+### Long Term Visualization 04/2019-04/2020
 
-![Alt text](Documentation/power_consumption/Sensor_data_20190415-20191221.png?raw=true "Long Term Visualization")
+![Alt text](Documentation/power_consumption/Sensor_data_temp_20190415-20200420.png?raw=true "Long Term Visualization")
+
+![Alt text](Documentation/power_consumption/Sensor_data_hum_20190415-20200420.png?raw=true "Long Term Visualization")
+
+![Alt text](Documentation/power_consumption/Sensor_data_battery_20190415-20200420.png?raw=true "Long Term Visualization")
+
+**Remark:** The battery of beacon Bx0701 ended on 2020-03-22, and was replaced by 2020-03-24. The graph is configured to use a "moving average" of the last 40 values. This is the reason why there is an increase in battery power again. Without "moving average" the see the following graph. (There is a measurement issues with a yet unclear reason.)
+
+![Alt text](Documentation/power_consumption/Sensor_data_battery_Bx0701_20190417-20200420.png?raw=true "Long Term Visualization")
 
 
 
