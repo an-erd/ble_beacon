@@ -511,7 +511,7 @@ You can connect to the device and use the following additional features:
 ### Preparation
 
 - Connect to the service 0x1400
-- Pairing/Bonding - **TBD**
+- Pairing/Bonding - will be done automatically during negotiation process between device and client
 - Turn on **Notification** on characteristic 0x1401 (RACP Measurement Values)
 - Turn on **Indication** on characteristic 0x2A52 (Random Access Control Point)
 
@@ -735,6 +735,13 @@ The software is power optimized.
 | 3'   | same as 3, but in connected state<br />- during first 2 sec with advertising interval 7.5 ms<br />- after 2 sec with advertising interval 200 ms | <br />450<br />24           |
 | all  | in **idle state** (=sleep), i.e. between peaks from sensor handling, <br />advertising, timer, etc. | 3.7                         |
 
+Using this figures the **battery life time** can be calculated:
+
+- In Mode 2 (sensor active, offline buffer but non-scannable non-connectable advertising):
+  220 mAh / 0,0135 mA * 0,7 = 11.407 h = ~1.3 Years
+- In Mode 3 (in addition scannable connectable advertising):
+  220 mAh / 0,0175 mA * 0,7 = 8.800 h = ~1 Year
+
 **Remark:**
 
 - The measurement is done with Nordic [Power Profiler Kit](https://www.nordicsemi.com/Software-and-tools/Development-Kits/Power-Profiler-Kit)
@@ -743,6 +750,7 @@ The software is power optimized.
   - The figures above are measured with a sensor with a consumption of ~0.4 &#181;A. 
   - See [SHT03 Data Sheet](Documentation/datasheets/Sensirion_Humidity_Sensors_SHT3x_Datasheet_digital-971521.pdf), section *2.1 Electrical Specifications*.
 - The mode corresponds to the LED flashing code, i.e. the number of short flashes equals the mode. See section *User Configuration of device modes*
+- In comparison, the supplier’s original firmware of that devices has a consumption of 577 μA, which corresponds to ~11 days (220mAh/577μA * 70% = ~267h), and which is not acceptable
 
 ### Mode 0
 
@@ -794,7 +802,7 @@ During the first 2 seconds the connection interval is set to 7.5 ms. Then, by a 
 
 ![Alt text](Documentation/power_consumption/Sensor_data_battery_20190415-20200420.png?raw=true "Long Term Visualization")
 
-**Remark:** The battery of beacon Bx0701 ended on 2020-03-22, and was replaced by 2020-03-24. The graph is configured to use a "moving average" of the last 40 values. This is the reason why there is an increase in battery power again. Without "moving average" the see the following graph. (There is a measurement issues with a yet unclear reason.)
+**Remark:** The battery life time of beacon Bx0701 ended on 2020-03-22, and was replaced by 2020-03-24. The graph is configured to use a "moving average" of the last 40 values. This is the reason why there is an increase in battery power again. Without "moving average" the see the following graph. (There is a measurement issues when the sensor values fallen down to the lowest value. These cases are now excluded as "outliers".)
 
 ![Alt text](Documentation/power_consumption/Sensor_data_battery_Bx0701_20190417-20200420.png?raw=true "Long Term Visualization")
 
