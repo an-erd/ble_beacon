@@ -802,9 +802,18 @@ During the first 2 seconds the connection interval is set to 7.5 ms. Then, by a 
 
 ![Alt text](Documentation/power_consumption/Sensor_data_battery_20190415-20200420.png?raw=true "Long Term Visualization")
 
-**Remark:** The battery life time of beacon Bx0701 ended on 2020-03-22, and was replaced by 2020-03-24. The graph is configured to use a "moving average" of the last 40 values. This is the reason why there is an increase in battery power again. Without "moving average" the see the following graph. (There is a measurement issues when the sensor values fallen down to the lowest value. These cases are now excluded as "outliers".)
+**Remarks:** 
 
-![Alt text](Documentation/power_consumption/Sensor_data_battery_Bx0701_20190417-20200420.png?raw=true "Long Term Visualization")
+- The battery life time of beacon Bx0701 ended on 2020-03-22, and was replaced by 2020-03-24. The graph is configured to use a "moving average" of the last 40 values. This is the reason why there is an increase in battery power again. Without "moving average" the see the following graph. (There is a measurement issues when the sensor values fallen down to the lowest value. These cases are now excluded as "outliers".)
+
+  ![Alt text](Documentation/power_consumption/Sensor_data_battery_Bx0701_20190417-20200420.png?raw=true "One year of battery life")
+
+- If the device shuts down and doesn't come up again, probably the power supply/battery voltage is too low. In this case one of the sensors (SHT3, KX022) does not come up, and so the complete device. 
+  - Specifications for SHT3 power-up/down level V_POR is min./typ./max.: 2.1, 2.3, 2.4 V
+  - Specifications for KX022 operating power is min./typ./max.: 1.71, 2.5, 3.6 V
+  
+- Another view on the end-of-battery for two beacons ("From the cradle to the grave"), and a pretty new battery:
+  ![Alt text](Documentation/power_consumption/Sensor_data_battery_20200323-20200423.png?raw=true "From the cradle to the grave")
 
 
 
