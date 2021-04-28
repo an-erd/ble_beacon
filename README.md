@@ -185,6 +185,7 @@ with the arguments
 
 | SDK Version            | SD Version | SD Version String |
 | ---------------------- | ---------- | ----------------- |
+| SDK 17.0.2             | 7.2.0      | 0x0101            |
 | SDK 16.0.0             | 7.0.1      | 0xCB              |
 |                        | 7.0.0      | 0xC2              |
 | SDK 15.3.0             | 6.1.1      | 0xB7              |
@@ -226,7 +227,7 @@ with the arguments
 **Step 4)** Use nRF Connect Programmer to upload all necessary .hex files
 
 - Open nRF Connect Programmer, `connect`, `read` device
-- `Add HEX file`
+- `Add HEX files`
   - Softdevice .hex file
   - Merged settings and bootloader file generated in Step 3
   - Application .hex file generated during application build
@@ -238,7 +239,7 @@ The files are located here:
 | -------------------- | ------------------------------------------------------------ |
 | SoftDevice           | %NRF_SDK_PATH%/components/softdevice/s132/hex/s132_nrf52_....hex |
 | Merged settings + BL | %NRF_BL_PATH%/pca10040_ble/ses/Output/Release/Exe/output.hex |
-| Application          | %NRF_BL_PATH%/pca10040_ble/ses/Output/Release/Exe/<br />ble_beacon_pca10040_s132.hex |
+| Application          | %NRF_APP_PATH%/pca10040_ble/ses/Output/Release/Exe/<br />ble_beacon_pca10040_s132.hex |
 
 **Step 5)** (optional) If necessary, write 4 byte UICR with the devices MAJOR and MINOR address
 
@@ -263,6 +264,17 @@ Example: For the test device used throughout this Readme the value `0x00070008` 
 #### Remark: Using without bootloader and DFU
 
 If you want to use the software without bootloader and without buttonless DFU again, you need to comment out the call to `ble_dfu_buttonless_async_svci_init();` or use `#undef USE_BUTTONLESS_DFU`. Otherwise you'll get an error  `<error> app: ERROR 4 [NRF_ERROR_NO_MEM]`.
+
+#### Remark: Current packages and corresponding versions
+
+| Github Tag | Package Name (.zip)            | App Version | BL Version | BL Settings | SD Req |
+| ---------- | ------------------------------ | ----------- | ---------- | ----------- | ------ |
+| 0.4.1      | app2_dfu_package_0.4.1         | 2           | &horbar;   | &horbar;    | 0xCB   |
+| 0.4.1      | app2_bl2_sd_dfu_package        | 2           | 2          | 2           | 0xCB   |
+| 0.4.1b     | app3_dfu_package_0.4.1b        | 3           | &horbar;   | &horbar;    | 0x0101 |
+| 0.4.1b     | app3_bl3_sd_dfu_package_0.4.1b | 3           | 3          | 2           | 0x0101 |
+
+(Version 0.4.1a is only a new SD/BL Version without code changes, so Github tag is 0.4.1)
 
 ## User Configuration of device modes
 
@@ -574,7 +586,6 @@ Temperature and Humidity are given in 2 byte MSB-LSB ordering and are calculated
   - Time stamp: 0x5E0DD575 = ‭1577964917‬ = 01/02/2020 @ 11:35am (UTC)
   - Temperature `0x5F17` = 24.343; results in T = -45 + (24.343  * 175) / 65535 = 20,00 ° C
   - Humidity `0x751C` = 29.980; results in RH = 45,75 % RH
-  
 #### Corresponding log file entries from NRF Connect console
 
 - Connecting to the device:
